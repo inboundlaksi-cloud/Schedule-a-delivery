@@ -1323,7 +1323,10 @@
                 renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId }); 
             }));
             document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => { state.selectedBookingId = e.currentTarget.dataset.bookingId; renderModal('evaluate'); }));
-            document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => showConfirm('คุณต้องการลบคิวนี้ใช่หรือไม่?', () => handleDeleteBooking(e.currentTarget.dataset.bookingId))));
+            document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const bookingId = e.currentTarget.dataset.bookingId;
+                showConfirm('คุณต้องการลบคิวนี้ใช่หรือไม่?', () => handleDeleteBooking(bookingId));
+            }));
         };
         
         const renderTimePickerModal = (bookingModal) => {
@@ -1971,14 +1974,47 @@
             }
         };
 
+        // แก้ไขฟังก์ชัน handleDeleteBooking ให้ทำงานได้อย่างถูกต้อง
         const handleDeleteBooking = async (bookingId) => {
-            const bookingsOnDate = state.data.bookings[state.selectedDate];
-            if (bookingsOnDate) {
-                state.data.bookings[state.selectedDate] = bookingsOnDate.filter(b => b.id != bookingId);
-                if(state.data.bookings[state.selectedDate].length === 0) {
-                    delete state.data.bookings[state.selectedDate];
+            try {
+                // ค้นหา booking ที่ต้องการลบจากทุกวัน
+                let bookingToDelete = null;
+                let bookingDate = null;
+                
+                for (const date in state.data.bookings) {
+                    const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
+                    if (bookingIndex !== -1) {
+                        bookingToDelete = state.data.bookings[date][bookingIndex];
+                        bookingDate = date;
+                        break;
+                    }
                 }
+                
+                if (!bookingToDelete) {
+                    showAlert('ไม่พบข้อมูลการจองคิวที่ต้องการลบ');
+                    return;
+                }
+                
+                // ลบ booking ออกจาก array
+                state.data.bookings[bookingDate] = state.data.bookings[bookingDate].filter(b => b.id != bookingId);
+                
+                // ถ้าไม่มี booking ในวันนั้นแล้ว ให้ลบ key นั้นทิ้งไป
+                if (state.data.bookings[bookingDate].length === 0) {
+                    delete state.data.bookings[bookingDate];
+                }
+                
+                // บันทึกข้อมูลที่อัปเดตลง Firebase
                 await setDoc(docRef, state.data);
+                
+                // แสดงข้อความยืนยัน
+                showAlert('ลบคิวสำเร็จแล้ว');
+                
+                // รีเฟรชหน้าจอปัจุบัน
+                render();
+                
+            } catch (error) {
+                console.error('Error deleting booking:', error);
+                showAlert('เกิดข้อผิดพลาดในการลบคิว กรุณาลองใหม่');
             }
         };
         
