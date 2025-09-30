@@ -193,6 +193,40 @@
             return `QR${year}${month}${day}${random}`;
         };
 
+        const handleFileUpload = (fileInput) => {
+            const files = fileInput.files;
+            const filePromises = [];
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                
+                const filePromise = new Promise((resolve) => {
+                    reader.onload = (e) => {
+                        resolve({
+                            name: file.name,
+                            type: file.type,
+                            size: file.size,
+                            data: e.target.result
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                filePromises.push(filePromise);
+            }
+            
+            return Promise.all(filePromises);
+        };
+
+        const formatFileSize = (bytes) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
         const generateQRCode = (data, container) => {
             const canvas = document.createElement('canvas');
             canvas.width = 200;
@@ -1022,7 +1056,30 @@
                          <div id="eta-display" class="input cursor-pointer mt-1 text-slate-500">-- เลือกเวลา --</div>
                          <input type="hidden" id="eta" required>
                     </div>
-                    <textarea id="notes" placeholder="เอกสารเพิ่มเติม" rows="2" class="input"></textarea>
+                    <div>
+                        <label class="text-sm font-medium">เอกสารเพิ่มเติม</label>
+                        <textarea id="notes" placeholder="รายละเอียดเพิ่มเติม" rows="2" class="input"></textarea>
+                    </div>
+                    <div class="border-t pt-3">
+                        <label class="text-sm font-medium flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            แนบเอกสาร (INVOICE และ PO)
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 mb-2">*หากแนบเอกสารมาด้วยจะเพิ่มความรวดเร็วในการรับสินค้าของพนักงาน</p>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+                            <input type="file" id="document-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
+                            <label for="document-files" class="cursor-pointer">
+                                <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="text-sm text-gray-600">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
+                                <p class="text-xs text-gray-500 mt-1">รองรับไฟล์ PDF, JPG, PNG, DOC, DOCX (สูงสุด 5MB ต่อไฟล์)</p>
+                            </label>
+                        </div>
+                        <div id="file-list" class="mt-3 space-y-2"></div>
+                    </div>
                     <div class="flex justify-end gap-2 pt-4">
                         <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
                         <button type="submit" class="btn btn-success">ยืนยันการจอง</button>
@@ -1032,7 +1089,166 @@
                     modal.querySelector('#eta-display').addEventListener('click', () => renderTimePickerModal(modal));
                     const companySelect = modal.querySelector('#company-name'), newCompanyInput = modal.querySelector('#new-company-name');
                     companySelect.addEventListener('change', () => newCompanyInput.classList.toggle('hidden', companySelect.value !== 'add_new'));
-                    modal.querySelector('#booking-form').addEventListener('submit', handleBookingSubmit);
+                    
+                    const fileInput = modal.querySelector('#document-files');
+                    const fileList = modal.querySelector('#file-list');
+                    let uploadedFiles = [];
+                    
+                    const displayFiles = () => {
+                        fileList.innerHTML = uploadedFiles.map((file, index) => `
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <div>
+                                        <p class="text-sm font-medium">${file.name}</p>
+                                        <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
+                                    </div>
+                                </div>
+                                <button type="button" class="text-red-500 hover:text-red-700" onclick="removeFile(${index})">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        `).join('');
+                    };
+                    
+                    window.removeFile = (index) => {
+                        uploadedFiles.splice(index, 1);
+                        displayFiles();
+                    };
+                    
+                    fileInput.addEventListener('change', async (e) => {
+                        const files = Array.from(e.target.files);
+                        const validFiles = files.filter(file => {
+                            const isValidType = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type);
+                            const isValidSize = file.size <= 5 * 1024 * 1024;
+                            if (!isValidType) {
+                                showAlert(`ไฟล์ ${file.name} ไม่รองรับประเภทนี้`);
+                                return false;
+                            }
+                            if (!isValidSize) {
+                                showAlert(`ไฟล์ ${file.name} มีขนาดเกิน 5MB`);
+                                return false;
+                            }
+                            return true;
+                        });
+                        
+                        const newFiles = await handleFileUpload({ files: validFiles });
+                        uploadedFiles = [...uploadedFiles, ...newFiles];
+                        displayFiles();
+                    });
+                    
+                    const dropZone = modal.querySelector('.border-dashed').parentElement;
+                    
+                    dropZone.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        dropZone.classList.add('border-blue-500', 'bg-blue-50');
+                    });
+                    
+                    dropZone.addEventListener('dragleave', (e) => {
+                        e.preventDefault();
+                        dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+                    });
+                    
+                    dropZone.addEventListener('drop', async (e) => {
+                        e.preventDefault();
+                        dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+                        
+                        const files = Array.from(e.dataTransfer.files);
+                        const validFiles = files.filter(file => {
+                            const isValidType = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type);
+                            const isValidSize = file.size <= 5 * 1024 * 1024;
+                            if (!isValidType) {
+                                showAlert(`ไฟล์ ${file.name} ไม่รองรับประเภทนี้`);
+                                return false;
+                            }
+                            if (!isValidSize) {
+                                showAlert(`ไฟล์ ${file.name} มีขนาดเกิน 5MB`);
+                                return false;
+                            }
+                            return true;
+                        });
+                        
+                        const newFiles = await handleFileUpload({ files: validFiles });
+                        uploadedFiles = [...uploadedFiles, ...newFiles];
+                        displayFiles();
+                    });
+                    
+                    modal.querySelector('#booking-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const form = e.target;
+                        const companySelect = form.querySelector('#company-name');
+                        let companyName = companySelect.value === 'add_new' ? form.querySelector('#new-company-name').value.trim() : companySelect.value;
+                        
+                        if (!companyName) { 
+                            showAlert('กรุณาระบุชื่อบริษัท'); 
+                            return; 
+                        }
+                        
+                        const licensePlate = `${form.querySelector('#license-plate-prefix').value.trim()} ${form.querySelector('#license-plate-suffix').value.trim()}`.trim();
+                        if (!licensePlate) { 
+                            showAlert('กรุณากรอกทะเบียนรถ'); 
+                            return; 
+                        }
+
+                        let eta = form.querySelector('#eta').value;
+                        if (!eta) { 
+                            showAlert('กรุณาเลือกเวลา'); 
+                            return; 
+                        }
+
+                        let originalTime = eta;
+                        let attempts = 0;
+                        const maxAttempts = 10;
+                        
+                        while (checkTimeConflict(state.selectedDate, eta) && attempts < maxAttempts) {
+                            eta = calculateNewTime(eta, 15);
+                            attempts++;
+                        }
+
+                        if (attempts >= maxAttempts) {
+                            showAlert(`ไม่สามารถจองคิวในเวลาที่คุณเลือกได้ กรุณาเลือกเวลาอื่น\nเวลาที่มีการจองแล้ว: ${originalTime}`);
+                            return;
+                        }
+
+                        if (eta !== originalTime) {
+                            showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนโนมัติ`);
+                        }
+
+                        const referenceNumber = generateReferenceNumber();
+                        const newBooking = { 
+                            id: Date.now(), 
+                            referenceNumber: referenceNumber,
+                            companyName, 
+                            driverName: form.querySelector('#driver-name').value, 
+                            licensePlate, 
+                            invoiceCount: form.querySelector('#invoice-count').value, 
+                            boxCount: form.querySelector('#box-count').value, 
+                            itemCount: form.querySelector('#item-count').value, 
+                            eta, 
+                            notes: form.querySelector('#notes').value,
+                            documents: uploadedFiles,
+                            evaluation: null 
+                        };
+                        
+                        const dateStr = state.selectedDate;
+                        if (!state.data.bookings[dateStr]) {
+                            state.data.bookings[dateStr] = [];
+                        }
+                        state.data.bookings[dateStr].push(newBooking);
+                        state.data.bookings[dateStr].sort((a,b) => a.eta.localeCompare(b.eta));
+                        
+                        await setDoc(docRef, state.data);
+
+                        state.guestBookingIds.push(newBooking.id);
+                        sessionStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+                        
+                        closeModal(form.closest('.modal-backdrop')); 
+                        renderModal('qrCode', { booking: newBooking });
+                    });
                 });
             }
             else if (type === 'bookingDetails') {
@@ -1045,6 +1261,30 @@
 
                 const isGuestBooking = state.guestBookingIds.includes(booking.id);
                 const isEditable = state.userRole === 'staff' || (state.userRole === 'guest' && isGuestBooking);
+                
+                const documentsHtml = booking.documents && booking.documents.length > 0 
+                    ? `<div class="mt-4">
+                        <h4 class="font-semibold text-gray-700 mb-2">เอกสารที่แนบ:</h4>
+                        <div class="space-y-2">
+                            ${booking.documents.map((doc, index) => `
+                                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-sm font-medium">${doc.name}</p>
+                                            <p class="text-xs text-gray-500">${formatFileSize(doc.size)}</p>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                                        ดาวน์โหลด
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`
+                    : '';
                 
                 modalContent = `
                     <div class="booking-details p-4 rounded-lg">
@@ -1093,14 +1333,31 @@
                             </div>
                             ` : ''}
                         </div>
+                        ${documentsHtml}
                         <div class="mt-4 flex justify-end gap-2">
                             <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
                         </div>
                     </div>`;
+                
+                window.downloadDocument = (filename, dataUrl) => {
+                    const link = document.createElement('a');
+                    link.href = dataUrl;
+                    link.download = filename;
+                    link.click();
+                };
+                
                 renderModalBase(modalContent);
             }
             else if (type === 'bookingCard') {
                 const booking = data.booking;
+                
+                const documentsInfo = booking.documents && booking.documents.length > 0 
+                    ? `<div class="booking-card-item">
+                        <span class="booking-card-label">เอกสารที่แนบ:</span>
+                        <span class="booking-card-value">${booking.documents.length} ไฟล์</span>
+                    </div>`
+                    : '';
+                
                 modalContent = `
                     <div class="booking-card">
                         <div class="booking-card-inner">
@@ -1141,11 +1398,27 @@
                                     <span class="booking-card-label">สถานะ</span>
                                     <span class="booking-card-value text-green-600">✓ ยืนยันแล้ว</span>
                                 </div>
+                                ${documentsInfo}
                             </div>
                             ${booking.notes ? `
                             <div class="mt-2 p-3 bg-gray-50 rounded-lg">
                                 <span class="booking-card-label">เอกสารเพิ่มเติม</span>
                                 <p class="booking-card-value mt-1">${booking.notes}</p>
+                            </div>
+                            ` : ''}
+                            ${booking.documents && booking.documents.length > 0 ? `
+                            <div class="mt-2 p-3 bg-blue-50 rounded-lg">
+                                <span class="booking-card-label text-blue-700">เอกสารที่แนบ</span>
+                                <div class="mt-2 space-y-1">
+                                    ${booking.documents.map(doc => `
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-700">${doc.name}</span>
+                                            <button type="button" onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-500 hover:text-blue-700 text-xs">
+                                                ดาวน์โหลด
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
                             ` : ''}
                             <div class="booking-card-footer">
@@ -1430,7 +1703,8 @@
                 boxCount: form.querySelector('#box-count').value, 
                 itemCount: form.querySelector('#item-count').value, 
                 eta, 
-                notes: form.querySelector('#notes').value, 
+                notes: form.querySelector('#notes').value,
+                documents: [],
                 evaluation: null 
             };
             
