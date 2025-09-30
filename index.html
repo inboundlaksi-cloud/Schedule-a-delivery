@@ -12,614 +12,110 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         :root {
-            --bg-color: #f8fafc;
-            --text-color: #1e293b;
-            --card-bg: #ffffff;
-            --border-color: #e2e8f0;
-            --accent-color: #6366f1;
-            --accent-hover: #4f46e5;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --today-bg: #fef3c7;
-            --today-text: #92400e;
-            --hover-bg: #f1f5f9;
+            --bg-color: #f8fafc; --text-color: #1e293b; --card-bg: #ffffff;
+            --border-color: #e2e8f0; --accent-color: #6366f1; --accent-hover: #4f46e5;
+            --success-color: #10b981; --warning-color: #f59e0b; --error-color: #ef4444;
+            --today-bg: #fef3c7; --today-text: #92400e; --hover-bg: #f1f5f9;
         }
-        
-        * {
-            font-family: 'Sarabun', sans-serif;
-        }
-        
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            font-size: 16px;
-            min-height: 100vh;
-        }
-        
-        .card { 
-            background-color: var(--card-bg); 
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        }
-        
-        .card-shadow {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        
+        * { font-family: 'Sarabun', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-size: 16px; min-height: 100vh; }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
+        .card-shadow { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        
-        .calendar-day { 
-            transition: all 0.2s ease-in-out; 
-            cursor: pointer;
-            min-height: 80px;
-        }
-        
-        .calendar-day:hover:not(.disabled) { 
-            background-color: var(--hover-bg); 
-            transform: scale(1.02);
-        }
-        
+        .calendar-day { transition: all 0.2s ease-in-out; cursor: pointer; min-height: 80px; }
+        .calendar-day:hover:not(.disabled) { background-color: var(--hover-bg); transform: scale(1.02); }
         .has-bookings { position: relative; }
-        .has-bookings::after { 
-            content: ''; 
-            position: absolute; 
-            bottom: 6px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            width: 6px; 
-            height: 6px; 
-            background-color: var(--accent-color); 
-            border-radius: 50%; 
-        }
-        
-        .today { 
-            background-color: var(--today-bg) !important; 
-            color: var(--today-text) !important; 
-            font-weight: bold; 
-        }
-        
-        .staff-nav-btn { 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 10px 16px; 
-            border-radius: 8px; 
-            font-weight: 500; 
-            transition: all 0.2s; 
-        }
-        
-        .staff-nav-btn.active { 
-            background-color: var(--accent-color); 
-            color: white; 
-            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.2);
-        }
-        
-        .staff-nav-btn:not(.active) { 
-            color: var(--text-color); 
-        }
-        
-        .staff-nav-btn:not(.active):hover {
-            background-color: var(--hover-bg);
-        }
-        
-        .icon { 
-            width: 1.25rem; 
-            height: 1.25rem; 
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 500;
-            transition: all 0.2s;
-            cursor: pointer;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-primary {
-            background-color: var(--accent-color);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--accent-hover);
-        }
-        
-        .btn-secondary {
-            background-color: #e2e8f0;
-            color: var(--text-color);
-        }
-        
-        .btn-secondary:hover {
-            background-color: #cbd5e1;
-        }
-        
-        .btn-success {
-            background-color: var(--success-color);
-            color: white;
-        }
-        
-        .btn-danger {
-            background-color: var(--error-color);
-            color: white;
-        }
-        
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 14px;
-        }
-        
-        .btn-lg {
-            padding: 14px 28px;
-            font-size: 18px;
-        }
-        
-        .input {
-            padding: 10px 14px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.2s;
-        }
-        
-        .input:focus {
-            outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-        
-        .reference-number {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            letter-spacing: 1px;
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .scanner-view {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-            aspect-ratio: 1;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        
-        .scanner-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .scanner-frame {
-            width: 250px;
-            height: 250px;
-            border: 2px solid var(--accent-color);
-            border-radius: 12px;
-            position: relative;
-        }
-        
-        .scanner-frame::before,
-        .scanner-frame::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 3px solid var(--accent-color);
-        }
-        
-        .scanner-frame::before {
-            top: -2px;
-            left: -2px;
-            border-right: none;
-            border-bottom: none;
-        }
-        
-        .scanner-frame::after {
-            bottom: -2px;
-            right: -2px;
-            border-left: none;
-            border-top: none;
-        }
-        
-        .scanner-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
-            animation: scan 2s linear infinite;
-        }
-        
-        @keyframes scan {
-            0% { top: 0; }
-            100% { top: 100%; }
-        }
-        
-        .booking-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 2px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        
-        .booking-card-inner {
-            background: white;
-            border-radius: 14px;
-            padding: 1.5rem;
-        }
-        
-        .booking-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        
-        .booking-card-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #333;
-        }
-        
-        .booking-card-reference {
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .booking-card-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .booking-card-item {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .booking-card-label {
-            font-size: 0.75rem;
-            color: #666;
-            margin-bottom: 0.25rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .booking-card-value {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .booking-card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 2px solid #f0f0f0;
-        }
-        
-        .booking-card-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--success-color);
-            color: white;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .booking-card-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .booking-card-btn {
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: all 0.2s;
-            cursor: pointer;
-            border: none;
-        }
-        
-        .booking-card-btn-primary {
-            background: var(--accent-color);
-            color: white;
-        }
-        
-        .booking-card-btn-primary:hover {
-            background: var(--accent-hover);
-        }
-        
-        .booking-card-btn-secondary {
-            background: #e5e7eb;
-            color: #333;
-        }
-        
-        .booking-card-btn-secondary:hover {
-            background: #d1d5db;
-        }
-        
-        #video-container {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-            aspect-ratio: 1;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        #scan-region {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 250px;
-            height: 250px;
-            border: 2px solid var(--accent-color);
-            border-radius: 12px;
-        }
-        
-        .scan-animation {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
-            animation: scan 2s linear infinite;
-        }
-        
-        .clock-picker { 
-            position: relative; 
-            width: 260px; 
-            height: 260px; 
-            margin: 1rem auto; 
-        }
-        
-        .clock-face { 
-            width: 100%; 
-            height: 100%; 
-            border: 2px solid var(--border-color); 
-            border-radius: 50%; 
-        }
-        
-        .clock-center { 
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            width: 8px; 
-            height: 8px; 
-            background: var(--accent-color); 
-            border-radius: 50%; 
-            transform: translate(-50%, -50%); 
-        }
-        
-        .clock-number { 
-            position: absolute; 
-            width: 36px; 
-            height: 36px; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            border-radius: 50%; 
-            cursor: pointer; 
-            transition: background-color 0.2s; 
-            font-size: 1rem; 
-        }
-        
-        .clock-number:hover { 
-            background-color: var(--hover-bg); 
-        }
-        
-        .clock-number.selected { 
-            background-color: var(--accent-color); 
-            color: white; 
-        }
-        
-        .clock-number.disabled { 
-            color: #cbd5e1; 
-            cursor: not-allowed; 
-            pointer-events: none; 
-            background: transparent !important; 
-        }
-        
-        .booking-details { 
-            background-color: #f8fafc; 
-            border-left: 4px solid var(--accent-color); 
-        }
-        
-        .booking-details h4 { 
-            color: var(--accent-color); 
-        }
-        
-        .booking-details-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 1rem; 
-        }
-        
-        .detail-item { 
-            display: flex; 
-            flex-direction: column; 
-        }
-        
-        .detail-label { 
-            font-size: 0.875rem; 
-            color: #64748b; 
-            margin-bottom: 0.25rem; 
-        }
-        
-        .detail-value { 
-            font-weight: 500; 
-        }
-        
-        .time-conflict { 
-            background-color: #fef2f2; 
-            border: 1px solid #fecaca; 
-            color: #dc2626; 
-        }
-        
-        .time-conflict-warning { 
-            background-color: #fef3c7; 
-            border: 1px solid #fde68a; 
-            color: #d97706; 
-        }
-        
-        .booking-readonly { 
-            background-color: #f9fafb; 
-            border: 1px solid #e5e7eb; 
-        }
-        
-        .booking-readonly input, .booking-readonly textarea { 
-            background-color: #f3f4f6; 
-            color: #6b7280; 
-            cursor: not-allowed; 
-        }
-        
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-        }
-        
-        .hero-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.125rem;
-            opacity: 0.9;
-        }
-        
+        .has-bookings::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background-color: var(--accent-color); border-radius: 50%; }
+        .today { background-color: var(--today-bg) !important; color: var(--today-text) !important; font-weight: bold; }
+        .staff-nav-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; font-weight: 500; transition: all 0.2s; }
+        .staff-nav-btn.active { background-color: var(--accent-color); color: white; box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.2); }
+        .staff-nav-btn:not(.active) { color: var(--text-color); }
+        .staff-nav-btn:not(.active):hover { background-color: var(--hover-bg); }
+        .icon { width: 1.25rem; height: 1.25rem; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 500; transition: all 0.2s; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background-color: var(--accent-color); color: white; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-secondary { background-color: #e2e8f0; color: var(--text-color); }
+        .btn-secondary:hover { background-color: #cbd5e1; }
+        .btn-success { background-color: var(--success-color); color: white; }
+        .btn-danger { background-color: var(--error-color); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 14px; }
+        .btn-lg { padding: 14px 28px; font-size: 18px; }
+        .input { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; transition: border-color 0.2s; }
+        .input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+        .reference-number { font-family: 'Courier New', monospace; font-weight: bold; letter-spacing: 1px; background: linear-gradient(90deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .scanner-view { position: relative; width: 100%; max-width: 400px; margin: 0 auto; aspect-ratio: 1; background: #000; border-radius: 12px; overflow: hidden; }
+        .scanner-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+        .scanner-frame { width: 250px; height: 250px; border: 2px solid var(--accent-color); border-radius: 12px; position: relative; }
+        .scanner-frame::before, .scanner-frame::after { content: ''; position: absolute; width: 20px; height: 20px; border: 3px solid var(--accent-color); }
+        .scanner-frame::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .scanner-frame::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+        .scanner-line { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent-color), transparent); animation: scan 2s linear infinite; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        .booking-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 2px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
+        .booking-card-inner { background: white; border-radius: 14px; padding: 1.5rem; }
+        .booking-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #f0f0f0; }
+        .booking-card-title { font-size: 1.25rem; font-weight: 700; color: #333; }
+        .booking-card-reference { background: linear-gradient(90deg, #6366f1, #8b5cf6); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; }
+        .booking-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+        .booking-card-item { display: flex; flex-direction: column; }
+        .booking-card-label { font-size: 0.75rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .booking-card-value { font-size: 1rem; font-weight: 600; color: #333; }
+        .booking-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #f0f0f0; }
+        .booking-card-status { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--success-color); color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600; }
+        .booking-card-actions { display: flex; gap: 0.5rem; }
+        .booking-card-btn { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s; cursor: pointer; border: none; }
+        .booking-card-btn-primary { background: var(--accent-color); color: white; }
+        .booking-card-btn-primary:hover { background: var(--accent-hover); }
+        .booking-card-btn-secondary { background: #e5e7eb; color: #333; }
+        .booking-card-btn-secondary:hover { background: #d1d5db; }
+        #video-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; aspect-ratio: 1; background: #000; border-radius: 12px; overflow: hidden; }
+        #video { width: 100%; height: 100%; object-fit: cover; }
+        #scan-region { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 250px; border: 2px solid var(--accent-color); border-radius: 12px; }
+        .scan-animation { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent-color), transparent); animation: scan 2s linear infinite; }
+        .clock-picker { position: relative; width: 260px; height: 260px; margin: 1rem auto; }
+        .clock-face { width: 100%; height: 100%; border: 2px solid var(--border-color); border-radius: 50%; }
+        .clock-center { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; transform: translate(-50%, -50%); }
+        .clock-number { position: absolute; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; border-radius: 50%; cursor: pointer; transition: background-color 0.2s; font-size: 1rem; }
+        .clock-number:hover { background-color: var(--hover-bg); }
+        .clock-number.selected { background-color: var(--accent-color); color: white; }
+        .clock-number.disabled { color: #cbd5e1; cursor: not-allowed; pointer-events: none; background: transparent !important; }
+        .booking-details { background-color: #f8fafc; border-left: 4px solid var(--accent-color); }
+        .booking-details h4 { color: var(--accent-color); }
+        .booking-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .detail-item { display: flex; flex-direction: column; }
+        .detail-label { font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem; }
+        .detail-value { font-weight: 500; }
+        .time-conflict { background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+        .time-conflict-warning { background-color: #fef3c7; border: 1px solid #fde68a; color: #d97706; }
+        .booking-readonly { background-color: #f9fafb; border: 1px solid #e5e7eb; }
+        .booking-readonly input, .booking-readonly textarea { background-color: #f3f4f6; color: #6b7280; cursor: not-allowed; }
+        .hero-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem 0; margin-bottom: 2rem; }
+        .hero-title { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .hero-subtitle { font-size: 1.125rem; opacity: 0.9; }
         @media (max-width: 768px) {
-            .hero-title {
-                font-size: 2rem;
-            }
-            
-            .hero-subtitle {
-                font-size: 1rem;
-            }
-            
-            .booking-card-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .booking-card-footer {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: stretch;
-            }
-            
-            .booking-card-actions {
-                justify-content: center;
-            }
-            
-            .staff-nav-btn {
-                padding: 8px 12px;
-                font-size: 14px;
-            }
-            
-            .icon {
-                width: 1rem;
-                height: 1rem;
-            }
+            .hero-title { font-size: 2rem; }
+            .hero-subtitle { font-size: 1rem; }
+            .booking-card-grid { grid-template-columns: 1fr; }
+            .booking-card-footer { flex-direction: column; gap: 1rem; align-items: stretch; }
+            .booking-card-actions { justify-content: center; }
+            .staff-nav-btn { padding: 8px 12px; font-size: 14px; }
+            .icon { width: 1rem; height: 1rem; }
         }
-        
         @media (max-width: 640px) {
-            .container {
-                padding-left: 1rem;
-                padding-right: 1rem;
-            }
-            
-            .calendar-day {
-                min-height: 60px;
-                font-size: 14px;
-            }
-            
-            .modal-backdrop .card {
-                margin: 1rem;
-                max-width: calc(100% - 2rem);
-            }
+            .container { padding-left: 1rem; padding-right: 1rem; }
+            .calendar-day { min-height: 60px; font-size: 14px; }
+            .modal-backdrop .card { margin: 1rem; max-width: calc(100% - 2rem); }
         }
-        
-        .floating-scan-btn {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            transition: all 0.3s;
-            z-index: 40;
-        }
-        
-        .floating-scan-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
-        }
-        
+        .floating-scan-btn { position: fixed; bottom: 2rem; right: 2rem; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); cursor: pointer; transition: all 0.3s; z-index: 40; }
+        .floating-scan-btn:hover { transform: scale(1.1); box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3); }
         @media (max-width: 768px) {
-            .floating-scan-btn {
-                bottom: 1rem;
-                right: 1rem;
-                width: 50px;
-                height: 50px;
-            }
+            .floating-scan-btn { bottom: 1rem; right: 1rem; width: 50px; height: 50px; }
         }
-        
     </style>
 </head>
 <body>
@@ -627,12 +123,10 @@
     <div id="modal-container"></div>
 
     <script type="module">
-        // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // Your web app's Firebase configuration
         const firebaseConfig = {
           apiKey: "AIzaSyBezNic5rqHg2xh9_9dHo5DUDoHZx1Z_v8",
           authDomain: "schedule-a-delivery.firebaseapp.com",
@@ -643,12 +137,10 @@
           measurementId: "G-EDV364EREE"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
         const docRef = doc(db, "schedules", "main");
-
         const GEMINI_API_KEY = "AIzaSyD_d2g0XgVxkClULTmh6dfl_eKIkRuVo7E";
 
         let state = {
@@ -673,7 +165,7 @@
         const appContainer = document.getElementById('app-container');
         const modalContainer = document.getElementById('modal-container');
         
-        const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบรซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอบเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
+        const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบร์ซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอบเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
 
         const formatDate = (date) => {
             if (!(date instanceof Date)) {
@@ -692,7 +184,6 @@
             return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
         }
 
-        // ฟังก์ชันสร้างเลขกำกับ (Reference Number)
         const generateReferenceNumber = () => {
             const date = new Date();
             const year = date.getFullYear().toString().slice(-2);
@@ -702,31 +193,23 @@
             return `QR${year}${month}${day}${random}`;
         };
 
-        // ฟังก์ชันสร้าง QR Code ด้วย Canvas API
         const generateQRCode = (data, container) => {
-            // สร้าง canvas element
             const canvas = document.createElement('canvas');
             canvas.width = 200;
             canvas.height = 200;
             const ctx = canvas.getContext('2d');
             
-            // สร้าง QR Code โดยใช้ไลบรารี qrcode.js ที่โหลดแบบไดนามิก
             loadQRCodeLibrary().then(QRCode => {
                 try {
-                    // สร้าง QR Code บน canvas
                     QRCode.toCanvas(canvas, data, {
                         width: 200,
                         margin: 2,
-                        color: {
-                            dark: '#000000',
-                            light: '#FFFFFF'
-                        }
+                        color: { dark: '#000000', light: '#FFFFFF' }
                     }, function (error) {
                         if (error) {
                             console.error('Error generating QR Code:', error);
                             showQRCodeError(container, data);
                         } else {
-                            console.log('QR Code generated successfully');
                             container.innerHTML = '';
                             container.appendChild(canvas);
                         }
@@ -741,7 +224,6 @@
             });
         };
 
-        // ฟังก์ชันแสดงข้อผิดพลาดเมื่อไม่สามารถสร้าง QR Code ได้
         const showQRCodeError = (container, data) => {
             const parsedData = JSON.parse(data);
             container.innerHTML = `
@@ -762,16 +244,12 @@
             `;
         };
 
-        // ฟังก์ชันโหลดไลบรารี QR Code แบบไดนามิก
         const loadQRCodeLibrary = () => {
             return new Promise((resolve, reject) => {
-                // ตรวจสอบว่ามีไลบรารี QRCode อยู่แล้วหรือไม่
                 if (window.QRCode) {
                     resolve(window.QRCode);
                     return;
                 }
-
-                // สร้าง script element เพื่อโหลดไลบรารี
                 const script = document.createElement('script');
                 script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
                 script.onload = () => {
@@ -788,11 +266,9 @@
             });
         };
 
-        // ฟังก์ชันดาวน์โหลด QR Code
         const downloadQRCode = () => {
             const canvas = document.querySelector('#qrcode-container canvas');
             if (canvas) {
-                // สร้างลิงก์ดาวน์โหลด
                 const link = document.createElement('a');
                 link.download = `qrcode-${Date.now()}.png`;
                 link.href = canvas.toDataURL();
@@ -802,7 +278,6 @@
             }
         };
 
-        // ฟังก์ชันตรวจสอบและจัดการเวลาที่ซ้ำกัน
         const checkTimeConflict = (date, time, excludeBookingId = null) => {
             const bookings = state.data.bookings[date] || [];
             return bookings.some(booking => 
@@ -810,7 +285,6 @@
             );
         };
 
-        // ฟังก์ชันคำนวณเวลาใหม่
         const calculateNewTime = (time, addMinutes = 15) => {
             const [hours, minutes] = time.split(':').map(Number);
             const totalMinutes = hours * 60 + minutes + addMinutes;
@@ -819,7 +293,6 @@
             return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
         };
 
-        // ฟังก์ชันตรวจสอบจำนวนคิวในวัน
         const checkDailyQueueLimit = (date) => {
             const bookings = state.data.bookings[date] || [];
             return bookings.length >= 20;
@@ -940,6 +413,9 @@
                 : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
 
             return `
+            <div class="mb-4">
+                ${state.userRole === 'guest' ? '<button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> กลับไปยังปฏิทิน</button>' : ''}
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200">
                     <div class="p-3 rounded-full bg-violet-100">${icons.queue}</div>
@@ -1056,7 +532,6 @@
                 </main>`;
         };
 
-        // ฟังก์ชันแสดงรายละเอียดการจองคิวทั้งหมด (สำหรับพนักงาน)
         const renderBookingDetails = () => {
             const allBookings = [];
             Object.entries(state.data.bookings).forEach(([date, bookings]) => {
@@ -1089,40 +564,55 @@
                 : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิว</p>`;
             
             return `
-                <main>
-                    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h2 class="text-2xl font-bold">รายละเอียดการจองคิวทั้งหมด</h2>
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <input type="text" id="reference-search" placeholder="ค้นหาตามเลขกำกับ..." class="input flex-1 md:w-64">
-                            <button id="search-reference-btn" class="btn btn-primary">ค้นหา</button>
-                        </div>
+            <div class="mb-6">
+                <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    กลับไปยัง Dashboard
+                </button>
+            </div>
+            <main>
+                <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <h2 class="text-2xl font-bold">รายละเอียดการจองคิวทั้งหมด</h2>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <input type="text" id="reference-search" placeholder="ค้นหาตามเลขกำกับ..." class="input flex-1 md:w-64">
+                        <button id="search-reference-btn" class="btn btn-primary">ค้นหา</button>
                     </div>
-                    <div class="space-y-4">${bookingsHtml}</div>
-                </main>`;
+                </div>
+                <div class="space-y-4">${bookingsHtml}</div>
+            </main>`;
         };
 
-        // ฟังก์ชันแสดงหน้าสแกน QR Code
         const renderScannerView = () => {
             return `
-                <main class="max-w-2xl mx-auto">
-                    <h2 class="text-2xl font-bold mb-6 text-center">สแกน QR Code</h2>
-                    <div class="card p-6 rounded-xl shadow-lg">
-                        <div id="video-container">
-                            <video id="video" autoplay playsinline></video>
-                            <div id="scan-region">
-                                <div class="scan-animation"></div>
-                            </div>
-                        </div>
-                        <div class="mt-6 text-center">
-                            <p class="text-slate-600 mb-4">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
-                            <div class="flex justify-center gap-2 flex-wrap">
-                                <button id="start-camera-btn" class="btn btn-primary">เปิดกล้อง</button>
-                                <button id="stop-camera-btn" class="btn btn-danger hidden">ปิดกล้อง</button>
-                                <button id="manual-input-btn" class="btn btn-secondary">ป้อนเลขกำกับ</button>
-                            </div>
+            <div class="mb-4">
+                <button id="back-from-scanner-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    กลับไปยังหน้าก่อนหน้า
+                </button>
+            </div>
+            <main class="max-w-2xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6 text-center">สแกน QR Code</h2>
+                <div class="card p-6 rounded-xl shadow-lg">
+                    <div id="video-container">
+                        <video id="video" autoplay playsinline></video>
+                        <div id="scan-region">
+                            <div class="scan-animation"></div>
                         </div>
                     </div>
-                </main>
+                    <div class="mt-6 text-center">
+                        <p class="text-slate-600 mb-4">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
+                        <div class="flex justify-center gap-2 flex-wrap">
+                            <button id="start-camera-btn" class="btn btn-primary">เปิดกล้อง</button>
+                            <button id="stop-camera-btn" class="btn btn-danger hidden">ปิดกล้อง</button>
+                            <button id="manual-input-btn" class="btn btn-secondary">ป้อนเลขกำกับ</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
             `;
         };
 
@@ -1145,6 +635,14 @@
             const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `<div class="grid grid-cols-4 items-center p-3 rounded-lg hover:bg-violet-50"><span class="font-bold">#${index + 1}</span><span class="col-span-2">${company.name}</span><span class="font-bold text-lg ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span></div>`).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเออร์</p>`;
 
             return `
+            <div class="mb-4">
+                <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    กลับไปยัง Dashboard
+                </button>
+            </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                 <div class="lg:col-span-2 card p-5 rounded-xl shadow-lg">
                      <h2 class="text-2xl font-bold mb-4">ผลการประเมิน KPI ซัพพลายเออร์</h2>
@@ -1167,6 +665,22 @@
                 render();
             });
             document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { state.currentView = e.currentTarget.dataset.view; render(); }));
+            
+            document.getElementById('back-to-calendar-btn')?.addEventListener('click', () => {
+                state.currentView = 'calendar';
+                render();
+            });
+            
+            document.getElementById('back-to-dashboard-btn')?.addEventListener('click', () => {
+                state.currentView = 'dashboard';
+                render();
+            });
+            
+            document.getElementById('back-from-scanner-btn')?.addEventListener('click', () => {
+                state.currentView = state.userRole === 'staff' ? 'dashboard' : 'calendar';
+                render();
+            });
+            
             if (state.currentView === 'calendar') attachCalendarListeners();
             else if (state.currentView === 'dailyQueue') attachDailyQueueListeners();
             else if (state.currentView === 'kpi') attachKpiListeners();
@@ -1244,7 +758,6 @@
                 startBtn.classList.add('hidden');
                 stopBtn.classList.remove('hidden');
 
-                // เริ่มการสแกน
                 scanInterval = setInterval(scanQRCode, 300);
             } catch (error) {
                 console.error('Error accessing camera:', error);
@@ -1286,13 +799,8 @@
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
 
                 if (code) {
-                    // หยุดการสแกนชั่วคราว
                     clearInterval(scanInterval);
-                    
-                    // แสดงผลการสแกน
                     handleQRCodeScanned(code.data);
-                    
-                    // หยุดกล้อง
                     setTimeout(() => {
                         stopCamera();
                     }, 1000);
@@ -1369,7 +877,7 @@
                                 renderClock();
                             });
                         });
-                    } else { // minutes
+                    } else {
                         clockContainer.querySelectorAll('.clock-number:not(.disabled)').forEach(btn => {
                             btn.addEventListener('click', () => {
                                 selectedMinute = parseInt(btn.dataset.minute);
@@ -1390,7 +898,6 @@
                     clockFace.appendChild(clockCenter);
 
                     if (currentPickerView === 'hours') {
-                        // Outer ring (1-12)
                         for (let i = 1; i <= 12; i++) {
                             const angle = (i / 12) * 360 - 90;
                             const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
@@ -1403,8 +910,7 @@
                             numberEl.dataset.hour = i;
                             clockFace.appendChild(numberEl);
                         }
-                         // Inner ring (13-24/00)
-                        for (let i = 13; i <= 24; i++) {
+                         for (let i = 13; i <= 24; i++) {
                             const displayHour = i === 24 ? '00' : i;
                             const dataHour = i === 24 ? 0 : i;
                             const angle = ((i-12) / 12) * 360 - 90;
@@ -1418,7 +924,7 @@
                             numberEl.dataset.hour = dataHour;
                             clockFace.appendChild(numberEl);
                         }
-                    } else { // minutes
+                    } else {
                         ['00', '15', '30', '45'].forEach((minute, index) => {
                             const angle = ((index * 3) / 12) * 360 - 90;
                             const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
@@ -1475,7 +981,6 @@
                 renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
             } 
             else if(type === 'booking') {
-                // ตรวจสอบว่าวันนี้เต็มหรือไม่
                 if (checkDailyQueueLimit(state.selectedDate)) {
                     modalContent = `
                         <div class="text-center">
@@ -1694,10 +1199,8 @@
                 const booking = data.booking;
                 const referenceNumber = booking.referenceNumber || generateReferenceNumber();
                 
-                // อัปเดตเลขกำกับในข้อมูลการจอง
                 if (!booking.referenceNumber) {
                     booking.referenceNumber = referenceNumber;
-                    // บันทึกข้อมูลที่อัปเดต
                     const dateStr = state.selectedDate;
                     const bookingIndex = state.data.bookings[dateStr].findIndex(b => b.id === booking.id);
                     if (bookingIndex !== -1) {
@@ -1750,7 +1253,6 @@
                     </div>`;
 
                 renderModalBase(modalContent, modal => {
-                    // สร้าง QR Code ด้วย Canvas API
                     generateQRCode(qrData, modal.querySelector('#qrcode-container'));
                     
                     modal.querySelector('#qr-close-btn').addEventListener('click', () => {
@@ -1781,7 +1283,6 @@
             }
         };
 
-        // ฟังก์ชันค้นหา booking ตาม ID
         const findBookingById = (bookingId) => {
             for (const date in state.data.bookings) {
                 const booking = state.data.bookings[date].find(b => b.id == bookingId);
@@ -1792,7 +1293,6 @@
             return null;
         };
 
-        // ฟังก์ชันค้นหา booking ตามเลขกำกับ
         const findBookingByReferenceNumber = (referenceNumber) => {
             for (const date in state.data.bookings) {
                 const booking = state.data.bookings[date].find(b => b.referenceNumber === referenceNumber);
@@ -1803,7 +1303,6 @@
             return null;
         };
 
-        // ฟังก์ชันค้นหาตามเลขกำกับ
         const handleSearchByReference = () => {
             const referenceNumber = document.getElementById('reference-search').value.trim();
             if (referenceNumber) {
@@ -1811,7 +1310,6 @@
             }
         };
 
-        // ฟังก์ชันค้นหาตามเลขกำกับ
         const handleSearchByReferenceNumber = (referenceNumber) => {
             const booking = findBookingByReferenceNumber(referenceNumber);
             if (booking) {
@@ -1903,10 +1401,9 @@
                 return; 
             }
 
-            // ตรวจสอบและจัดการเวลาที่ซ้ำกัน
             let originalTime = eta;
             let attempts = 0;
-            const maxAttempts = 10; // ป้องกันการวนซ้ำไม่สิ้นสุด
+            const maxAttempts = 10;
             
             while (checkTimeConflict(state.selectedDate, eta) && attempts < maxAttempts) {
                 eta = calculateNewTime(eta, 15);
@@ -1974,10 +1471,8 @@
             }
         };
 
-        // แก้ไขฟังก์ชัน handleDeleteBooking ให้ทำงานได้อย่างถูกต้อง
         const handleDeleteBooking = async (bookingId) => {
             try {
-                // ค้นหา booking ที่ต้องการลบจากทุกวัน
                 let bookingToDelete = null;
                 let bookingDate = null;
                 
@@ -1995,21 +1490,16 @@
                     return;
                 }
                 
-                // ลบ booking ออกจาก array
                 state.data.bookings[bookingDate] = state.data.bookings[bookingDate].filter(b => b.id != bookingId);
                 
-                // ถ้าไม่มี booking ในวันนั้นแล้ว ให้ลบ key นั้นทิ้งไป
                 if (state.data.bookings[bookingDate].length === 0) {
                     delete state.data.bookings[bookingDate];
                 }
                 
-                // บันทึกข้อมูลที่อัปเดตลง Firebase
                 await setDoc(docRef, state.data);
                 
-                // แสดงข้อความยืนยัน
                 showAlert('ลบคิวสำเร็จแล้ว');
                 
-                // รีเฟรชหน้าจอปัจุบัน
                 render();
                 
             } catch (error) {
