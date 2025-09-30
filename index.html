@@ -3,80 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจัดการคิวและประเมินผลซัพพลายเออร์</title>
+    <title>ระบบจัดการคิว</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         :root {
-            --bg-color: #f5f8ff;
-            --text-color: #334155;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
             --card-bg: #ffffff;
-            --border-color: #eef2ff;
-            --accent-color: #8b5cf6;
-            --accent-hover: #7c3aed;
-            --success-color: #22c55e;
-            --today-bg: #fef9c3;
-            --today-text: #854d0e;
-            --hover-bg: #eef2ff;
+            --border-color: #e2e8f0;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --today-bg: #fef3c7;
+            --today-text: #92400e;
+            --hover-bg: #f1f5f9;
         }
-        body { font-family: 'Sarabun', sans-serif; background-color: var(--bg-color); color: var(--text-color); font-size: 16px; }
-        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
-        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        
+        * {
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-size: 16px;
+            min-height: 100vh;
+        }
+        
+        .card { 
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        .calendar-day { transition: all 0.2s ease-in-out; }
-        .calendar-day:hover:not(.disabled) { background-color: var(--hover-bg); transform: scale(1.05); }
-        .has-bookings { position: relative; }
-        .has-bookings::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background-color: var(--accent-color); border-radius: 50%; }
-        .today { background-color: var(--today-bg) !important; color: var(--today-text) !important; font-weight: bold; }
-        .staff-nav-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 6px; font-weight: 500; transition: all 0.2s; }
-        .staff-nav-btn.active { background-color: var(--accent-color); color: white; box-shadow: 0 4px 14px 0 rgb(0 0 0 / 10%);}
-        .staff-nav-btn:not(.active) { color: var(--text-color); }
-        .icon { width: 1.25rem; height: 1.25rem; }
-        .success-checkmark { width: 80px; height: 80px; border-radius: 50%; display: block; stroke-width: 3; stroke: #fff; stroke-miterlimit: 10; margin: 10% auto; box-shadow: inset 0px 0px 0px var(--success-color); animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
-        .success-checkmark__circle { stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 3; stroke-miterlimit: 10; stroke: var(--success-color); fill: none; animation: stroke .6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
-        .success-checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; animation: stroke .3s cubic-bezier(0.65, 0, 0.45, 1) .8s forwards; }
-        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
-        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
-        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 40px var(--success-color); } }
         
-        .clock-picker { position: relative; width: 260px; height: 260px; margin: 1rem auto; }
-        .clock-face { width: 100%; height: 100%; border: 2px solid var(--border-color); border-radius: 50%; }
-        .clock-center { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; transform: translate(-50%, -50%); }
-        .clock-number { position: absolute; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; border-radius: 50%; cursor: pointer; transition: background-color 0.2s; font-size: 1rem; }
-        .clock-number:hover { background-color: var(--hover-bg); }
-        .clock-number.selected { background-color: var(--accent-color); color: white; }
-        .clock-number.disabled { color: #cbd5e1; cursor: not-allowed; pointer-events: none; background: transparent !important; }
-
-        .booking-details { background-color: #f8fafc; border-left: 4px solid var(--accent-color); }
-        .booking-details h4 { color: var(--accent-color); }
-        .booking-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-        .detail-item { display: flex; flex-direction: column; }
-        .detail-label { font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem; }
-        .detail-value { font-weight: 500; }
-
-        .time-conflict { background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
-        .time-conflict-warning { background-color: #fef3c7; border: 1px solid #fde68a; color: #d97706; }
-
-        .booking-readonly { background-color: #f9fafb; border: 1px solid #e5e7eb; }
-        .booking-readonly input, .booking-readonly textarea { background-color: #f3f4f6; color: #6b7280; cursor: not-allowed; }
-
+        .calendar-day { 
+            transition: all 0.2s ease-in-out; 
+            cursor: pointer;
+            min-height: 80px;
+        }
+        
+        .calendar-day:hover:not(.disabled) { 
+            background-color: var(--hover-bg); 
+            transform: scale(1.02);
+        }
+        
+        .has-bookings { position: relative; }
+        .has-bookings::after { 
+            content: ''; 
+            position: absolute; 
+            bottom: 6px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 6px; 
+            height: 6px; 
+            background-color: var(--accent-color); 
+            border-radius: 50%; 
+        }
+        
+        .today { 
+            background-color: var(--today-bg) !important; 
+            color: var(--today-text) !important; 
+            font-weight: bold; 
+        }
+        
+        .staff-nav-btn { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 16px; 
+            border-radius: 8px; 
+            font-weight: 500; 
+            transition: all 0.2s; 
+        }
+        
+        .staff-nav-btn.active { 
+            background-color: var(--accent-color); 
+            color: white; 
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.2);
+        }
+        
+        .staff-nav-btn:not(.active) { 
+            color: var(--text-color); 
+        }
+        
+        .staff-nav-btn:not(.active):hover {
+            background-color: var(--hover-bg);
+        }
+        
+        .icon { 
+            width: 1.25rem; 
+            height: 1.25rem; 
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+        
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: var(--text-color);
+        }
+        
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: var(--error-color);
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+        
+        .btn-lg {
+            padding: 14px 28px;
+            font-size: 18px;
+        }
+        
+        .input {
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        
+        .input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
         .reference-number {
             font-family: 'Courier New', monospace;
             font-weight: bold;
             letter-spacing: 1px;
-            background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
+        
         .scanner-view {
             position: relative;
             width: 100%;
@@ -87,7 +198,7 @@
             border-radius: 12px;
             overflow: hidden;
         }
-
+        
         .scanner-overlay {
             position: absolute;
             top: 0;
@@ -99,66 +210,66 @@
             align-items: center;
             justify-content: center;
         }
-
+        
         .scanner-frame {
             width: 250px;
             height: 250px;
-            border: 2px solid #8b5cf6;
+            border: 2px solid var(--accent-color);
             border-radius: 12px;
             position: relative;
         }
-
+        
         .scanner-frame::before,
         .scanner-frame::after {
             content: '';
             position: absolute;
             width: 20px;
             height: 20px;
-            border: 3px solid #8b5cf6;
+            border: 3px solid var(--accent-color);
         }
-
+        
         .scanner-frame::before {
             top: -2px;
             left: -2px;
             border-right: none;
             border-bottom: none;
         }
-
+        
         .scanner-frame::after {
             bottom: -2px;
             right: -2px;
             border-left: none;
             border-top: none;
         }
-
+        
         .scanner-line {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             height: 2px;
-            background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+            background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
             animation: scan 2s linear infinite;
         }
-
+        
         @keyframes scan {
             0% { top: 0; }
             100% { top: 100%; }
         }
-
+        
         .booking-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
             padding: 2px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
-
+        
         .booking-card-inner {
             background: white;
             border-radius: 14px;
             padding: 1.5rem;
         }
-
+        
         .booking-card-header {
             display: flex;
             justify-content: space-between;
@@ -167,34 +278,34 @@
             padding-bottom: 1rem;
             border-bottom: 2px solid #f0f0f0;
         }
-
+        
         .booking-card-title {
             font-size: 1.25rem;
             font-weight: 700;
             color: #333;
         }
-
+        
         .booking-card-reference {
-            background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
             color: white;
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
             font-size: 0.875rem;
             font-weight: 600;
         }
-
+        
         .booking-card-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
             margin-bottom: 1rem;
         }
-
+        
         .booking-card-item {
             display: flex;
             flex-direction: column;
         }
-
+        
         .booking-card-label {
             font-size: 0.75rem;
             color: #666;
@@ -202,13 +313,13 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
+        
         .booking-card-value {
             font-size: 1rem;
             font-weight: 600;
             color: #333;
         }
-
+        
         .booking-card-footer {
             display: flex;
             justify-content: space-between;
@@ -217,24 +328,24 @@
             padding-top: 1rem;
             border-top: 2px solid #f0f0f0;
         }
-
+        
         .booking-card-status {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
-            background: #10b981;
+            background: var(--success-color);
             color: white;
             border-radius: 8px;
             font-size: 0.875rem;
             font-weight: 600;
         }
-
+        
         .booking-card-actions {
             display: flex;
             gap: 0.5rem;
         }
-
+        
         .booking-card-btn {
             padding: 0.5rem 1rem;
             border-radius: 8px;
@@ -244,25 +355,25 @@
             cursor: pointer;
             border: none;
         }
-
+        
         .booking-card-btn-primary {
-            background: #8b5cf6;
+            background: var(--accent-color);
             color: white;
         }
-
+        
         .booking-card-btn-primary:hover {
-            background: #7c3aed;
+            background: var(--accent-hover);
         }
-
+        
         .booking-card-btn-secondary {
             background: #e5e7eb;
             color: #333;
         }
-
+        
         .booking-card-btn-secondary:hover {
             background: #d1d5db;
         }
-
+        
         #video-container {
             position: relative;
             width: 100%;
@@ -273,13 +384,13 @@
             border-radius: 12px;
             overflow: hidden;
         }
-
+        
         #video {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-
+        
         #scan-region {
             position: absolute;
             top: 50%;
@@ -287,24 +398,232 @@
             transform: translate(-50%, -50%);
             width: 250px;
             height: 250px;
-            border: 2px solid #8b5cf6;
+            border: 2px solid var(--accent-color);
             border-radius: 12px;
         }
-
+        
         .scan-animation {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             height: 2px;
-            background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+            background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
             animation: scan 2s linear infinite;
         }
-
+        
+        .clock-picker { 
+            position: relative; 
+            width: 260px; 
+            height: 260px; 
+            margin: 1rem auto; 
+        }
+        
+        .clock-face { 
+            width: 100%; 
+            height: 100%; 
+            border: 2px solid var(--border-color); 
+            border-radius: 50%; 
+        }
+        
+        .clock-center { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            width: 8px; 
+            height: 8px; 
+            background: var(--accent-color); 
+            border-radius: 50%; 
+            transform: translate(-50%, -50%); 
+        }
+        
+        .clock-number { 
+            position: absolute; 
+            width: 36px; 
+            height: 36px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            transition: background-color 0.2s; 
+            font-size: 1rem; 
+        }
+        
+        .clock-number:hover { 
+            background-color: var(--hover-bg); 
+        }
+        
+        .clock-number.selected { 
+            background-color: var(--accent-color); 
+            color: white; 
+        }
+        
+        .clock-number.disabled { 
+            color: #cbd5e1; 
+            cursor: not-allowed; 
+            pointer-events: none; 
+            background: transparent !important; 
+        }
+        
+        .booking-details { 
+            background-color: #f8fafc; 
+            border-left: 4px solid var(--accent-color); 
+        }
+        
+        .booking-details h4 { 
+            color: var(--accent-color); 
+        }
+        
+        .booking-details-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 1rem; 
+        }
+        
+        .detail-item { 
+            display: flex; 
+            flex-direction: column; 
+        }
+        
+        .detail-label { 
+            font-size: 0.875rem; 
+            color: #64748b; 
+            margin-bottom: 0.25rem; 
+        }
+        
+        .detail-value { 
+            font-weight: 500; 
+        }
+        
+        .time-conflict { 
+            background-color: #fef2f2; 
+            border: 1px solid #fecaca; 
+            color: #dc2626; 
+        }
+        
+        .time-conflict-warning { 
+            background-color: #fef3c7; 
+            border: 1px solid #fde68a; 
+            color: #d97706; 
+        }
+        
+        .booking-readonly { 
+            background-color: #f9fafb; 
+            border: 1px solid #e5e7eb; 
+        }
+        
+        .booking-readonly input, .booking-readonly textarea { 
+            background-color: #f3f4f6; 
+            color: #6b7280; 
+            cursor: not-allowed; 
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.125rem;
+            opacity: 0.9;
+        }
+        
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            
+            .booking-card-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .booking-card-footer {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+            
+            .booking-card-actions {
+                justify-content: center;
+            }
+            
+            .staff-nav-btn {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+            
+            .icon {
+                width: 1rem;
+                height: 1rem;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .calendar-day {
+                min-height: 60px;
+                font-size: 14px;
+            }
+            
+            .modal-backdrop .card {
+                margin: 1rem;
+                max-width: calc(100% - 2rem);
+            }
+        }
+        
+        .floating-scan-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 40;
+        }
+        
+        .floating-scan-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .floating-scan-btn {
+                bottom: 1rem;
+                right: 1rem;
+                width: 50px;
+                height: 50px;
+            }
+        }
+        
     </style>
 </head>
 <body>
-    <div id="app-container" class="container mx-auto p-4 md:p-6 lg:p-8"></div>
+    <div id="app-container" class="container mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8"></div>
     <div id="modal-container"></div>
 
     <script type="module">
@@ -532,7 +851,7 @@
         const showAlert = (message) => {
             const modalContent = `
                 <p class="text-lg mb-4">${message}</p>
-                <button class="close-modal-btn bg-violet-500 text-white px-6 py-2 rounded-lg">ตกลง</button>
+                <button class="close-modal-btn btn btn-primary w-full">ตกลง</button>
             `;
             renderModalBase(modalContent);
         };
@@ -541,8 +860,8 @@
             const modalContent = `
                 <p class="text-lg mb-6">${message}</p>
                 <div class="flex justify-center gap-4">
-                    <button class="close-modal-btn bg-slate-200 px-6 py-2 rounded-lg">ยกเลิก</button>
-                    <button id="confirm-ok" class="bg-red-500 text-white px-6 py-2 rounded-lg">ยืนยัน</button>
+                    <button class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                    <button id="confirm-ok" class="btn btn-danger">ยืนยัน</button>
                 </div>
             `;
             renderModalBase(modalContent, modal => {
@@ -569,10 +888,20 @@
         
         const render = () => {
             const header = `
-                <header class="mb-6 flex justify-between items-center">
-                    <div><h1 class="text-3xl md:text-4xl font-bold" style="color: var(--text-color);">ระบบจัดการคิวและประเมินผล</h1><p class="text-slate-500 mt-1">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p></div>
-                    <div class="flex items-center gap-4">
-                        ${state.isLoggedIn ? '<button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">ออกจากระบบ</button>' : '<button id="staff-login-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">พนักงาน</button>'}
+                <header class="hero-section">
+                    <div class="container mx-auto px-4">
+                        <div class="flex flex-col md:flex-row justify-between items-center">
+                            <div>
+                                <h1 class="hero-title">ระบบจัดการคิว</h1>
+                                <p class="hero-subtitle">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p>
+                            </div>
+                            <div class="flex items-center gap-3 mt-4 md:mt-0">
+                                ${state.isLoggedIn ? '<button id="logout-btn" class="btn btn-secondary flex items-center gap-2">ออกจากระบบ</button>' : '<button id="staff-login-btn" class="btn btn-primary flex items-center gap-2">พนักงาน</button>'}
+                                <button id="quick-scan-btn" class="btn btn-success flex items-center gap-2">
+                                    ${icons.scanner} สแกน QR
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </header>`;
             
@@ -591,12 +920,14 @@
         };
         
         const renderStaffNav = () => `
-            <div class="mb-6 bg-white p-2 rounded-lg flex items-center gap-2 shadow-sm">
-                <button data-view="dashboard" class="staff-nav-btn ${state.currentView === 'dashboard' ? 'active' : ''}">${icons.dashboard} Dashboard</button>
-                <button data-view="calendar" class="staff-nav-btn ${state.currentView === 'calendar' ? 'active' : ''}">${icons.calendar} ปฏิทิน</button>
-                <button data-view="kpi" class="staff-nav-btn ${state.currentView === 'kpi' ? 'active' : ''}">${icons.kpi} KPI</button>
-                <button data-view="bookingDetails" class="staff-nav-btn ${state.currentView === 'bookingDetails' ? 'active' : ''}">${icons.booking} รายละเอียด</button>
-                <button data-view="scanner" class="staff-nav-btn ${state.currentView === 'scanner' ? 'active' : ''}">${icons.scanner} สแกน QR</button>
+            <div class="mb-6 bg-white p-2 rounded-lg shadow-sm">
+                <div class="flex flex-wrap gap-2 justify-center md:justify-start">
+                    <button data-view="dashboard" class="staff-nav-btn ${state.currentView === 'dashboard' ? 'active' : ''}">${icons.dashboard} Dashboard</button>
+                    <button data-view="calendar" class="staff-nav-btn ${state.currentView === 'calendar' ? 'active' : ''}">${icons.calendar} ปฏิทิน</button>
+                    <button data-view="kpi" class="staff-nav-btn ${state.currentView === 'kpi' ? 'active' : ''}">${icons.kpi} KPI</button>
+                    <button data-view="bookingDetails" class="staff-nav-btn ${state.currentView === 'bookingDetails' ? 'active' : ''}">${icons.booking} รายละเอียด</button>
+                    <button data-view="scanner" class="staff-nav-btn ${state.currentView === 'scanner' ? 'active' : ''}">${icons.scanner} สแกน QR</button>
+                </div>
             </div>`;
         
         const renderDashboard = () => {
@@ -609,7 +940,7 @@
                 : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
 
             return `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200">
                     <div class="p-3 rounded-full bg-violet-100">${icons.queue}</div>
                     <div><h3 class="font-semibold text-violet-800">คิวสำหรับวันนี้</h3><p class="text-3xl font-bold text-violet-600">${todayBookings.length}<span class="text-base font-medium ml-1">คิว</span></p></div>
@@ -661,7 +992,7 @@
                 const isToday = dateStr === todayStr;
                 const isFull = checkDailyQueueLimit(dateStr);
                 
-                daysHtml += `<div data-date="${dateStr}" class="calendar-day cursor-pointer p-2 h-24 border border-violet-100 flex flex-col ${hasBookings ? 'has-bookings' : ''} ${isToday ? 'today' : ''} ${isFull ? 'bg-red-50' : ''} rounded-md">
+                daysHtml += `<div data-date="${dateStr}" class="calendar-day cursor-pointer p-2 border border-violet-100 flex flex-col ${hasBookings ? 'has-bookings' : ''} ${isToday ? 'today' : ''} ${isFull ? 'bg-red-50' : ''} rounded-md">
                     <span class="font-bold">${day}</span>
                     ${hasBookings ? `<span class="text-xs mt-auto font-semibold" style="color: var(--accent-color);">${state.data.bookings[dateStr].length} คิว</span>` : ''}
                     ${isFull ? '<span class="text-xs text-red-500 mt-auto">เต็ม</span>' : ''}
@@ -669,10 +1000,10 @@
             }
 
             return myBookingsHtml + `
-                <main class="card p-5 rounded-xl shadow-lg">
+                <main class="card p-4 md:p-5 rounded-xl shadow-lg">
                     <div class="flex justify-between items-center mb-4">
                         <button id="prev-month-btn" class="p-2 rounded-full hover:bg-violet-100">&lt;</button>
-                        <h2 class="text-xl font-semibold">${monthName}</h2>
+                        <h2 class="text-lg md:text-xl font-semibold">${monthName}</h2>
                         <button id="next-month-btn" class="p-2 rounded-full hover:bg-violet-100">&gt;</button>
                     </div>
                     <div class="grid grid-cols-7 text-center font-semibold text-sm text-slate-500 mb-2">
@@ -692,7 +1023,7 @@
                     const isGuestBooking = state.guestBookingIds.includes(booking.id);
                     if(state.userRole === 'guest' && !isGuestBooking) return `<div class="card bg-slate-100 p-4 rounded-lg">คิวที่ ${index + 1}: จองแล้ว</div>`;
                     return `<div class="card ${isGuestBooking ? 'bg-violet-50 border-l-4 border-violet-500' : ''} p-4 rounded-lg shadow-sm">
-                        <div class="flex justify-between items-start">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                             <div>
                                 <p class="font-bold text-lg">${booking.companyName} ${isGuestBooking ? '<span class="text-xs text-violet-600">(คิวของคุณ)</span>' : ''}</p>
                                 <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
@@ -706,18 +1037,20 @@
                         <div class="mt-2">
                             <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
                         </div>
-                        ${state.userRole === 'staff' ? `<div class="mt-4 border-t pt-2 flex gap-2"><button data-booking-id="${booking.id}" class="evaluate-btn bg-blue-500 text-white text-sm px-3 py-1 rounded-md">ประเมิน KPI</button><button data-booking-id="${booking.id}" class="delete-booking-btn bg-red-500 text-white text-sm px-3 py-1 rounded-md">ลบ</button></div>` : ''}
+                        ${state.userRole === 'staff' ? `<div class="mt-4 border-t pt-2 flex gap-2"><button data-booking-id="${booking.id}" class="evaluate-btn btn btn-primary btn-sm">ประเมิน KPI</button><button data-booking-id="${booking.id}" class="delete-booking-btn btn btn-danger btn-sm">ลบ</button></div>` : ''}
                     </div>`;
                 }).join('<div class="my-3"></div>')
                 : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิวในวันนี้</p>`;
             
             return `
                 <main>
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                         <button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800">&lt; กลับไป</button>
                         <h2 class="text-xl font-semibold">${formatThaiDate(dateStr)}</h2>
-                        ${state.userRole === 'guest' && !isFull ? '<button id="book-slot-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg">จองคิวลงสินค้า</button>' : ''}
-                        ${isFull ? '<span class="text-red-500 font-semibold">คิวเต็ม (20 คิว/วัน)</span>' : ''}
+                        <div class="flex gap-2">
+                            ${state.userRole === 'guest' && !isFull ? '<button id="book-slot-btn" class="btn btn-primary">จองคิวลงสินค้า</button>' : ''}
+                            ${isFull ? '<span class="text-red-500 font-semibold">คิวเต็ม (20 คิว/วัน)</span>' : ''}
+                        </div>
                     </div>
                     <div class="space-y-4">${queueItemsHtml}</div>
                 </main>`;
@@ -737,7 +1070,7 @@
             const bookingsHtml = allBookings.length > 0
                 ? allBookings.map(booking => `
                     <div class="card p-4 rounded-lg shadow-sm mb-4">
-                        <div class="flex justify-between items-start">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                             <div>
                                 <p class="font-bold text-lg">${booking.companyName}</p>
                                 <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
@@ -757,11 +1090,11 @@
             
             return `
                 <main>
-                    <div class="mb-6 flex justify-between items-center">
+                    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h2 class="text-2xl font-bold">รายละเอียดการจองคิวทั้งหมด</h2>
-                        <div class="flex gap-2">
-                            <input type="text" id="reference-search" placeholder="ค้นหาตามเลขกำกับ..." class="px-4 py-2 border border-violet-200 rounded-lg">
-                            <button id="search-reference-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg">ค้นหา</button>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <input type="text" id="reference-search" placeholder="ค้นหาตามเลขกำกับ..." class="input flex-1 md:w-64">
+                            <button id="search-reference-btn" class="btn btn-primary">ค้นหา</button>
                         </div>
                     </div>
                     <div class="space-y-4">${bookingsHtml}</div>
@@ -782,10 +1115,10 @@
                         </div>
                         <div class="mt-6 text-center">
                             <p class="text-slate-600 mb-4">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
-                            <div class="flex justify-center gap-2">
-                                <button id="start-camera-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg">เปิดกล้อง</button>
-                                <button id="stop-camera-btn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg hidden">ปิดกล้อง</button>
-                                <button id="manual-input-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg">ป้อนเลขกำกับ</button>
+                            <div class="flex justify-center gap-2 flex-wrap">
+                                <button id="start-camera-btn" class="btn btn-primary">เปิดกล้อง</button>
+                                <button id="stop-camera-btn" class="btn btn-danger hidden">ปิดกล้อง</button>
+                                <button id="manual-input-btn" class="btn btn-secondary">ป้อนเลขกำกับ</button>
                             </div>
                         </div>
                     </div>
@@ -812,10 +1145,10 @@
             const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `<div class="grid grid-cols-4 items-center p-3 rounded-lg hover:bg-violet-50"><span class="font-bold">#${index + 1}</span><span class="col-span-2">${company.name}</span><span class="font-bold text-lg ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span></div>`).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเออร์</p>`;
 
             return `
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                 <div class="lg:col-span-2 card p-5 rounded-xl shadow-lg">
                      <h2 class="text-2xl font-bold mb-4">ผลการประเมิน KPI ซัพพลายเออร์</h2>
-                     <input type="text" id="kpi-search" placeholder="ค้นหาชื่อซัพพลายเออร์..." value="${state.kpiSearchTerm}" class="w-full p-2 border border-violet-200 rounded-lg mb-4 bg-white">
+                     <input type="text" id="kpi-search" placeholder="ค้นหาชื่อซัพพลายเออร์..." value="${state.kpiSearchTerm}" class="input w-full mb-4">
                      <div class="grid grid-cols-4 font-semibold text-slate-500 p-3 border-b-2"><span>อันดับ</span><span class="col-span-2">ชื่อบริษัท</span><span>คะแนนเฉลี่ย</span></div>
                      <div class="space-y-2 mt-2 custom-scroll" style="max-height: 400px; overflow-y: auto;">${supplierListHtml}</div>
                 </div>
@@ -829,6 +1162,10 @@
         const attachAllListeners = () => {
             document.getElementById('staff-login-btn')?.addEventListener('click', () => renderModal('login'));
             document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+            document.getElementById('quick-scan-btn')?.addEventListener('click', () => {
+                state.currentView = 'scanner';
+                render();
+            });
             document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { state.currentView = e.currentTarget.dataset.view; render(); }));
             if (state.currentView === 'calendar') attachCalendarListeners();
             else if (state.currentView === 'dailyQueue') attachDailyQueueListeners();
@@ -998,8 +1335,8 @@
                 </div>
                 <div id="clock-container" class="clock-picker"></div>
                 <div class="flex justify-end gap-2 pt-4">
-                    <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
-                    <button type="button" id="confirm-time-btn" class="bg-green-500 text-white px-4 py-2 rounded-lg" disabled>ยืนยัน</button>
+                    <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                    <button type="button" id="confirm-time-btn" class="btn btn-success" disabled>ยืนยัน</button>
                 </div>`;
             
             renderModalBase(modalContent, modal => {
@@ -1131,7 +1468,7 @@
         const renderModal = (type, data = {}) => {
             let modalContent = '';
             if(type === 'login') {
-                modalContent = `<h3 class="text-xl font-bold mb-4">เข้าสู่ระบบพนักงาน</h3><form id="login-form"><input type="text" id="username" placeholder="ชื่อผู้ใช้" class="w-full border p-2 rounded mb-4 bg-white border-slate-300" required><button type="submit" class="w-full bg-violet-500 hover:bg-violet-600 text-white py-2 rounded-lg">เข้าสู่ระบบ</button></form>`;
+                modalContent = `<h3 class="text-xl font-bold mb-4">เข้าสู่ระบบพนักงาน</h3><form id="login-form"><input type="text" id="username" placeholder="ชื่อผู้ใช้" class="input w-full mb-4" required><button type="submit" class="btn btn-primary w-full">เข้าสู่ระบบ</button></form>`;
                 renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
             } 
             else if(type === 'booking') {
@@ -1146,7 +1483,7 @@
                             <p class="mb-4">วันที่ ${formatThaiDate(state.selectedDate)} มีการจองคิวครบ 20 คิวแล้ว</p>
                             <p class="text-sm text-gray-600">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
                             <div class="flex justify-end gap-2 pt-4">
-                                <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ปิด</button>
+                                <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
                             </div>
                         </div>
                     `;
@@ -1156,31 +1493,31 @@
 
                 const companyOptions = state.data.companies.map(c => `<option value="${c}">${c}</option>`).join('');
                 modalContent = `<h3 class="text-xl font-bold mb-4">จองคิววันที่ ${formatThaiDate(state.selectedDate)}</h3>
-                <form id="booking-form" class="space-y-3 text-left">
-                    <select id="company-name" class="w-full border p-2 rounded bg-white" required><option value="">-- เลือกบริษัท --</option>${companyOptions}<option value="add_new">-- เพิ่มบริษัทใหม่ --</option></select>
-                    <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full border p-2 rounded hidden bg-white">
-                    <input type="text" id="driver-name" placeholder="ชื่อ-นามสกุล คนขับ" class="w-full border p-2 rounded bg-white" required>
+                <form id="booking-form" class="space-y-3">
+                    <select id="company-name" class="input w-full" required><option value="">-- เลือกบริษัท --</option>${companyOptions}<option value="add_new">-- เพิ่มบริษัทใหม่ --</option></select>
+                    <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="input w-full hidden">
+                    <input type="text" id="driver-name" placeholder="ชื่อ-นามสกุล คนขับ" class="input w-full" required>
                     <div>
                         <label class="text-sm font-medium">ทะเบียนรถ</label>
                         <div class="grid grid-cols-2 gap-2 mt-1">
-                            <input type="text" id="license-plate-prefix" placeholder="หมวด (เช่น 1กก)" maxlength="4" class="w-full border p-2 rounded bg-white text-center" required>
-                            <input type="text" id="license-plate-suffix" placeholder="เลข (เช่น 1234)" pattern="[0-9]*" maxlength="4" class="w-full border p-2 rounded bg-white text-center" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            <input type="text" id="license-plate-prefix" placeholder="หมวด (เช่น 1กก)" maxlength="4" class="input text-center" required>
+                            <input type="text" id="license-plate-suffix" placeholder="เลข (เช่น 1234)" pattern="[0-9]*" maxlength="4" class="input text-center" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="invoice-count" placeholder="จำนวนบิล" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                        <input type="text" id="box-count" placeholder="จำนวนกล่อง" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                        <input type="text" id="item-count" placeholder="จำนวนชิ้น" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        <input type="text" id="invoice-count" placeholder="จำนวนบิล" class="input" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        <input type="text" id="box-count" placeholder="จำนวนกล่อง" class="input" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        <input type="text" id="item-count" placeholder="จำนวนชิ้น" class="input" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                     </div>
                      <div>
                          <label class="text-sm font-medium">เวลาที่คาดว่าจะมาถึง</label>
-                         <div id="eta-display" class="w-full border p-2 rounded cursor-pointer mt-1 text-slate-500">-- เลือกเวลา --</div>
+                         <div id="eta-display" class="input cursor-pointer mt-1 text-slate-500">-- เลือกเวลา --</div>
                          <input type="hidden" id="eta" required>
                     </div>
-                    <textarea id="notes" placeholder="เอกสารเพิ่มเติม" rows="2" class="w-full border p-2 rounded"></textarea>
+                    <textarea id="notes" placeholder="เอกสารเพิ่มเติม" rows="2" class="input"></textarea>
                     <div class="flex justify-end gap-2 pt-4">
-                        <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
-                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">ยืนยันการจอง</button>
+                        <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                        <button type="submit" class="btn btn-success">ยืนยันการจอง</button>
                     </div>
                 </form>`;
                 renderModalBase(modalContent, modal => {
@@ -1249,7 +1586,7 @@
                             ` : ''}
                         </div>
                         <div class="mt-4 flex justify-end gap-2">
-                            <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ปิด</button>
+                            <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
                         </div>
                     </div>`;
                 renderModalBase(modalContent);
@@ -1331,19 +1668,19 @@
             }
             else if (type === 'evaluate') {
                 const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
-                let kpiInputs = kpiDefinitions.map(kpi => `<div class="grid grid-cols-2 items-center gap-2"><label class="font-medium">${kpi.label}</label><select data-kpi-id="${kpi.id}" class="kpi-select w-full bg-white border rounded-lg p-2"><option value="0">-- เลือก --</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>`).join('');
+                let kpiInputs = kpiDefinitions.map(kpi => `<div class="grid grid-cols-2 items-center gap-2"><label class="font-medium">${kpi.label}</label><select data-kpi-id="${kpi.id}" class="kpi-select input"><option value="0">-- เลือก --</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>`).join('');
                 
                 modalContent = `<h3 class="text-xl font-bold mb-2">ประเมิน KPI</h3><p class="mb-4 text-slate-500">${booking.companyName}</p>
-                <form id="evaluation-form" class="space-y-3 text-left">
+                <form id="evaluation-form" class="space-y-3">
                     ${kpiInputs}
                     <div class="border-t my-4"></div>
-                    <textarea id="staff-comments" placeholder="ความคิดเห็นเพิ่มเติมจากพนักงาน" rows="3" class="w-full border p-2 rounded"></textarea>
-                    <button type="button" id="generate-summary-btn" class="w-full bg-violet-500 hover:bg-violet-600 text-white py-2 rounded-lg flex items-center justify-center gap-2">✨ สร้างสรุปผลด้วย AI</button>
+                    <textarea id="staff-comments" placeholder="ความคิดเห็นเพิ่มเติมจากพนักงาน" rows="3" class="input"></textarea>
+                    <button type="button" id="generate-summary-btn" class="btn btn-primary w-full flex items-center justify-center gap-2">✨ สร้างสรุปผลด้วย AI</button>
                     <div id="gemini-loading" class="hidden text-center p-4">กำลังสร้างสรุป...</div>
-                    <textarea id="gemini-summary" placeholder="สรุปผลจาก AI (แก้ไขได้)" rows="4" class="w-full border p-2 rounded mt-2"></textarea>
+                    <textarea id="gemini-summary" placeholder="สรุปผลจาก AI (แก้ไขได้)" rows="4" class="input mt-2"></textarea>
                     <div class="flex justify-end gap-2 pt-4">
-                        <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
-                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">บันทึกผล</button>
+                        <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                        <button type="submit" class="btn btn-success">บันทึกผล</button>
                     </div>
                 </form>`;
                 renderModalBase(modalContent, modal => {
@@ -1404,8 +1741,8 @@
                             </p>
                         </div>
                         <div class="flex justify-end gap-2 pt-4">
-                            <button type="button" id="download-qr-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg">ดาวน์โหลด QR Code</button>
-                            <button type="button" id="qr-close-btn" class="bg-green-500 text-white px-6 py-2 rounded-lg">ยืนยัน</button>
+                            <button type="button" id="download-qr-btn" class="btn btn-primary">ดาวน์โหลด QR Code</button>
+                            <button type="button" id="qr-close-btn" class="btn btn-success">ยืนยัน</button>
                         </div>
                     </div>`;
 
@@ -1423,10 +1760,10 @@
                 modalContent = `
                     <h3 class="text-xl font-bold mb-4">ป้อนเลขกำกับ</h3>
                     <form id="manual-reference-form" class="space-y-4">
-                        <input type="text" id="manual-reference-input" placeholder="กรุณาป้อนเลขกำกับ (เช่น QR2401231234)" class="w-full border p-3 rounded-lg text-center text-lg font-mono" required>
+                        <input type="text" id="manual-reference-input" placeholder="กรุณาป้อนเลขกำกับ (เช่น QR2401231234)" class="input text-center text-lg font-mono" required>
                         <div class="flex justify-end gap-2">
-                            <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
-                            <button type="submit" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg">ค้นหา</button>
+                            <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary">ค้นหา</button>
                         </div>
                     </form>
                 `;
