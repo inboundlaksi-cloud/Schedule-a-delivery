@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการคิวและประเมินผลซัพพลายเออร์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Add QR Code Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f5f8ff;
+            --text-color: #334155;
+            --card-bg: #ffffff;
+            --border-color: #eef2ff;
+            --accent-color: #8b5cf6;
+            --accent-hover: #7c3aed;
+            --success-color: #22c55e;
+            --today-bg: #fef9c3;
+            --today-text: #854d0e;
+            --hover-bg: #eef2ff;
+        }
+        body { font-family: 'Sarabun', sans-serif; background-color: var(--bg-color); color: var(--text-color); font-size: 16px; }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .calendar-day { transition: all 0.2s ease-in-out; }
+        .calendar-day:hover:not(.disabled) { background-color: var(--hover-bg); transform: scale(1.05); }
+        .has-bookings { position: relative; }
+        .has-bookings::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background-color: var(--accent-color); border-radius: 50%; }
+        .today { background-color: var(--today-bg) !important; color: var(--today-text) !important; font-weight: bold; }
+        .staff-nav-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 6px; font-weight: 500; transition: all 0.2s; }
+        .staff-nav-btn.active { background-color: var(--accent-color); color: white; box-shadow: 0 4px 14px 0 rgb(0 0 0 / 10%);}
+        .staff-nav-btn:not(.active) { color: var(--text-color); }
+        .icon { width: 1.25rem; height: 1.25rem; }
+        .success-checkmark { width: 80px; height: 80px; border-radius: 50%; display: block; stroke-width: 3; stroke: #fff; stroke-miterlimit: 10; margin: 10% auto; box-shadow: inset 0px 0px 0px var(--success-color); animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
+        .success-checkmark__circle { stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 3; stroke-miterlimit: 10; stroke: var(--success-color); fill: none; animation: stroke .6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+        .success-checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; animation: stroke .3s cubic-bezier(0.65, 0, 0.45, 1) .8s forwards; }
+        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 40px var(--success-color); } }
+        
+        .clock-picker { position: relative; width: 260px; height: 260px; margin: 1rem auto; }
+        .clock-face { width: 100%; height: 100%; border: 2px solid var(--border-color); border-radius: 50%; }
+        .clock-center { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; transform: translate(-50%, -50%); }
+        .clock-number { position: absolute; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; border-radius: 50%; cursor: pointer; transition: background-color 0.2s; font-size: 1rem; }
+        .clock-number:hover { background-color: var(--hover-bg); }
+        .clock-number.selected { background-color: var(--accent-color); color: white; }
+        .clock-number.disabled { color: #cbd5e1; cursor: not-allowed; pointer-events: none; background: transparent !important; }
+
+    </style>
+</head>
+<body>
+    <div id="app-container" class="container mx-auto p-4 md:p-6 lg:p-8"></div>
+    <div id="modal-container"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let state = {
+            isLoggedIn: false, userRole: 'guest', currentView: 'calendar',
+            currentDate: new Date(), selectedDate: null, selectedBookingId: null,
+            guestBookingIds: [], data: { bookings: {}, companies: [] },
+            kpiSearchTerm: ''
+        };
+        
+        const icons = {
+            dashboard: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`,
+            calendar: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`,
+            kpi: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
+            queue: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`,
+            company: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`
+        };
+
+        const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
+        
+        const appContainer = document.getElementById('app-container');
+        const modalContainer = document.getElementById('modal-container');
+
+        const saveToStorage = () => localStorage.setItem('logisticsAppV8', JSON.stringify(state.data));
+        const loadFromStorage = () => {
+            const storedData = localStorage.getItem('logisticsAppV8');
+            const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบรซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอบเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
+
+            if (storedData) state.data = JSON.parse(storedData);
+            if (!state.data.companies || state.data.companies.length === 0) { state.data.companies = initialCompanies; }
+            if (!state.data.bookings) state.data.bookings = {};
+            state.guestBookingIds = JSON.parse(sessionStorage.getItem('guestBookingIds')) || [];
+        };
+
+        const formatDate = (date) => date.toISOString().split('T')[0];
+        const formatThaiDate = (dateStr) => new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+        const formatTime24h = (timeStr) => {
+            if (!timeStr) return '';
+            const [hour, minute] = timeStr.split(':');
+            return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+        }
+
+        const showSuccessAnimation = (message, onComplete) => {
+            const modalContent = `
+                <svg class="success-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="success-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="success-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+                <h3 class="text-xl font-bold mt-4" style="color: var(--success-color);">${message}</h3>`;
+            renderModalBase(modalContent);
+            setTimeout(() => {
+                closeModal();
+                if (onComplete) onComplete();
+            }, 1800);
+        };
+        
+        const render = () => {
+            const header = `
+                <header class="mb-6 flex justify-between items-center">
+                    <div><h1 class="text-3xl md:text-4xl font-bold" style="color: var(--text-color);">ระบบจัดการคิวและประเมินผล</h1><p class="text-slate-500 mt-1">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p></div>
+                    <div class="flex items-center gap-4">
+                        ${state.isLoggedIn ? '<button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">ออกจากระบบ</button>' : '<button id="staff-login-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">พนักงาน</button>'}
+                    </div>
+                </header>`;
+            
+            let viewContent = '';
+            switch(state.currentView) {
+                case 'dashboard': viewContent = renderStaffNav() + renderDashboard(); break;
+                case 'calendar': viewContent = (state.userRole === 'staff' ? renderStaffNav() : '') + renderCalendar(); break;
+                case 'dailyQueue': viewContent = renderDailyQueue(); break;
+                case 'kpi': viewContent = renderStaffNav() + renderKpiView(); break;
+            }
+            
+            appContainer.innerHTML = header + `<div class="fade-in">${viewContent}</div>`;
+            attachAllListeners();
+        };
+        
+        const renderStaffNav = () => `
+            <div class="mb-6 bg-white p-2 rounded-lg flex items-center gap-2 shadow-sm">
+                <button data-view="dashboard" class="staff-nav-btn ${state.currentView === 'dashboard' ? 'active' : ''}">${icons.dashboard} Dashboard</button>
+                <button data-view="calendar" class="staff-nav-btn ${state.currentView === 'calendar' ? 'active' : ''}">${icons.calendar} ปฏิทิน</button>
+                <button data-view="kpi" class="staff-nav-btn ${state.currentView === 'kpi' ? 'active' : ''}">${icons.kpi} KPI</button>
+            </div>`;
+        
+        const renderDashboard = () => {
+            const todayStr = formatDate(new Date());
+            const todayBookings = state.data.bookings[todayStr] || [];
+            let next7daysBookings = 0;
+            for(let i=1; i<=7; i++) { const date = new Date(); date.setDate(date.getDate() + i); next7daysBookings += (state.data.bookings[formatDate(date)] || []).length; }
+            const queueItemsHtml = todayBookings.length > 0
+                ? todayBookings.map(b => `<li class="flex justify-between items-center p-2 rounded hover:bg-violet-50"><span>${formatTime24h(b.eta)} - ${b.companyName}</span><span class="font-mono text-sm">${b.licensePlate}</span></li>`).join('')
+                : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
+
+            return `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200">
+                    <div class="p-3 rounded-full bg-violet-100">${icons.queue}</div>
+                    <div><h3 class="font-semibold text-violet-800">คิวสำหรับวันนี้</h3><p class="text-3xl font-bold text-violet-600">${todayBookings.length}<span class="text-base font-medium ml-1">คิว</span></p></div>
+                </div>
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-green-50 border-green-200">
+                    <div class="p-3 rounded-full bg-green-100">${icons.calendar}</div>
+                    <div><h3 class="font-semibold text-green-800">คิวใน 7 วันข้างหน้า</h3><p class="text-3xl font-bold text-green-600">${next7daysBookings}<span class="text-base font-medium ml-1">คิว</span></p></div>
+                </div>
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-sky-50 border-sky-200">
+                    <div class="p-3 rounded-full bg-sky-100">${icons.company}</div>
+                    <div><h3 class="font-semibold text-sky-800">บริษัทซัพพลายเออร์</h3><p class="text-3xl font-bold text-sky-600">${state.data.companies.length}<span class="text-base font-medium ml-1">บริษัท</span></p></div>
+                </div>
+            </div>
+            <div class="card p-5 rounded-xl shadow-lg mt-6"><h3 class="text-xl font-semibold mb-4">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3><ul class="space-y-2">${queueItemsHtml}</ul></div>`;
+        };
+        
+        const renderCalendar = () => {
+            const date = state.currentDate, month = date.getMonth(), year = date.getFullYear();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const monthName = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+            const todayStr = formatDate(new Date());
+
+            let myBookingsHtml = '';
+            if (state.userRole === 'guest' && state.guestBookingIds.length > 0) {
+                 const allMyBookings = [];
+                 Object.entries(state.data.bookings).forEach(([date, bookings]) => {
+                    bookings.forEach(b => {
+                        if(state.guestBookingIds.includes(b.id)) {
+                            allMyBookings.push({ ...b, date });
+                        }
+                    });
+                 });
+                 allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || a.eta.localeCompare(b.eta));
+
+                 if(allMyBookings.length > 0) {
+                     myBookingsHtml = `<div class="card p-4 rounded-xl shadow-lg mb-6 bg-violet-50 border-violet-200"><h3 class="font-semibold text-violet-800 mb-2">สรุปคิวของฉัน</h3><ul class="space-y-1 text-sm">` +
+                     allMyBookings.map(b => `<li class="text-violet-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</li>`).join('') + `</ul></div>`;
+                 }
+            }
+            
+            let daysHtml = Array(firstDay).fill('<div class="border border-violet-100"></div>').join('');
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = formatDate(new Date(year, month, day));
+                const hasBookings = state.data.bookings[dateStr]?.length > 0;
+                const isToday = dateStr === todayStr;
+                daysHtml += `<div data-date="${dateStr}" class="calendar-day cursor-pointer p-2 h-24 border border-violet-100 flex flex-col ${hasBookings ? 'has-bookings' : ''} ${isToday ? 'today' : ''} rounded-md"><span class="font-bold">${day}</span>${hasBookings ? `<span class="text-xs mt-auto font-semibold" style="color: var(--accent-color);">${state.data.bookings[dateStr].length} คิว</span>` : ''}</div>`;
+            }
+
+            return myBookingsHtml + `
+                <main class="card p-5 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-4"><button id="prev-month-btn" class="p-2 rounded-full hover:bg-violet-100">&lt;</button><h2 class="text-xl font-semibold">${monthName}</h2><button id="next-month-btn" class="p-2 rounded-full hover:bg-violet-100">&gt;</button></div>
+                    <div class="grid grid-cols-7 text-center font-semibold text-sm text-slate-500 mb-2"><div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div></div>
+                    <div class="grid grid-cols-7 gap-1">${daysHtml}</div>
+                </main>`;
+        };
+        
+        const renderDailyQueue = () => {
+            const dateStr = state.selectedDate;
+            const bookings = state.data.bookings[dateStr] || [];
+            const queueItemsHtml = bookings.length > 0
+                ? bookings.map((booking, index) => {
+                    const isGuestBooking = state.guestBookingIds.includes(booking.id);
+                    if(state.userRole === 'guest' && !isGuestBooking) return `<div class="card bg-slate-100 p-4 rounded-lg">คิวที่ ${index + 1}: จองแล้ว</div>`;
+                    return `<div class="card ${isGuestBooking ? 'bg-violet-50 border-l-4 border-violet-500' : ''} p-4 rounded-lg shadow-sm"><div class="flex justify-between items-start"><div><p class="font-bold text-lg">${booking.companyName} ${isGuestBooking ? '<span class="text-xs text-violet-600">(คิวของคุณ)</span>' : ''}</p><p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p></div><div class="text-right"><p class="font-bold text-xl text-violet-600">${formatTime24h(booking.eta)}</p><p class="text-xs text-slate-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</p></div></div>${state.userRole === 'staff' ? `<div class="mt-4 border-t pt-2 flex gap-2"><button data-booking-id="${booking.id}" class="evaluate-btn bg-blue-500 text-white text-sm px-3 py-1 rounded-md">ประเมิน KPI</button><button data-booking-id="${booking.id}" class="delete-booking-btn bg-red-500 text-white text-sm px-3 py-1 rounded-md">ลบ</button></div>` : ''}</div>`;
+                }).join('<div class="my-3"></div>')
+                : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิวในวันนี้</p>`;
+            
+            return `
+                <main>
+                    <div class="flex justify-between items-center mb-4"><button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800">&lt; กลับไป</button><h2 class="text-xl font-semibold">${formatThaiDate(dateStr)}</h2>${state.userRole === 'guest' ? '<button id="book-slot-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg">จองคิวลงสินค้า</button>' : ''}</div>
+                    <div class="space-y-4">${queueItemsHtml}</div>
+                </main>`;
+        };
+        
+        const getKpiData = () => {
+            const companyData = {};
+            Object.values(state.data.bookings).flat().forEach(b => {
+                if (!b.evaluation || !b.evaluation.scores) return;
+                if (!companyData[b.companyName]) companyData[b.companyName] = { scores: [], count: 0 };
+                const evaluationScores = Object.values(b.evaluation.scores).filter(v => v > 0);
+                if (evaluationScores.length === 0) return;
+                companyData[b.companyName].scores.push(evaluationScores.reduce((a, b) => a + b, 0) / evaluationScores.length);
+                companyData[b.companyName].count++;
+            });
+            return Object.entries(companyData).map(([name, data]) => ({ name, averageScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length })).sort((a, b) => b.averageScore - a.averageScore);
+        };
+        
+        const renderKpiView = () => {
+            const kpiData = getKpiData();
+            const filteredData = kpiData.filter(c => c.name.toLowerCase().includes(state.kpiSearchTerm.toLowerCase()));
+            const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `<div class="grid grid-cols-4 items-center p-3 rounded-lg hover:bg-violet-50"><span class="font-bold">#${index + 1}</span><span class="col-span-2">${company.name}</span><span class="font-bold text-lg ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span></div>`).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเออร์</p>`;
+
+            return `
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 card p-5 rounded-xl shadow-lg">
+                     <h2 class="text-2xl font-bold mb-4">ผลการประเมิน KPI ซัพพลายเออร์</h2>
+                     <input type="text" id="kpi-search" placeholder="ค้นหาชื่อซัพพลายเออร์..." value="${state.kpiSearchTerm}" class="w-full p-2 border border-violet-200 rounded-lg mb-4 bg-white">
+                     <div class="grid grid-cols-4 font-semibold text-slate-500 p-3 border-b-2"><span>อันดับ</span><span class="col-span-2">ชื่อบริษัท</span><span>คะแนนเฉลี่ย</span></div>
+                     <div class="space-y-2 mt-2 custom-scroll" style="max-height: 400px; overflow-y: auto;">${supplierListHtml}</div>
+                </div>
+                <div class="card p-5 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">5 อันดับคะแนนสูงสุด</h2>
+                    <canvas id="kpi-chart"></canvas>
+                </div>
+            </div>`;
+        };
+        
+        const renderModalBase = (content, attachListenersCallback) => {
+            const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 fade-in"><div class="card bg-white rounded-lg shadow-xl p-6 w-full max-w-lg text-center">${content}</div></div>`;
+            modalContainer.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = modalContainer.lastElementChild;
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal-backdrop')) {
+                        closeModal(modal);
+                    }
+                });
+                modal.querySelector('.close-modal-btn')?.addEventListener('click', () => closeModal(modal));
+                if (attachListenersCallback) attachListenersCallback(modal);
+            }
+        };
+        
+        const closeModal = (modalElement) => {
+            const modalToClose = modalElement || modalContainer.lastElementChild;
+            if (modalToClose) {
+                modalToClose.remove();
+            }
+        };
+
+        const attachAllListeners = () => {
+            document.getElementById('staff-login-btn')?.addEventListener('click', () => renderModal('login'));
+            document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+            document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { state.currentView = e.currentTarget.dataset.view; render(); }));
+            if (state.currentView === 'calendar') attachCalendarListeners();
+            else if (state.currentView === 'dailyQueue') attachDailyQueueListeners();
+            else if (state.currentView === 'kpi') attachKpiListeners();
+        };
+
+        const attachCalendarListeners = () => {
+            document.getElementById('prev-month-btn')?.addEventListener('click', () => { state.currentDate.setMonth(state.currentDate.getMonth() - 1); render(); });
+            document.getElementById('next-month-btn')?.addEventListener('click', () => { state.currentDate.setMonth(state.currentDate.getMonth() + 1); render(); });
+            document.querySelectorAll('.calendar-day').forEach(day => day.addEventListener('click', (e) => { state.selectedDate = e.currentTarget.dataset.date; state.currentView = 'dailyQueue'; render(); }));
+        };
+        
+        const attachKpiListeners = () => {
+            document.getElementById('kpi-search').addEventListener('input', e => { state.kpiSearchTerm = e.target.value; render(); });
+            const kpiData = getKpiData().slice(0, 5);
+            const ctx = document.getElementById('kpi-chart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, { type: 'bar', data: { labels: kpiData.map(d => d.name), datasets: [{ label: 'คะแนนเฉลี่ย', data: kpiData.map(d => d.averageScore), backgroundColor: ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fde047', '#f87171'] }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } } });
+            }
+        };
+
+        const attachDailyQueueListeners = () => {
+            document.getElementById('back-to-calendar-btn').addEventListener('click', () => { state.currentView = 'calendar'; state.selectedDate = null; render(); });
+            document.getElementById('book-slot-btn')?.addEventListener('click', () => renderModal('booking'));
+            document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => { state.selectedBookingId = e.currentTarget.dataset.bookingId; renderModal('evaluate'); }));
+            document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => showConfirm('คุณต้องการลบคิวนี้ใช่หรือไม่?', () => handleDeleteBooking(e.currentTarget.dataset.bookingId))));
+        };
+        
+        const renderTimePickerModal = (bookingModal) => {
+            const modalContent = `
+                <div class="flex justify-center items-center gap-2 mb-4">
+                    <span id="hour-preview" class="text-4xl font-bold text-violet-500 cursor-pointer">--</span>
+                    <span class="text-4xl font-bold">:</span>
+                    <span id="minute-preview" class="text-4xl font-bold cursor-pointer">--</span>
+                </div>
+                <div id="clock-container" class="clock-picker"></div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
+                    <button type="button" id="confirm-time-btn" class="bg-green-500 text-white px-4 py-2 rounded-lg" disabled>ยืนยัน</button>
+                </div>`;
+            
+            renderModalBase(modalContent, modal => {
+                let selectedHour = null;
+                let selectedMinute = null;
+                let currentPickerView = 'hours';
+
+                const hourPreview = modal.querySelector('#hour-preview');
+                const minutePreview = modal.querySelector('#minute-preview');
+                const confirmBtn = modal.querySelector('#confirm-time-btn');
+                const clockContainer = modal.querySelector('#clock-container');
+
+                const updatePreview = () => {
+                    hourPreview.textContent = selectedHour !== null ? selectedHour.toString().padStart(2, '0') : '--';
+                    minutePreview.textContent = selectedMinute !== null ? selectedMinute.toString().padStart(2, '0') : '--';
+                    confirmBtn.disabled = selectedHour === null || selectedMinute === null;
+                };
+
+                const attachClockListeners = () => {
+                    if (currentPickerView === 'hours') {
+                        clockContainer.querySelectorAll('.clock-number:not(.disabled)').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                selectedHour = parseInt(btn.dataset.hour);
+                                currentPickerView = 'minutes';
+                                hourPreview.classList.remove('text-violet-500');
+                                minutePreview.classList.add('text-violet-500');
+                                renderClock();
+                            });
+                        });
+                    } else { // minutes
+                        clockContainer.querySelectorAll('.clock-number:not(.disabled)').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                selectedMinute = parseInt(btn.dataset.minute);
+                                clockContainer.querySelectorAll('[data-minute]').forEach(b => b.classList.remove('selected'));
+                                btn.classList.add('selected');
+                                updatePreview();
+                            });
+                        });
+                    }
+                };
+                
+                const renderClock = () => {
+                    clockContainer.innerHTML = ''; 
+                    const clockFace = document.createElement('div');
+                    clockFace.className = 'clock-face';
+                    const clockCenter = document.createElement('div');
+                    clockCenter.className = 'clock-center';
+                    clockFace.appendChild(clockCenter);
+
+                    if (currentPickerView === 'hours') {
+                        // Outer ring (1-12)
+                        for (let i = 1; i <= 12; i++) {
+                            const angle = (i / 12) * 360 - 90;
+                            const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
+                            const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
+                            const numberEl = document.createElement('div');
+                            numberEl.className = 'clock-number';
+                            numberEl.textContent = i;
+                            numberEl.style.left = `${x}px`;
+                            numberEl.style.top = `${y}px`;
+                            numberEl.dataset.hour = i;
+                            clockFace.appendChild(numberEl);
+                        }
+                         // Inner ring (13-24/00)
+                        for (let i = 13; i <= 24; i++) {
+                            const displayHour = i === 24 ? '00' : i;
+                            const dataHour = i === 24 ? 0 : i;
+                            const angle = ((i-12) / 12) * 360 - 90;
+                            const x = 112 + 60 * Math.cos(angle * Math.PI / 180);
+                            const y = 112 + 60 * Math.sin(angle * Math.PI / 180);
+                            const numberEl = document.createElement('div');
+                            numberEl.className = `clock-number ${dataHour > 14 ? 'disabled' : ''}`;
+                            numberEl.textContent = displayHour;
+                            numberEl.style.left = `${x}px`;
+                            numberEl.style.top = `${y}px`;
+                            numberEl.dataset.hour = dataHour;
+                            clockFace.appendChild(numberEl);
+                        }
+                    } else { // minutes
+                        ['00', '15', '30', '45'].forEach((minute, index) => {
+                            const angle = ((index * 3) / 12) * 360 - 90;
+                            const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
+                            const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
+                            const numberEl = document.createElement('div');
+                            numberEl.className = 'clock-number';
+                            if (selectedHour === 14 && minute !== '00') {
+                                numberEl.classList.add('disabled');
+                            }
+                            numberEl.textContent = minute;
+                            numberEl.style.left = `${x}px`;
+                            numberEl.style.top = `${y}px`;
+                            numberEl.dataset.minute = minute;
+                            clockFace.appendChild(numberEl);
+                        });
+                    }
+                    clockContainer.appendChild(clockFace);
+                    updatePreview();
+                    attachClockListeners();
+                };
+
+                renderClock();
+
+                hourPreview.addEventListener('click', () => {
+                    currentPickerView = 'hours';
+                    hourPreview.classList.add('text-violet-500');
+                    minutePreview.classList.remove('text-violet-500');
+                    renderClock();
+                });
+                 minutePreview.addEventListener('click', () => {
+                    if (selectedHour === null) return;
+                    currentPickerView = 'minutes';
+                    hourPreview.classList.remove('text-violet-500');
+                    minutePreview.classList.add('text-violet-500');
+                    renderClock();
+                });
+
+                confirmBtn.addEventListener('click', () => {
+                    if (selectedHour !== null && selectedMinute !== null) {
+                        const finalTime = `${selectedHour.toString().padStart(2,'0')}:${selectedMinute.toString().padStart(2,'0')}`;
+                        bookingModal.querySelector('#eta').value = finalTime;
+                        bookingModal.querySelector('#eta-display').textContent = finalTime;
+                        bookingModal.querySelector('#eta-display').classList.remove('text-slate-500');
+                        closeModal(modal);
+                    }
+                });
+            });
+        };
+
+        const renderModal = (type, data = {}) => {
+            let modalContent = '';
+            if(type === 'login') {
+                modalContent = `<h3 class="text-xl font-bold mb-4">เข้าสู่ระบบพนักงาน</h3><form id="login-form"><input type="text" id="username" placeholder="ชื่อผู้ใช้" class="w-full border p-2 rounded mb-4 bg-white border-slate-300" required><button type="submit" class="w-full bg-violet-500 hover:bg-violet-600 text-white py-2 rounded-lg">เข้าสู่ระบบ</button></form>`;
+                renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
+            } 
+            else if(type === 'booking') {
+                const companyOptions = state.data.companies.map(c => `<option value="${c}">${c}</option>`).join('');
+                modalContent = `<h3 class="text-xl font-bold mb-4">จองคิววันที่ ${formatThaiDate(state.selectedDate)}</h3>
+                <form id="booking-form" class="space-y-3 text-left">
+                    <select id="company-name" class="w-full border p-2 rounded bg-white" required><option value="">-- เลือกบริษัท --</option>${companyOptions}<option value="add_new">-- เพิ่มบริษัทใหม่ --</option></select>
+                    <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full border p-2 rounded hidden bg-white">
+                    <input type="text" id="driver-name" placeholder="ชื่อ-นามสกุล คนขับ" class="w-full border p-2 rounded bg-white" required>
+                    <div>
+                        <label class="text-sm font-medium">ทะเบียนรถ</label>
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <input type="text" id="license-plate-prefix" placeholder="หมวด (เช่น 1กก)" maxlength="4" class="w-full border p-2 rounded bg-white text-center" required>
+                            <input type="text" id="license-plate-suffix" placeholder="เลข (เช่น 1234)" pattern="[0-9]*" maxlength="4" class="w-full border p-2 rounded bg-white text-center" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="invoice-count" placeholder="จำนวนบิล" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        <input type="text" id="box-count" placeholder="จำนวนกล่อง" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        <input type="text" id="item-count" placeholder="จำนวนชิ้น" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                    </div>
+                     <div>
+                        <label class="text-sm font-medium">เวลาที่คาดว่าจะมาถึง</label>
+                        <div id="eta-display" class="w-full border p-2 rounded cursor-pointer mt-1 text-slate-500">-- เลือกเวลา --</div>
+                        <input type="hidden" id="eta" required>
+                    </div>
+                    <textarea id="notes" placeholder="เอกสารเพิ่มเติม" rows="2" class="w-full border p-2 rounded"></textarea>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
+                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">ยืนยันการจอง</button>
+                    </div>
+                </form>`;
+                renderModalBase(modalContent, modal => {
+                    modal.querySelector('#eta-display').addEventListener('click', () => renderTimePickerModal(modal));
+                    const companySelect = modal.querySelector('#company-name'), newCompanyInput = modal.querySelector('#new-company-name');
+                    companySelect.addEventListener('change', () => newCompanyInput.classList.toggle('hidden', companySelect.value !== 'add_new'));
+                    modal.querySelector('#booking-form').addEventListener('submit', handleBookingSubmit);
+                });
+            }
+            else if (type === 'evaluate') {
+                const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
+                let kpiInputs = kpiDefinitions.map(kpi => `<div class="grid grid-cols-2 items-center gap-2"><label class="font-medium">${kpi.label}</label><select data-kpi-id="${kpi.id}" class="kpi-select w-full bg-white border rounded-lg p-2"><option value="0">-- เลือก --</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>`).join('');
+                
+                modalContent = `<h3 class="text-xl font-bold mb-2">ประเมิน KPI</h3><p class="mb-4 text-slate-500">${booking.companyName}</p>
+                <form id="evaluation-form" class="space-y-3 text-left">
+                    ${kpiInputs}
+                    <div class="border-t my-4"></div>
+                    <textarea id="staff-comments" placeholder="ความคิดเห็นเพิ่มเติมจากพนักงาน" rows="3" class="w-full border p-2 rounded"></textarea>
+                    <button type="button" id="generate-summary-btn" class="w-full bg-violet-500 hover:bg-violet-600 text-white py-2 rounded-lg flex items-center justify-center gap-2">✨ สร้างสรุปผลด้วย AI</button>
+                    <div id="gemini-loading" class="hidden text-center p-4">กำลังสร้างสรุป...</div>
+                    <textarea id="gemini-summary" placeholder="สรุปผลจาก AI (แก้ไขได้)" rows="4" class="w-full border p-2 rounded mt-2"></textarea>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
+                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">บันทึกผล</button>
+                    </div>
+                </form>`;
+                renderModalBase(modalContent, modal => {
+                    modal.querySelector('#evaluation-form').addEventListener('submit', handleEvaluationSubmit);
+                    modal.querySelector('#generate-summary-btn').addEventListener('click', handleGenerateSummary);
+                });
+            } else if (type === 'qrCode') {
+                const booking = data.booking;
+                const qrData = JSON.stringify({
+                    id: booking.id,
+                    company: booking.companyName,
+                    date: state.selectedDate,
+                    time: booking.eta,
+                });
+
+                modalContent = `
+                    <h3 class="text-xl font-bold text-green-500 mb-2">จองคิวสำเร็จ!</h3>
+                    <p class="mb-4">กรุณาแสดง QR Code นี้แก่เจ้าหน้าที่เมื่อมาถึง</p>
+                    <div id="qrcode-container" class="flex justify-center my-4"></div>
+                    <div class="text-left bg-slate-50 p-3 rounded-lg">
+                        <p><strong>บริษัท:</strong> ${booking.companyName}</p>
+                        <p><strong>วันที่:</strong> ${formatThaiDate(state.selectedDate)}</p>
+                        <p><strong>เวลา:</strong> ${formatTime24h(booking.eta)}</p>
+                    </div>
+                    <p class="mt-4 font-bold text-red-500">สำคัญ: กรุณาถ่ายภาพหน้าจอ (Screenshot) QR Code นี้เพื่อแสดงต่อเจ้าหน้าที่</p>
+                     <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" id="qr-close-btn" class="bg-slate-200 px-4 py-2 rounded-lg">ปิด</button>
+                    </div>`;
+
+                renderModalBase(modalContent, modal => {
+                    setTimeout(() => {
+                        const qrContainer = modal.querySelector("#qrcode-container");
+                         if (qrContainer) {
+                            qrContainer.innerHTML = "";
+                            new QRCode(qrContainer, {
+                                text: qrData,
+                                width: 180,
+                                height: 180,
+                            });
+                        }
+                    }, 100);
+                    modal.querySelector('#qr-close-btn').addEventListener('click', () => {
+                        closeModal(modal);
+                        state.currentView = 'dailyQueue';
+                        render();
+                    });
+                });
+            }
+        };
+
+        async function callGemini(prompt) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+                const result = await response.json();
+                return result.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถสร้างสรุปได้";
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                return "เกิดข้อผิดพลาดในการเชื่อมต่อกับ AI";
+            }
+        }
+
+        const handleGenerateSummary = async (e) => {
+            const modal = e.target.closest('.modal-backdrop');
+            const loadingIndicator = modal.querySelector('#gemini-loading');
+            const summaryTextarea = modal.querySelector('#gemini-summary');
+            const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
+
+            loadingIndicator.style.display = 'block';
+            summaryTextarea.value = '';
+
+            let kpiScoresText = "";
+            kpiDefinitions.forEach(kpi => {
+                const score = modal.querySelector(`.kpi-select[data-kpi-id="${kpi.id}"]`).value;
+                if(score > 0) {
+                     kpiScoresText += `- ${kpi.label}: ${score}/5\n`;
+                }
+            });
+
+            const staffComments = modal.querySelector('#staff-comments').value;
+
+            const prompt = `
+                กรุณาสร้างบทสรุปผลการประเมินการจัดส่งสินค้าสำหรับซัพพลายเออร์ในรูปแบบที่เป็นทางการและกระชับเป็นภาษาไทย โดยใช้ข้อมูลต่อไปนี้:
+                - ชื่อซัพพลายเออร์: ${booking.companyName}
+                - วันที่จัดส่ง: ${formatThaiDate(state.selectedDate)}
+                - ผลการประเมิน KPI:
+                ${kpiScoresText}
+                - ความคิดเห็นเพิ่มเติมจากพนักงาน: ${staffComments || 'ไม่มี'}
+
+                ให้สรุปภาพรวมของประสิทธิภาพ และอาจจะมีการกล่าวถึงข้อดีหรือสิ่งที่ควรปรับปรุงตามความเหมาะสมจากคะแนนและความคิดเห็น
+            `;
+
+            const summary = await callGemini(prompt);
+            summaryTextarea.value = summary;
+            loadingIndicator.style.display = 'none';
+        };
+
+        const handleLogin = (e) => { e.preventDefault(); if (document.getElementById('username').value.trim() === 'inboundlaksi') { state.isLoggedIn = true, state.userRole = 'staff', state.currentView = 'dashboard'; closeModal(); render(); } else { alert('ชื่อผู้ใช้ไม่ถูกต้อง'); } };
+        const handleLogout = () => { state.isLoggedIn = false, state.userRole = 'guest', state.currentView = 'calendar'; render(); };
+        
+        const handleBookingSubmit = (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const companySelect = form.querySelector('#company-name');
+            let companyName = companySelect.value === 'add_new' ? form.querySelector('#new-company-name').value.trim() : companySelect.value;
+            if (companySelect.value === 'add_new' && companyName && !state.data.companies.includes(companyName)) state.data.companies.push(companyName);
+            if (!companyName) { alert('กรุณาระบุชื่อบริษัท'); return; }
+            
+            const licensePlate = `${form.querySelector('#license-plate-prefix').value.trim()} ${form.querySelector('#license-plate-suffix').value.trim()}`.trim();
+            if (!licensePlate) { alert('กรุณากรอกทะเบียนรถ'); return; }
+
+            const eta = form.querySelector('#eta').value;
+            if (!eta) { alert('กรุณาเลือกเวลา'); return; }
+
+            const newBooking = { id: Date.now(), companyName, driverName: form.querySelector('#driver-name').value, licensePlate, invoiceCount: form.querySelector('#invoice-count').value, boxCount: form.querySelector('#box-count').value, itemCount: form.querySelector('#item-count').value, eta, notes: form.querySelector('#notes').value, evaluation: null };
+            
+            const dateStr = state.selectedDate;
+            if (!state.data.bookings[dateStr]) state.data.bookings[dateStr] = [];
+            state.data.bookings[dateStr].push(newBooking);
+            state.data.bookings[dateStr].sort((a,b) => a.eta.localeCompare(b.eta));
+            state.guestBookingIds.push(newBooking.id);
+            sessionStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+            saveToStorage(); 
+            closeModal(form.closest('.modal-backdrop')); 
+            renderModal('qrCode', { booking: newBooking });
+        };
+
+        const handleEvaluationSubmit = (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const booking = state.data.bookings[state.selectedDate].find(b => b.id == state.selectedBookingId);
+            if(booking) {
+                booking.evaluation = {
+                    scores: {},
+                    staffComments: form.querySelector('#staff-comments').value,
+                    geminiSummary: form.querySelector('#gemini-summary').value
+                };
+                form.querySelectorAll('.kpi-select').forEach(sel => {
+                    booking.evaluation.scores[sel.dataset.kpiId] = parseInt(sel.value, 10);
+                });
+                saveToStorage(); 
+                closeModal(form.closest('.modal-backdrop')); 
+                showSuccessAnimation("บันทึกผลสำเร็จ!", render);
+            }
+        };
+
+        const handleDeleteBooking = (bookingId) => {
+            const bookingsOnDate = state.data.bookings[state.selectedDate];
+            if (bookingsOnDate) {
+                state.data.bookings[state.selectedDate] = bookingsOnDate.filter(b => b.id != bookingId);
+                if(state.data.bookings[state.selectedDate].length === 0) delete state.data.bookings[state.selectedDate];
+                saveToStorage(); render();
+            }
+        };
+        
+        const init = () => {
+            loadFromStorage();
+            state.userRole = 'guest', state.isLoggedIn = false, state.currentView = 'calendar';
+            render();
+        };
+
+        init();
+    });
+    </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการคิวและประเมินผลซัพพลายเออร์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Add QR Code Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f5f8ff;
+            --text-color: #334155;
+            --card-bg: #ffffff;
+            --border-color: #eef2ff;
+            --accent-color: #8b5cf6;
+            --accent-hover: #7c3aed;
+            --success-color: #22c55e;
+            --today-bg: #fef9c3;
+            --today-text: #854d0e;
+            --hover-bg: #eef2ff;
+        }
+        body { font-family: 'Sarabun', sans-serif; background-color: var(--bg-color); color: var(--text-color); font-size: 16px; }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .calendar-day { transition: all 0.2s ease-in-out; }
+        .calendar-day:hover:not(.disabled) { background-color: var(--hover-bg); transform: scale(1.05); }
+        .has-bookings { position: relative; }
+        .has-bookings::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background-color: var(--accent-color); border-radius: 50%; }
+        .today { background-color: var(--today-bg) !important; color: var(--today-text) !important; font-weight: bold; }
+        .staff-nav-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 6px; font-weight: 500; transition: all 0.2s; }
+        .staff-nav-btn.active { background-color: var(--accent-color); color: white; box-shadow: 0 4px 14px 0 rgb(0 0 0 / 10%);}
+        .staff-nav-btn:not(.active) { color: var(--text-color); }
+        .icon { width: 1.25rem; height: 1.25rem; }
+        .success-checkmark { width: 80px; height: 80px; border-radius: 50%; display: block; stroke-width: 3; stroke: #fff; stroke-miterlimit: 10; margin: 10% auto; box-shadow: inset 0px 0px 0px var(--success-color); animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
+        .success-checkmark__circle { stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 3; stroke-miterlimit: 10; stroke: var(--success-color); fill: none; animation: stroke .6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+        .success-checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; animation: stroke .3s cubic-bezier(0.65, 0, 0.45, 1) .8s forwards; }
+        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 40px var(--success-color); } }
+        
+        .clock-picker { position: relative; width: 260px; height: 260px; margin: 1rem auto; }
+        .clock-face { width: 100%; height: 100%; border: 2px solid var(--border-color); border-radius: 50%; }
+        .clock-center { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; transform: translate(-50%, -50%); }
+        .clock-number { position: absolute; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; border-radius: 50%; cursor: pointer; transition: background-color 0.2s; font-size: 1rem; }
+        .clock-number:hover { background-color: var(--hover-bg); }
+        .clock-number.selected { background-color: var(--accent-color); color: white; }
+        .clock-number.disabled { color: #cbd5e1; cursor: not-allowed; pointer-events: none; background: transparent !important; }
+
+    </style>
+</head>
+<body>
+    <div id="app-container" class="container mx-auto p-4 md:p-6 lg:p-8"></div>
+    <div id="modal-container"></div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyBezNic5rqHg2xh9_9dHo5DUDoHZx1Z_v8",
+          authDomain: "schedule-a-delivery.firebaseapp.com",
+          projectId: "schedule-a-delivery",
+          storageBucket: "schedule-a-delivery.appspot.com",
+          messagingSenderId: "222743116863",
+          appId: "1:222743116863:web:12df3ee05d2894f23ccc8a",
+          measurementId: "G-EDV364EREE"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const docRef = doc(db, "schedules", "main");
+
+        const GEMINI_API_KEY = "AIzaSyD_d2g0XgVxkClULTmh6dfl_eKIkRuVo7E";
+
+        let state = {
+            isLoggedIn: false, userRole: 'guest', currentView: 'calendar',
+            currentDate: new Date(), selectedDate: null, selectedBookingId: null,
+            guestBookingIds: [], data: { bookings: {}, companies: [] },
+            kpiSearchTerm: ''
+        };
+        
+        const icons = {
+            dashboard: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`,
+            calendar: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`,
+            kpi: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
+            queue: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`,
+            company: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`
+        };
+
+        const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
+        
+        const appContainer = document.getElementById('app-container');
+        const modalContainer = document.getElementById('modal-container');
+        
+        const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบรซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอบเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
+
+        const formatDate = (date) => date.toISOString().split('T')[0];
+        const formatThaiDate = (dateStr) => new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+        const formatTime24h = (timeStr) => {
+            if (!timeStr) return '';
+            const [hour, minute] = timeStr.split(':');
+            return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+        }
+
+        const renderModalBase = (content, attachListenersCallback) => {
+            const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 fade-in"><div class="card bg-white rounded-lg shadow-xl p-6 w-full max-w-lg text-center">${content}</div></div>`;
+            modalContainer.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = modalContainer.lastElementChild;
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal-backdrop')) {
+                        closeModal(modal);
+                    }
+                });
+                modal.querySelector('.close-modal-btn')?.addEventListener('click', () => closeModal(modal));
+                if (attachListenersCallback) attachListenersCallback(modal);
+            }
+        };
+
+        const closeModal = (modalElement) => {
+            const modalToClose = modalElement || modalContainer.lastElementChild;
+            if (modalToClose) {
+                modalToClose.remove();
+            }
+        };
+        
+        const showAlert = (message) => {
+            const modalContent = `
+                <p class="text-lg mb-4">${message}</p>
+                <button class="close-modal-btn bg-violet-500 text-white px-6 py-2 rounded-lg">ตกลง</button>
+            `;
+            renderModalBase(modalContent);
+        };
+
+        const showConfirm = (message, onConfirm) => {
+            const modalContent = `
+                <p class="text-lg mb-6">${message}</p>
+                <div class="flex justify-center gap-4">
+                    <button class="close-modal-btn bg-slate-200 px-6 py-2 rounded-lg">ยกเลิก</button>
+                    <button id="confirm-ok" class="bg-red-500 text-white px-6 py-2 rounded-lg">ยืนยัน</button>
+                </div>
+            `;
+            renderModalBase(modalContent, modal => {
+                modal.querySelector('#confirm-ok').addEventListener('click', () => {
+                    onConfirm();
+                    closeModal(modal);
+                });
+            });
+        };
+
+        const showSuccessAnimation = (message, onComplete) => {
+            const modalContent = `
+                <svg class="success-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="success-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="success-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+                <h3 class="text-xl font-bold mt-4" style="color: var(--success-color);">${message}</h3>`;
+            renderModalBase(modalContent);
+            setTimeout(() => {
+                closeModal();
+                if (onComplete) onComplete();
+            }, 1800);
+        };
+        
+        const render = () => {
+            const header = `
+                <header class="mb-6 flex justify-between items-center">
+                    <div><h1 class="text-3xl md:text-4xl font-bold" style="color: var(--text-color);">ระบบจัดการคิวและประเมินผล</h1><p class="text-slate-500 mt-1">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p></div>
+                    <div class="flex items-center gap-4">
+                        ${state.isLoggedIn ? '<button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">ออกจากระบบ</button>' : '<button id="staff-login-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">พนักงาน</button>'}
+                    </div>
+                </header>`;
+            
+            let viewContent = '';
+            switch(state.currentView) {
+                case 'dashboard': viewContent = renderStaffNav() + renderDashboard(); break;
+                case 'calendar': viewContent = (state.userRole === 'staff' ? renderStaffNav() : '') + renderCalendar(); break;
+                case 'dailyQueue': viewContent = renderDailyQueue(); break;
+                case 'kpi': viewContent = renderStaffNav() + renderKpiView(); break;
+            }
+            
+            appContainer.innerHTML = header + `<div class="fade-in">${viewContent}</div>`;
+            attachAllListeners();
+        };
+        
+        const renderStaffNav = () => `
+            <div class="mb-6 bg-white p-2 rounded-lg flex items-center gap-2 shadow-sm">
+                <button data-view="dashboard" class="staff-nav-btn ${state.currentView === 'dashboard' ? 'active' : ''}">${icons.dashboard} Dashboard</button>
+                <button data-view="calendar" class="staff-nav-btn ${state.currentView === 'calendar' ? 'active' : ''}">${icons.calendar} ปฏิทิน</button>
+                <button data-view="kpi" class="staff-nav-btn ${state.currentView === 'kpi' ? 'active' : ''}">${icons.kpi} KPI</button>
+            </div>`;
+        
+        const renderDashboard = () => {
+            const todayStr = formatDate(new Date());
+            const todayBookings = state.data.bookings[todayStr] || [];
+            let next7daysBookings = 0;
+            for(let i=1; i<=7; i++) { const date = new Date(); date.setDate(date.getDate() + i); next7daysBookings += (state.data.bookings[formatDate(date)] || []).length; }
+            const queueItemsHtml = todayBookings.length > 0
+                ? todayBookings.map(b => `<li class="flex justify-between items-center p-2 rounded hover:bg-violet-50"><span>${formatTime24h(b.eta)} - ${b.companyName}</span><span class="font-mono text-sm">${b.licensePlate}</span></li>`).join('')
+                : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
+
+            return `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200">
+                    <div class="p-3 rounded-full bg-violet-100">${icons.queue}</div>
+                    <div><h3 class="font-semibold text-violet-800">คิวสำหรับวันนี้</h3><p class="text-3xl font-bold text-violet-600">${todayBookings.length}<span class="text-base font-medium ml-1">คิว</span></p></div>
+                </div>
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-green-50 border-green-200">
+                    <div class="p-3 rounded-full bg-green-100">${icons.calendar}</div>
+                    <div><h3 class="font-semibold text-green-800">คิวใน 7 วันข้างหน้า</h3><p class="text-3xl font-bold text-green-600">${next7daysBookings}<span class="text-base font-medium ml-1">คิว</span></p></div>
+                </div>
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-sky-50 border-sky-200">
+                    <div class="p-3 rounded-full bg-sky-100">${icons.company}</div>
+                    <div><h3 class="font-semibold text-sky-800">บริษัทซัพพลายเออร์</h3><p class="text-3xl font-bold text-sky-600">${state.data.companies.length}<span class="text-base font-medium ml-1">บริษัท</span></p></div>
+                </div>
+            </div>
+            <div class="card p-5 rounded-xl shadow-lg mt-6"><h3 class="text-xl font-semibold mb-4">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3><ul class="space-y-2">${queueItemsHtml}</ul></div>`;
+        };
+        
+        const renderCalendar = () => {
+            const date = state.currentDate, month = date.getMonth(), year = date.getFullYear();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const monthName = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+            const todayStr = formatDate(new Date());
+
+            let myBookingsHtml = '';
+            if (state.userRole === 'guest' && state.guestBookingIds.length > 0) {
+                 const allMyBookings = [];
+                 Object.entries(state.data.bookings).forEach(([date, bookings]) => {
+                     bookings.forEach(b => {
+                         if(state.guestBookingIds.includes(b.id)) {
+                             allMyBookings.push({ ...b, date });
+                         }
+                     });
+                 });
+                 allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || a.eta.localeCompare(b.eta));
+
+                 if(allMyBookings.length > 0) {
+                      myBookingsHtml = `<div class="card p-4 rounded-xl shadow-lg mb-6 bg-violet-50 border-violet-200"><h3 class="font-semibold text-violet-800 mb-2">สรุปคิวของฉัน</h3><ul class="space-y-1 text-sm">` +
+                      allMyBookings.map(b => `<li class="text-violet-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</li>`).join('') + `</ul></div>`;
+                 }
+            }
+            
+            let daysHtml = Array(firstDay).fill('<div class="border border-violet-100"></div>').join('');
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = formatDate(new Date(year, month, day));
+                const hasBookings = state.data.bookings[dateStr]?.length > 0;
+                const isToday = dateStr === todayStr;
+                daysHtml += `<div data-date="${dateStr}" class="calendar-day cursor-pointer p-2 h-24 border border-violet-100 flex flex-col ${hasBookings ? 'has-bookings' : ''} ${isToday ? 'today' : ''} rounded-md"><span class="font-bold">${day}</span>${hasBookings ? `<span class="text-xs mt-auto font-semibold" style="color: var(--accent-color);">${state.data.bookings[dateStr].length} คิว</span>` : ''}</div>`;
+            }
+
+            return myBookingsHtml + `
+                <main class="card p-5 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-4"><button id="prev-month-btn" class="p-2 rounded-full hover:bg-violet-100">&lt;</button><h2 class="text-xl font-semibold">${monthName}</h2><button id="next-month-btn" class="p-2 rounded-full hover:bg-violet-100">&gt;</button></div>
+                    <div class="grid grid-cols-7 text-center font-semibold text-sm text-slate-500 mb-2"><div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div></div>
+                    <div class="grid grid-cols-7 gap-1">${daysHtml}</div>
+                </main>`;
+        };
+        
+        const renderDailyQueue = () => {
+            const dateStr = state.selectedDate;
+            const bookings = state.data.bookings[dateStr] || [];
+            const queueItemsHtml = bookings.length > 0
+                ? bookings.map((booking, index) => {
+                    const isGuestBooking = state.guestBookingIds.includes(booking.id);
+                    if(state.userRole === 'guest' && !isGuestBooking) return `<div class="card bg-slate-100 p-4 rounded-lg">คิวที่ ${index + 1}: จองแล้ว</div>`;
+                    return `<div class="card ${isGuestBooking ? 'bg-violet-50 border-l-4 border-violet-500' : ''} p-4 rounded-lg shadow-sm"><div class="flex justify-between items-start"><div><p class="font-bold text-lg">${booking.companyName} ${isGuestBooking ? '<span class="text-xs text-violet-600">(คิวของคุณ)</span>' : ''}</p><p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p></div><div class="text-right"><p class="font-bold text-xl text-violet-600">${formatTime24h(booking.eta)}</p><p class="text-xs text-slate-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</p></div></div>${state.userRole === 'staff' ? `<div class="mt-4 border-t pt-2 flex gap-2"><button data-booking-id="${booking.id}" class="evaluate-btn bg-blue-500 text-white text-sm px-3 py-1 rounded-md">ประเมิน KPI</button><button data-booking-id="${booking.id}" class="delete-booking-btn bg-red-500 text-white text-sm px-3 py-1 rounded-md">ลบ</button></div>` : ''}</div>`;
+                }).join('<div class="my-3"></div>')
+                : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิวในวันนี้</p>`;
+            
+            return `
+                <main>
+                    <div class="flex justify-between items-center mb-4"><button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800">&lt; กลับไป</button><h2 class="text-xl font-semibold">${formatThaiDate(dateStr)}</h2>${state.userRole === 'guest' ? '<button id="book-slot-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg">จองคิวลงสินค้า</button>' : ''}</div>
+                    <div class="space-y-4">${queueItemsHtml}</div>
+                </main>`;
+        };
+        
+        const getKpiData = () => {
+            const companyData = {};
+            Object.values(state.data.bookings).flat().forEach(b => {
+                if (!b.evaluation || !b.evaluation.scores) return;
+                if (!companyData[b.companyName]) companyData[b.companyName] = { scores: [], count: 0 };
+                const evaluationScores = Object.values(b.evaluation.scores).filter(v => v > 0);
+                if (evaluationScores.length === 0) return;
+                companyData[b.companyName].scores.push(evaluationScores.reduce((a, b) => a + b, 0) / evaluationScores.length);
+                companyData[b.companyName].count++;
+            });
+            return Object.entries(companyData).map(([name, data]) => ({ name, averageScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length })).sort((a, b) => b.averageScore - a.averageScore);
+        };
+        
+        const renderKpiView = () => {
+            const kpiData = getKpiData();
+            const filteredData = kpiData.filter(c => c.name.toLowerCase().includes(state.kpiSearchTerm.toLowerCase()));
+            const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `<div class="grid grid-cols-4 items-center p-3 rounded-lg hover:bg-violet-50"><span class="font-bold">#${index + 1}</span><span class="col-span-2">${company.name}</span><span class="font-bold text-lg ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span></div>`).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเออร์</p>`;
+
+            return `
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 card p-5 rounded-xl shadow-lg">
+                     <h2 class="text-2xl font-bold mb-4">ผลการประเมิน KPI ซัพพลายเออร์</h2>
+                     <input type="text" id="kpi-search" placeholder="ค้นหาชื่อซัพพลายเออร์..." value="${state.kpiSearchTerm}" class="w-full p-2 border border-violet-200 rounded-lg mb-4 bg-white">
+                     <div class="grid grid-cols-4 font-semibold text-slate-500 p-3 border-b-2"><span>อันดับ</span><span class="col-span-2">ชื่อบริษัท</span><span>คะแนนเฉลี่ย</span></div>
+                     <div class="space-y-2 mt-2 custom-scroll" style="max-height: 400px; overflow-y: auto;">${supplierListHtml}</div>
+                </div>
+                <div class="card p-5 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">5 อันดับคะแนนสูงสุด</h2>
+                    <canvas id="kpi-chart"></canvas>
+                </div>
+            </div>`;
+        };
+        
+        const attachAllListeners = () => {
+            document.getElementById('staff-login-btn')?.addEventListener('click', () => renderModal('login'));
+            document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+            document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { state.currentView = e.currentTarget.dataset.view; render(); }));
+            if (state.currentView === 'calendar') attachCalendarListeners();
+            else if (state.currentView === 'dailyQueue') attachDailyQueueListeners();
+            else if (state.currentView === 'kpi') attachKpiListeners();
+        };
+
+        const attachCalendarListeners = () => {
+            document.getElementById('prev-month-btn')?.addEventListener('click', () => { state.currentDate.setMonth(state.currentDate.getMonth() - 1); render(); });
+            document.getElementById('next-month-btn')?.addEventListener('click', () => { state.currentDate.setMonth(state.currentDate.getMonth() + 1); render(); });
+            document.querySelectorAll('.calendar-day').forEach(day => day.addEventListener('click', (e) => { state.selectedDate = e.currentTarget.dataset.date; state.currentView = 'dailyQueue'; render(); }));
+        };
+        
+        const attachKpiListeners = () => {
+            document.getElementById('kpi-search').addEventListener('input', e => { state.kpiSearchTerm = e.target.value; render(); });
+            const kpiData = getKpiData().slice(0, 5);
+            const ctx = document.getElementById('kpi-chart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, { type: 'bar', data: { labels: kpiData.map(d => d.name), datasets: [{ label: 'คะแนนเฉลี่ย', data: kpiData.map(d => d.averageScore), backgroundColor: ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fde047', '#f87171'] }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } } });
+            }
+        };
+
+        const attachDailyQueueListeners = () => {
+            document.getElementById('back-to-calendar-btn').addEventListener('click', () => { state.currentView = 'calendar'; state.selectedDate = null; render(); });
+            document.getElementById('book-slot-btn')?.addEventListener('click', () => renderModal('booking'));
+            document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => { state.selectedBookingId = e.currentTarget.dataset.bookingId; renderModal('evaluate'); }));
+            document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => showConfirm('คุณต้องการลบคิวนี้ใช่หรือไม่?', () => handleDeleteBooking(e.currentTarget.dataset.bookingId))));
+        };
+        
+        const renderTimePickerModal = (bookingModal) => {
+            const modalContent = `
+                <div class="flex justify-center items-center gap-2 mb-4">
+                    <span id="hour-preview" class="text-4xl font-bold text-violet-500 cursor-pointer">--</span>
+                    <span class="text-4xl font-bold">:</span>
+                    <span id="minute-preview" class="text-4xl font-bold cursor-pointer">--</span>
+                </div>
+                <div id="clock-container" class="clock-picker"></div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
+                    <button type="button" id="confirm-time-btn" class="bg-green-500 text-white px-4 py-2 rounded-lg" disabled>ยืนยัน</button>
+                </div>`;
+            
+            renderModalBase(modalContent, modal => {
+                let selectedHour = null;
+                let selectedMinute = null;
+                let currentPickerView = 'hours';
+
+                const hourPreview = modal.querySelector('#hour-preview');
+                const minutePreview = modal.querySelector('#minute-preview');
+                const confirmBtn = modal.querySelector('#confirm-time-btn');
+                const clockContainer = modal.querySelector('#clock-container');
+
+                const updatePreview = () => {
+                    hourPreview.textContent = selectedHour !== null ? selectedHour.toString().padStart(2, '0') : '--';
+                    minutePreview.textContent = selectedMinute !== null ? selectedMinute.toString().padStart(2, '0') : '--';
+                    confirmBtn.disabled = selectedHour === null || selectedMinute === null;
+                };
+
+                const attachClockListeners = () => {
+                    if (currentPickerView === 'hours') {
+                        clockContainer.querySelectorAll('.clock-number:not(.disabled)').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                selectedHour = parseInt(btn.dataset.hour);
+                                currentPickerView = 'minutes';
+                                hourPreview.classList.remove('text-violet-500');
+                                minutePreview.classList.add('text-violet-500');
+                                renderClock();
+                            });
+                        });
+                    } else { // minutes
+                        clockContainer.querySelectorAll('.clock-number:not(.disabled)').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                selectedMinute = parseInt(btn.dataset.minute);
+                                clockContainer.querySelectorAll('[data-minute]').forEach(b => b.classList.remove('selected'));
+                                btn.classList.add('selected');
+                                updatePreview();
+                            });
+                        });
+                    }
+                };
+                
+                const renderClock = () => {
+                    clockContainer.innerHTML = ''; 
+                    const clockFace = document.createElement('div');
+                    clockFace.className = 'clock-face';
+                    const clockCenter = document.createElement('div');
+                    clockCenter.className = 'clock-center';
+                    clockFace.appendChild(clockCenter);
+
+                    if (currentPickerView === 'hours') {
+                        // Outer ring (1-12)
+                        for (let i = 1; i <= 12; i++) {
+                            const angle = (i / 12) * 360 - 90;
+                            const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
+                            const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
+                            const numberEl = document.createElement('div');
+                            numberEl.className = 'clock-number';
+                            numberEl.textContent = i;
+                            numberEl.style.left = `${x}px`;
+                            numberEl.style.top = `${y}px`;
+                            numberEl.dataset.hour = i;
+                            clockFace.appendChild(numberEl);
+                        }
+                         // Inner ring (13-24/00)
+                        for (let i = 13; i <= 24; i++) {
+                            const displayHour = i === 24 ? '00' : i;
+                            const dataHour = i === 24 ? 0 : i;
+                            const angle = ((i-12) / 12) * 360 - 90;
+                            const x = 112 + 60 * Math.cos(angle * Math.PI / 180);
+                            const y = 112 + 60 * Math.sin(angle * Math.PI / 180);
+                            const numberEl = document.createElement('div');
+                            numberEl.className = `clock-number ${dataHour > 14 ? 'disabled' : ''}`;
+                            numberEl.textContent = displayHour;
+                            numberEl.style.left = `${x}px`;
+                            numberEl.style.top = `${y}px`;
+                            numberEl.dataset.hour = dataHour;
+                            clockFace.appendChild(numberEl);
+                        }
+                    } else { // minutes
+                        ['00', '15', '30', '45'].forEach((minute, index) => {
+                            const angle = ((index * 3) / 12) * 360 - 90;
+                            const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
+                            const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
+                            const numberEl = document.createElement('div');
+                            numberEl.className = 'clock-number';
+                            if (selectedHour === 14 && minute !== '00') {
+                                numberEl.classList.add('disabled');
+                            }
+                            numberEl.textContent = minute;
+                            numberEl.style.left = `${x}px`;
+                            numberEl.style.top = `${y}px`;
+                            numberEl.dataset.minute = minute;
+                            clockFace.appendChild(numberEl);
+                        });
+                    }
+                    clockContainer.appendChild(clockFace);
+                    updatePreview();
+                    attachClockListeners();
+                };
+
+                renderClock();
+
+                hourPreview.addEventListener('click', () => {
+                    currentPickerView = 'hours';
+                    hourPreview.classList.add('text-violet-500');
+                    minutePreview.classList.remove('text-violet-500');
+                    renderClock();
+                });
+                 minutePreview.addEventListener('click', () => {
+                    if (selectedHour === null) return;
+                    currentPickerView = 'minutes';
+                    hourPreview.classList.remove('text-violet-500');
+                    minutePreview.classList.add('text-violet-500');
+                    renderClock();
+                });
+
+                confirmBtn.addEventListener('click', () => {
+                    if (selectedHour !== null && selectedMinute !== null) {
+                        const finalTime = `${selectedHour.toString().padStart(2,'0')}:${selectedMinute.toString().padStart(2,'0')}`;
+                        bookingModal.querySelector('#eta').value = finalTime;
+                        bookingModal.querySelector('#eta-display').textContent = finalTime;
+                        bookingModal.querySelector('#eta-display').classList.remove('text-slate-500');
+                        closeModal(modal);
+                    }
+                });
+            });
+        };
+
+        const renderModal = (type, data = {}) => {
+            let modalContent = '';
+            if(type === 'login') {
+                modalContent = `<h3 class="text-xl font-bold mb-4">เข้าสู่ระบบพนักงาน</h3><form id="login-form"><input type="text" id="username" placeholder="ชื่อผู้ใช้" class="w-full border p-2 rounded mb-4 bg-white border-slate-300" required><button type="submit" class="w-full bg-violet-500 hover:bg-violet-600 text-white py-2 rounded-lg">เข้าสู่ระบบ</button></form>`;
+                renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
+            } 
+            else if(type === 'booking') {
+                const companyOptions = state.data.companies.map(c => `<option value="${c}">${c}</option>`).join('');
+                modalContent = `<h3 class="text-xl font-bold mb-4">จองคิววันที่ ${formatThaiDate(state.selectedDate)}</h3>
+                <form id="booking-form" class="space-y-3 text-left">
+                    <select id="company-name" class="w-full border p-2 rounded bg-white" required><option value="">-- เลือกบริษัท --</option>${companyOptions}<option value="add_new">-- เพิ่มบริษัทใหม่ --</option></select>
+                    <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full border p-2 rounded hidden bg-white">
+                    <input type="text" id="driver-name" placeholder="ชื่อ-นามสกุล คนขับ" class="w-full border p-2 rounded bg-white" required>
+                    <div>
+                        <label class="text-sm font-medium">ทะเบียนรถ</label>
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <input type="text" id="license-plate-prefix" placeholder="หมวด (เช่น 1กก)" maxlength="4" class="w-full border p-2 rounded bg-white text-center" required>
+                            <input type="text" id="license-plate-suffix" placeholder="เลข (เช่น 1234)" pattern="[0-9]*" maxlength="4" class="w-full border p-2 rounded bg-white text-center" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="invoice-count" placeholder="จำนวนบิล" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        <input type="text" id="box-count" placeholder="จำนวนกล่อง" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                        <input type="text" id="item-count" placeholder="จำนวนชิ้น" class="w-full border p-2 rounded" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                    </div>
+                     <div>
+                         <label class="text-sm font-medium">เวลาที่คาดว่าจะมาถึง</label>
+                         <div id="eta-display" class="w-full border p-2 rounded cursor-pointer mt-1 text-slate-500">-- เลือกเวลา --</div>
+                         <input type="hidden" id="eta" required>
+                    </div>
+                    <textarea id="notes" placeholder="เอกสารเพิ่มเติม" rows="2" class="w-full border p-2 rounded"></textarea>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
+                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">ยืนยันการจอง</button>
+                    </div>
+                </form>`;
+                renderModalBase(modalContent, modal => {
+                    modal.querySelector('#eta-display').addEventListener('click', () => renderTimePickerModal(modal));
+                    const companySelect = modal.querySelector('#company-name'), newCompanyInput = modal.querySelector('#new-company-name');
+                    companySelect.addEventListener('change', () => newCompanyInput.classList.toggle('hidden', companySelect.value !== 'add_new'));
+                    modal.querySelector('#booking-form').addEventListener('submit', handleBookingSubmit);
+                });
+            }
+            else if (type === 'evaluate') {
+                const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
+                let kpiInputs = kpiDefinitions.map(kpi => `<div class="grid grid-cols-2 items-center gap-2"><label class="font-medium">${kpi.label}</label><select data-kpi-id="${kpi.id}" class="kpi-select w-full bg-white border rounded-lg p-2"><option value="0">-- เลือก --</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>`).join('');
+                
+                modalContent = `<h3 class="text-xl font-bold mb-2">ประเมิน KPI</h3><p class="mb-4 text-slate-500">${booking.companyName}</p>
+                <form id="evaluation-form" class="space-y-3 text-left">
+                    ${kpiInputs}
+                    <div class="border-t my-4"></div>
+                    <textarea id="staff-comments" placeholder="ความคิดเห็นเพิ่มเติมจากพนักงาน" rows="3" class="w-full border p-2 rounded"></textarea>
+                    <button type="button" id="generate-summary-btn" class="w-full bg-violet-500 hover:bg-violet-600 text-white py-2 rounded-lg flex items-center justify-center gap-2">✨ สร้างสรุปผลด้วย AI</button>
+                    <div id="gemini-loading" class="hidden text-center p-4">กำลังสร้างสรุป...</div>
+                    <textarea id="gemini-summary" placeholder="สรุปผลจาก AI (แก้ไขได้)" rows="4" class="w-full border p-2 rounded mt-2"></textarea>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="close-modal-btn bg-slate-200 px-4 py-2 rounded-lg">ยกเลิก</button>
+                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">บันทึกผล</button>
+                    </div>
+                </form>`;
+                renderModalBase(modalContent, modal => {
+                    modal.querySelector('#evaluation-form').addEventListener('submit', handleEvaluationSubmit);
+                    modal.querySelector('#generate-summary-btn').addEventListener('click', handleGenerateSummary);
+                });
+            } else if (type === 'qrCode') {
+                const booking = data.booking;
+                const qrData = JSON.stringify({
+                    id: booking.id,
+                    company: booking.companyName,
+                    date: state.selectedDate,
+                    time: booking.eta,
+                });
+
+                modalContent = `
+                    <h3 class="text-xl font-bold text-green-500 mb-2">จองคิวสำเร็จ!</h3>
+                    <p class="mb-4">กรุณาแสดง QR Code นี้แก่เจ้าหน้าที่เมื่อมาถึง</p>
+                    <div id="qrcode-container" class="flex justify-center my-4"></div>
+                    <div class="text-left bg-slate-50 p-3 rounded-lg">
+                        <p><strong>บริษัท:</strong> ${booking.companyName}</p>
+                        <p><strong>วันที่:</strong> ${formatThaiDate(state.selectedDate)}</p>
+                        <p><strong>เวลา:</strong> ${formatTime24h(booking.eta)}</p>
+                    </div>
+                    <p class="mt-4 font-bold text-red-500">สำคัญ: กรุณาถ่ายภาพหน้าจอ (Screenshot) QR Code นี้เพื่อแสดงต่อเจ้าหน้าที่</p>
+                     <div class="flex justify-end gap-2 pt-4">
+                         <button type="button" id="qr-close-btn" class="bg-slate-200 px-4 py-2 rounded-lg">ปิด</button>
+                    </div>`;
+
+                renderModalBase(modalContent, modal => {
+                    const qrContainer = modal.querySelector("#qrcode-container");
+                     if (qrContainer) {
+                         qrContainer.innerHTML = "";
+                         new QRCode(qrContainer, {
+                             text: qrData,
+                             width: 180,
+                             height: 180,
+                         });
+                     }
+                    modal.querySelector('#qr-close-btn').addEventListener('click', () => {
+                        closeModal(modal);
+                        state.currentView = 'dailyQueue';
+                        render();
+                    });
+                });
+            }
+        };
+
+        async function callGemini(prompt) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+                const result = await response.json();
+                return result.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถสร้างสรุปได้";
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                return "เกิดข้อผิดพลาดในการเชื่อมต่อกับ AI";
+            }
+        }
+
+        const handleGenerateSummary = async (e) => {
+            const modal = e.target.closest('.modal-backdrop');
+            const loadingIndicator = modal.querySelector('#gemini-loading');
+            const summaryTextarea = modal.querySelector('#gemini-summary');
+            const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
+
+            loadingIndicator.style.display = 'block';
+            summaryTextarea.value = '';
+
+            let kpiScoresText = "";
+            kpiDefinitions.forEach(kpi => {
+                const score = modal.querySelector(`.kpi-select[data-kpi-id="${kpi.id}"]`).value;
+                if(score > 0) {
+                     kpiScoresText += `- ${kpi.label}: ${score}/5\n`;
+                }
+            });
+
+            const staffComments = modal.querySelector('#staff-comments').value;
+
+            const prompt = `
+                 กรุณาสร้างบทสรุปผลการประเมินการจัดส่งสินค้าสำหรับซัพพลายเออร์ในรูปแบบที่เป็นทางการและกระชับเป็นภาษาไทย โดยใช้ข้อมูลต่อไปนี้:
+                 - ชื่อซัพพลายเออร์: ${booking.companyName}
+                 - วันที่จัดส่ง: ${formatThaiDate(state.selectedDate)}
+                 - ผลการประเมิน KPI:
+                 ${kpiScoresText}
+                 - ความคิดเห็นเพิ่มเติมจากพนักงาน: ${staffComments || 'ไม่มี'}
+
+                 ให้สรุปภาพรวมของประสิทธิภาพ และอาจจะมีการกล่าวถึงข้อดีหรือสิ่งที่ควรปรับปรุงตามความเหมาะสมจากคะแนนและความคิดเห็น
+            `;
+
+            const summary = await callGemini(prompt);
+            summaryTextarea.value = summary;
+            loadingIndicator.style.display = 'none';
+        };
+
+        const handleLogin = (e) => { e.preventDefault(); if (document.getElementById('username').value.trim() === 'inboundlaksi') { state.isLoggedIn = true, state.userRole = 'staff', state.currentView = 'dashboard'; closeModal(); render(); } else { showAlert('ชื่อผู้ใช้ไม่ถูกต้อง'); } };
+        const handleLogout = () => { state.isLoggedIn = false, state.userRole = 'guest', state.currentView = 'calendar'; render(); };
+        
+        const handleBookingSubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const companySelect = form.querySelector('#company-name');
+            let companyName = companySelect.value === 'add_new' ? form.querySelector('#new-company-name').value.trim() : companySelect.value;
+            if (companySelect.value === 'add_new' && companyName && !state.data.companies.includes(companyName)) {
+                state.data.companies.push(companyName);
+            }
+            if (!companyName) { showAlert('กรุณาระบุชื่อบริษัท'); return; }
+            
+            const licensePlate = `${form.querySelector('#license-plate-prefix').value.trim()} ${form.querySelector('#license-plate-suffix').value.trim()}`.trim();
+            if (!licensePlate) { showAlert('กรุณากรอกทะเบียนรถ'); return; }
+
+            const eta = form.querySelector('#eta').value;
+            if (!eta) { showAlert('กรุณาเลือกเวลา'); return; }
+
+            const newBooking = { id: Date.now(), companyName, driverName: form.querySelector('#driver-name').value, licensePlate, invoiceCount: form.querySelector('#invoice-count').value, boxCount: form.querySelector('#box-count').value, itemCount: form.querySelector('#item-count').value, eta, notes: form.querySelector('#notes').value, evaluation: null };
+            
+            const dateStr = state.selectedDate;
+            if (!state.data.bookings[dateStr]) {
+                state.data.bookings[dateStr] = [];
+            }
+            state.data.bookings[dateStr].push(newBooking);
+            state.data.bookings[dateStr].sort((a,b) => a.eta.localeCompare(b.eta));
+            
+            await setDoc(docRef, state.data);
+
+            state.guestBookingIds.push(newBooking.id);
+            sessionStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+            
+            closeModal(form.closest('.modal-backdrop')); 
+            renderModal('qrCode', { booking: newBooking });
+        };
+
+        const handleEvaluationSubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const booking = state.data.bookings[state.selectedDate].find(b => b.id == state.selectedBookingId);
+            if(booking) {
+                booking.evaluation = {
+                    scores: {},
+                    staffComments: form.querySelector('#staff-comments').value,
+                    geminiSummary: form.querySelector('#gemini-summary').value
+                };
+                form.querySelectorAll('.kpi-select').forEach(sel => {
+                    booking.evaluation.scores[sel.dataset.kpiId] = parseInt(sel.value, 10);
+                });
+                
+                await setDoc(docRef, state.data);
+                
+                closeModal(form.closest('.modal-backdrop')); 
+                showSuccessAnimation("บันทึกผลสำเร็จ!");
+            }
+        };
+
+        const handleDeleteBooking = async (bookingId) => {
+            const bookingsOnDate = state.data.bookings[state.selectedDate];
+            if (bookingsOnDate) {
+                state.data.bookings[state.selectedDate] = bookingsOnDate.filter(b => b.id != bookingId);
+                if(state.data.bookings[state.selectedDate].length === 0) {
+                    delete state.data.bookings[state.selectedDate];
+                }
+                await setDoc(docRef, state.data);
+            }
+        };
+        
+        const init = async () => {
+            await signInAnonymously(auth);
+
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    state.data = docSnap.data();
+                    if (!state.data.companies || state.data.companies.length === 0) {
+                        state.data.companies = initialCompanies;
+                    }
+                     if (!state.data.bookings) {
+                         state.data.bookings = {};
+                    }
+                } else {
+                    const initialData = { companies: initialCompanies, bookings: {} };
+                    setDoc(docRef, initialData); 
+                }
+                state.guestBookingIds = JSON.parse(sessionStorage.getItem('guestBookingIds')) || [];
+                render();
+            });
+
+            state.userRole = 'guest';
+            state.isLoggedIn = false;
+            state.currentView = 'calendar';
+        };
+
+        init();
+    </script>
+</body>
+</html>
