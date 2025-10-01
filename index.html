@@ -730,6 +730,18 @@
                     </div>
                 </header>`;
             
+            // เพิ่มฟอร์มแชทสำหรับซัพพลายเอร์
+            const supplierChatSection = state.userRole === 'guest' ? `
+                <div class="card p-4 rounded-xl shadow-lg mb-6 bg-blue-50 border-blue-200">
+                    <h3 class="text-lg font-semibold mb-3 text-blue-800">ติดต่อพนักงานผ่านแชท</h3>
+                    <p class="text-sm text-blue-700 mb-4">หากมีข้อสงสัยเกี่ยวกับการจองคิว กรุณากรอกเลขกำกับ QR เพื่อเริ่มการสนทนากับพนักงาน</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="supplier-chat-reference" placeholder="กรอกเลขกำกับ QR (เช่น QR2401231234)" class="input flex-1">
+                        <button id="start-chat-btn" class="btn btn-primary">เริ่มแชท</button>
+                    </div>
+                </div>
+            ` : '';
+            
             // Add manual section for all users
             const manualSection = `
                 <div class="manual-section">
@@ -806,6 +818,11 @@
                                     <p>คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
                                 </div>
                             </div>
+                            <div class="manual-step">
+                                <h4 class="font-semibold">การติดต่อผ่านแชท</h4>
+                                <p>หากมีข้อสงสัยเกี่ยวกับการจองคิว สามารถติดต่อพนักงานผ่านระบบแชทได้โดยกรอกเลขกำกับ QR ที่ได้รับจากการจองคิว</p>
+                                <p>พนักงานจะได้รับการแจ้งเตือนและทราบข้อมูลคิวของคุณทันที</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -814,7 +831,7 @@
             let viewContent = '';
             switch(state.currentView) {
                 case 'dashboard': viewContent = renderStaffNav() + renderDashboard(); break;
-                case 'calendar': viewContent = (state.userRole === 'staff' ? renderStaffNav() : '') + manualSection + renderCalendar(); break;
+                case 'calendar': viewContent = (state.userRole === 'staff' ? renderStaffNav() : '') + supplierChatSection + manualSection + renderCalendar(); break;
                 case 'holidays': viewContent = renderStaffNav() + renderHolidayManagement(); break;
                 case 'dailyQueue': viewContent = renderDailyQueue(); break;
                 case 'kpi': viewContent = renderStaffNav() + renderKpiView(); break;
@@ -1177,13 +1194,26 @@
                 // หาชื่อผู้ใช้อื่นในแชท
                 const otherParticipantId = chat.participants.find(p => p !== state.currentUser?.id);
                 const otherParticipant = state.data.users.find(u => u.id === otherParticipantId);
-                const participantName = otherParticipant ? otherParticipant.name : 'ไม่ทราบชื่อ';
+                const participantName = otherParticipant ? otherParticipant.name : otherParticipantId || 'ไม่ทราบชื่อ';
                 
                 // ตรวจสอบว่ามีข้อความที่ยังไม่ได้อ่านหรือไม่
                 const unreadCount = chat.messages.filter(m => 
                     m.senderId !== state.currentUser?.id && 
                     !m.read
                 ).length;
+                
+                // แสดงข้อมูลคิวที่เกี่ยวข้องถ้ามี
+                let bookingInfo = '';
+                if (chat.bookingId) {
+                    const booking = findBookingById(chat.bookingId);
+                    if (booking) {
+                        bookingInfo = `
+                            <div class="text-xs text-gray-500 mt-1">
+                                คิว: ${booking.referenceNumber} | ${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}
+                            </div>
+                        `;
+                    }
+                }
                 
                 return `
                 <div class="chat-item ${state.activeChat === chat.id ? 'active' : ''}" data-chat-id="${chat.id}">
@@ -1192,6 +1222,7 @@
                         <div class="chat-item-time">${lastMessage ? formatTime24h(new Date(lastMessage.timestamp).toLocaleTimeString()) : ''}</div>
                     </div>
                     <div class="chat-item-preview">${lastMessage ? lastMessage.content : 'ยังไม่มีข้อความ'}</div>
+                    ${bookingInfo}
                     ${unreadCount > 0 ? `<div class="notification-badge">${unreadCount}</div>` : ''}
                 </div>
                 `;
@@ -1200,16 +1231,35 @@
             // สร้างหน้าต่างแชท
             let chatMessagesHtml = '';
             let chatInputHtml = '';
+            let bookingInfoHtml = '';
             
             if (state.activeChat) {
                 const activeChat = chats.find(c => c.id === state.activeChat);
                 
                 if (activeChat) {
+                    // แสดงข้อมูลคิวที่เกี่ยวข้องถ้ามี
+                    if (activeChat.bookingId) {
+                        const booking = findBookingById(activeChat.bookingId);
+                        if (booking) {
+                            bookingInfoHtml = `
+                                <div class="bg-blue-50 p-3 rounded-lg mb-4">
+                                    <h4 class="font-semibold text-blue-800 mb-2">ข้อมูลคิวที่เกี่ยวข้อง</h4>
+                                    <div class="grid grid-cols-2 gap-2 text-sm">
+                                        <div><strong>เลขกำกับ:</strong> ${booking.referenceNumber}</div>
+                                        <div><strong>บริษัท:</strong> ${booking.companyName}</div>
+                                        <div><strong>วันที่:</strong> ${formatThaiDate(booking.date)}</div>
+                                        <div><strong>เวลา:</strong> ${formatTime24h(booking.eta)}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                    
                     // สร้างรายการข้อความ
                     chatMessagesHtml = activeChat.messages.map(message => {
                         const isSent = message.senderId === state.currentUser?.id;
                         const sender = state.data.users.find(u => u.id === message.senderId);
-                        const senderName = sender ? sender.name : 'ไม่ทราบชื่อ';
+                        const senderName = sender ? sender.name : message.senderId || 'ไม่ทราบชื่อ';
                         
                         return `
                         <div class="chat-message ${isSent ? 'sent' : 'received'}">
@@ -1255,6 +1305,7 @@
                 </div>
                 <div class="flex-1 card">
                     <div class="chat-container">
+                        ${bookingInfoHtml}
                         <div class="chat-messages">
                             ${chatMessagesHtml}
                         </div>
@@ -1565,6 +1616,26 @@
             });
             document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { state.currentView = e.currentTarget.dataset.view; render(); }));
             
+            // เพิ่ม event listener สำหรับปุ่มเริ่มแชท
+            document.getElementById('start-chat-btn')?.addEventListener('click', () => {
+                const referenceNumber = document.getElementById('supplier-chat-reference').value.trim();
+                if (!referenceNumber) {
+                    showAlert('กรุณากรอกเลขกำกับ QR');
+                    return;
+                }
+                
+                const booking = findBookingByReferenceNumber(referenceNumber);
+                if (!booking) {
+                    showAlert(`ไม่พบข้อมูลการจองคิวสำหรับเลขกำกับ: ${referenceNumber}`);
+                    return;
+                }
+                
+                const chat = openChatFromBooking(booking);
+                
+                // แสดงหน้าต่างแชทสำหรับซัพพลายเออร์
+                renderSupplierChatView(chat, booking);
+            });
+            
             document.getElementById('back-to-calendar-btn')?.addEventListener('click', () => {
                 state.currentView = 'calendar';
                 render();
@@ -1747,6 +1818,149 @@
             else if (state.currentView === 'scanner') attachScannerListeners();
         };
 
+        // เพิ่มฟังก์ชันค้นหาคิวจากเลขกำกับ QR
+        const findBookingByReferenceNumber = (referenceNumber) => {
+            for (const date in state.data.bookings) {
+                const booking = state.data.bookings[date].find(b => b.referenceNumber === referenceNumber);
+                if (booking) {
+                    return { ...booking, date };
+                }
+            }
+            return null;
+        };
+
+        // เพิ่มฟังก์ชันสร้างหรือเปิดแชทจากข้อมูลคิว
+        const openChatFromBooking = (booking) => {
+            // ค้นหาแชทที่มีอยู่สำหรับบริษัทนี้
+            let chat = state.data.chats.find(c => 
+                c.participants.includes(booking.companyName)
+            );
+            
+            if (!chat) {
+                // สร้างแชทใหม่ถ้าไม่พบ
+                chat = {
+                    id: Date.now().toString(),
+                    participants: [booking.companyName],
+                    messages: [],
+                    lastUpdated: new Date().toISOString(),
+                    bookingId: booking.id,
+                    bookingDate: booking.date,
+                    bookingReference: booking.referenceNumber
+                };
+                
+                if (!state.data.chats) {
+                    state.data.chats = [];
+                }
+                
+                state.data.chats.push(chat);
+                setDoc(docRef, state.data);
+            }
+            
+            // เพิ่มข้อความแรกพร้อมข้อมูลคิว
+            const initialMessage = {
+                id: Date.now(),
+                senderId: booking.companyName,
+                content: `ฉันต้องการสอบถามเกี่ยวกับคิวที่จองไว้\nเลขกำกับ: ${booking.referenceNumber}\nวันที่: ${formatThaiDate(booking.date)}\nเวลา: ${formatTime24h(booking.eta)}`,
+                timestamp: new Date().toISOString(),
+                isSystemMessage: true
+            };
+            
+            chat.messages.push(initialMessage);
+            chat.lastUpdated = new Date().toISOString();
+            
+            // สร้างการแจ้งเตือนสำหรับพนักงาน
+            createNotification(
+                'message',
+                `ซัพพลายเออร์ติดต่อเกี่ยวกับคิว`,
+                `${booking.companyName} ติดต่อเกี่ยวกับคิว ${booking.referenceNumber} วันที่ ${formatThaiDate(booking.date)}`,
+                null,
+                booking.id
+            );
+            
+            // บันทึกข้อมูล
+            setDoc(docRef, state.data);
+            
+            return chat;
+        };
+
+        // เพิ่มฟังก์ชันสำหรับแสดงหน้าต่างแชทสำหรับซัพพลายเออร์
+        const renderSupplierChatView = (chat, booking) => {
+            const modalContent = `
+                <div class="flex flex-col h-[500px]">
+                    <div class="bg-blue-50 p-4 rounded-t-lg border-b">
+                        <h3 class="text-lg font-semibold">การสนทนากับพนักงาน</h3>
+                        <div class="mt-2 text-sm text-gray-600">
+                            <p><strong>เลขกำกับ:</strong> ${booking.referenceNumber}</p>
+                            <p><strong>บริษัท:</strong> ${booking.companyName}</p>
+                            <p><strong>วันที่:</strong> ${formatThaiDate(booking.date)}</p>
+                            <p><strong>เวลา:</strong> ${formatTime24h(booking.eta)}</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 bg-gray-50">
+                        <div class="space-y-3">
+                            ${chat.messages.map(message => {
+                                const isSent = message.senderId === booking.companyName;
+                                return `
+                                <div class="flex ${isSent ? 'justify-end' : 'justify-start'}">
+                                    <div class="max-w-[70%] p-3 rounded-lg ${isSent ? 'bg-blue-100 text-blue-800' : 'bg-white'}">
+                                        <p>${message.content}</p>
+                                        <p class="text-xs text-gray-500 mt-1">${formatDateTime(message.timestamp)}</p>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="p-4 border-t bg-white rounded-b-lg">
+                        <div class="flex gap-2">
+                            <input type="text" id="supplier-message-input" placeholder="พิมพ์ข้อความ..." class="input flex-1">
+                            <button id="send-supplier-message-btn" class="btn btn-primary">ส่ง</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            renderModalBase(modalContent, modal => {
+                const messageInput = modal.querySelector('#supplier-message-input');
+                const sendButton = modal.querySelector('#send-supplier-message-btn');
+                
+                const sendMessage = () => {
+                    const message = messageInput.value.trim();
+                    if (!message) return;
+                    
+                    const newMessage = {
+                        id: Date.now(),
+                        senderId: booking.companyName,
+                        content: message,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    chat.messages.push(newMessage);
+                    chat.lastUpdated = new Date().toISOString();
+                    
+                    // สร้างการแจ้งเตือนสำหรับพนักงาน
+                    createNotification(
+                        'message',
+                        `ข้อความใหม่จาก ${booking.companyName}`,
+                        message,
+                        null,
+                        booking.id
+                    );
+                    
+                    // บันทึกข้อมูล
+                    setDoc(docRef, state.data);
+                    
+                    messageInput.value = '';
+                    renderSupplierChatView(chat, booking);
+                };
+                
+                sendButton.addEventListener('click', sendMessage);
+                messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendMessage();
+                });
+            });
+        };
+        
         const renderCompanyKpiDetails = (companyName) => {
             const kpiData = getKpiData();
             const companyData = kpiData.find(c => c.name === companyName);
@@ -3215,16 +3429,6 @@
         const findBookingById = (bookingId) => {
             for (const date in state.data.bookings) {
                 const booking = state.data.bookings[date].find(b => b.id == bookingId);
-                if (booking) {
-                    return { ...booking, date };
-                }
-            }
-            return null;
-        };
-
-        const findBookingByReferenceNumber = (referenceNumber) => {
-            for (const date in state.data.bookings) {
-                const booking = state.data.bookings[date].find(b => b.referenceNumber === referenceNumber);
                 if (booking) {
                     return { ...booking, date };
                 }
