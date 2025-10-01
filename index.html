@@ -146,6 +146,14 @@
         @media (max-width: 768px) {
             .floating-scan-btn { bottom: 1rem; right: 1rem; width: 50px; height: 50px; }
         }
+        .kpi-company-details { margin-top: 1rem; }
+        .kpi-booking-item { padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 0.5rem; background-color: #f8fafc; border-left: 3px solid var(--accent-color); }
+        .kpi-booking-date { font-weight: 600; color: var(--accent-color); }
+        .kpi-booking-details { display: flex; justify-content: space-between; font-size: 0.875rem; }
+        .kpi-booking-score { font-weight: 600; }
+        .kpi-score-high { color: var(--success-color); }
+        .kpi-score-medium { color: var(--warning-color); }
+        .kpi-score-low { color: var(--error-color); }
     </style>
 </head>
 <body>
@@ -177,7 +185,7 @@
             isLoggedIn: false, userRole: 'guest', currentView: 'calendar',
             currentDate: new Date(), selectedDate: null, selectedBookingId: null,
             guestBookingIds: [], data: { bookings: {}, companies: [], holidays: [] },
-            kpiSearchTerm: ''
+            kpiSearchTerm: '', selectedKpiCompany: null
         };
         
         const icons = {
@@ -198,7 +206,7 @@
         const appContainer = document.getElementById('app-container');
         const modalContainer = document.getElementById('modal-container');
         
-        const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบอร์ซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอบเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
+        const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบอร์ซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอ๊บเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
 
         const formatDate = (date) => {
             if (!(date instanceof Date)) {
@@ -351,14 +359,19 @@
             }
         };
 
+        // แก้ไขฟังก์ชันตรวจสอบความขัดแย้งของเวลา
         const checkTimeConflict = (date, time, excludeBookingId = null) => {
             const bookings = state.data.bookings[date] || [];
-            return bookings.some(booking => 
+            const sameTimeBookings = bookings.filter(booking => 
                 booking.id !== excludeBookingId && booking.eta === time
             );
+            
+            // ตรวจสอบว่ามีการจองในเวลาเดียวกันแล้วกี่คิว
+            return sameTimeBookings.length;
         };
 
-        const calculateNewTime = (time, addMinutes = 15) => {
+        // แก้ไขฟังก์ชันคำนวณเวลาใหม่
+        const calculateNewTime = (time, addMinutes = 10) => {
             const [hours, minutes] = time.split(':').map(Number);
             const totalMinutes = hours * 60 + minutes + addMinutes;
             const newHours = Math.floor(totalMinutes / 60);
@@ -562,7 +575,7 @@
                                 <h4 class="font-semibold">การยืนยันการจองและรับรหัสคิว</h4>
                                 <p>เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
                                 <div class="manual-important">
-                                    <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 15 นาที โดยอัตโนมัติ</p>
+                                    <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
                                 </div>
                                 <p>เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
                                 <div class="manual-important">
@@ -942,19 +955,56 @@
             const companyData = {};
             Object.values(state.data.bookings).flat().forEach(b => {
                 if (!b.evaluation || !b.evaluation.scores) return;
-                if (!companyData[b.companyName]) companyData[b.companyName] = { scores: [], count: 0 };
+                if (!companyData[b.companyName]) {
+                    companyData[b.companyName] = { 
+                        scores: [], 
+                        count: 0,
+                        bookings: []
+                    };
+                }
                 const evaluationScores = Object.values(b.evaluation.scores).filter(v => v > 0);
                 if (evaluationScores.length === 0) return;
-                companyData[b.companyName].scores.push(evaluationScores.reduce((a, b) => a + b, 0) / evaluationScores.length);
+                const avgScore = evaluationScores.reduce((a, b) => a + b, 0) / evaluationScores.length;
+                companyData[b.companyName].scores.push(avgScore);
                 companyData[b.companyName].count++;
+                
+                // Add booking details for company history
+                companyData[b.companyName].bookings.push({
+                    date: b.date,
+                    eta: b.eta,
+                    score: avgScore,
+                    driverName: b.driverName,
+                    licensePlate: b.licensePlate,
+                    checkInTime: b.checkInTime,
+                    status: b.status
+                });
             });
-            return Object.entries(companyData).map(([name, data]) => ({ name, averageScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length })).sort((a, b) => b.averageScore - a.averageScore);
+            
+            // Sort bookings by date for each company
+            Object.keys(companyData).forEach(company => {
+                companyData[company].bookings.sort((a, b) => new Date(b.date) - new Date(a.date));
+            });
+            
+            return Object.entries(companyData).map(([name, data]) => ({ 
+                name, 
+                averageScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
+                bookings: data.bookings
+            })).sort((a, b) => b.averageScore - a.averageScore);
         };
         
         const renderKpiView = () => {
             const kpiData = getKpiData();
             const filteredData = kpiData.filter(c => c.name.toLowerCase().includes(state.kpiSearchTerm.toLowerCase()));
-            const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `<div class="grid grid-cols-4 items-center p-3 rounded-lg hover:bg-violet-50"><span class="font-bold">#${index + 1}</span><span class="col-span-2">${company.name}</span><span class="font-bold text-lg ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span></div>`).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเออร์</p>`;
+            const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `
+                <div class="grid grid-cols-4 items-center p-3 rounded-lg hover:bg-violet-50">
+                    <span class="font-bold">#${index + 1}</span>
+                    <span class="col-span-2">${company.name}</span>
+                    <span class="font-bold text-lg ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span>
+                </div>
+                <div class="col-span-4">
+                    <button data-company="${company.name}" class="view-company-details-btn text-blue-500 text-sm hover:text-blue-700">ดูประวัติการจัดส่ง</button>
+                </div>
+            `).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเออร์</p>`;
 
             return `
             <div class="mb-4">
@@ -1124,6 +1174,14 @@
                 }
             });
             
+            // KPI company details button
+            document.querySelectorAll('.view-company-details-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const companyName = e.currentTarget.dataset.company;
+                    renderCompanyKpiDetails(companyName);
+                });
+            });
+            
             if (state.currentView === 'calendar') attachCalendarListeners();
             else if (state.currentView === 'dailyQueue') attachDailyQueueListeners();
             else if (state.currentView === 'kpi') attachKpiListeners();
@@ -1131,6 +1189,76 @@
             else if (state.currentView === 'scanner') attachScannerListeners();
         };
 
+        const renderCompanyKpiDetails = (companyName) => {
+            const kpiData = getKpiData();
+            const companyData = kpiData.find(c => c.name === companyName);
+            
+            if (!companyData || !companyData.bookings || companyData.bookings.length === 0) {
+                showAlert('ไม่พบข้อมูลการจัดส่งของบริษัทนี้');
+                return;
+            }
+            
+            const bookingDetailsHtml = companyData.bookings.map(booking => {
+                const scoreClass = booking.score >= 4 ? 'kpi-score-high' : 
+                                  booking.score >= 2.5 ? 'kpi-score-medium' : 'kpi-score-low';
+                
+                return `
+                <div class="kpi-booking-item">
+                    <div class="kpi-booking-details">
+                        <div>
+                            <span class="kpi-booking-date">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</span>
+                            <div class="text-sm text-gray-600 mt-1">
+                                คนขับ: ${booking.driverName} | ทะเบียน: ${booking.licensePlate}
+                            </div>
+                        </div>
+                        <div class="kpi-booking-score ${scoreClass}">
+                            ${booking.score.toFixed(1)}/5.0
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            
+            const modalContent = `
+                <div class="mb-4">
+                    <button id="back-to-kpi-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        กลับไปยังรายการ KPI
+                    </button>
+                </div>
+                <h3 class="text-xl font-bold mb-4">ประวัติการจัดส่ง: ${companyName}</h3>
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">คะแนนเฉลี่ย:</span>
+                        <span class="font-bold text-lg ${companyData.averageScore >= 4 ? 'text-green-500' : companyData.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">
+                            ${companyData.averageScore.toFixed(2)}/5.0
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="font-medium">จำนวนครั้งที่จัดส่ง:</span>
+                        <span class="font-bold">${companyData.bookings.length} ครั้ง</span>
+                    </div>
+                </div>
+                <div class="kpi-company-details">
+                    <h4 class="font-semibold mb-2">รายละเอียดการจัดส่ง</h4>
+                    <div class="space-y-2 max-h-96 overflow-y-auto custom-scroll">
+                        ${bookingDetailsHtml}
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
+                </div>
+            `;
+            
+            renderModalBase(modalContent, modal => {
+                modal.querySelector('#back-to-kpi-btn')?.addEventListener('click', () => {
+                    closeModal(modal);
+                });
+            });
+        };
+        
         const attachCalendarListeners = () => {
             document.getElementById('prev-month-btn')?.addEventListener('click', () => { 
                 const newDate = new Date(state.currentDate);
@@ -1379,6 +1507,7 @@
             }
         };
         
+        // แก้ไขฟังก์ชันเลือกเวลาให้เพิ่มทีละ 10 นาที
         const renderTimePickerModal = (bookingModal) => {
             const modalContent = `
                 <div class="flex justify-center items-center gap-2 mb-4">
@@ -1467,8 +1596,9 @@
                             clockFace.appendChild(numberEl);
                         }
                     } else {
-                        ['00', '15', '30', '45'].forEach((minute, index) => {
-                            const angle = ((index * 3) / 12) * 360 - 90;
+                        // เปลี่ยนจาก 15 นาที เป็น 10 นาที
+                        ['00', '10', '20', '30', '40', '50'].forEach((minute, index) => {
+                            const angle = ((index * 2) / 12) * 360 - 90;
                             const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                             const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
                             const numberEl = document.createElement('div');
@@ -1873,6 +2003,7 @@
                         displayFiles();
                     });
                     
+                    // แก้ไขฟังก์ชันการจองคิว
                     modal.querySelector('#booking-form').addEventListener('submit', async (e) => {
                         e.preventDefault();
                         const form = e.target;
@@ -1900,13 +2031,28 @@
                         let attempts = 0;
                         const maxAttempts = 10;
                         
-                        while (checkTimeConflict(state.selectedDate, eta) && attempts < maxAttempts) {
-                            eta = calculateNewTime(eta, 15);
+                        // แก้ไขการตรวจสอบคิวซ้ำ
+                        while (checkTimeConflict(state.selectedDate, eta) >= 2 && attempts < maxAttempts) {
+                            eta = calculateNewTime(eta, 10);
                             attempts++;
                         }
-
-                        if (attempts >= maxAttempts) {
-                            showAlert(`ไม่สามารถจองคิวในเวลาที่คุณเลือกได้ กรุณาเลือกเวลาอื่น\nเวลาที่มีการจองแล้ว: ${originalTime}`);
+                        
+                        // ถ้ายังมีคิวซ้ำ 2 คิว ให้เพิ่มเป็น 15 นาที
+                        if (checkTimeConflict(state.selectedDate, eta) >= 2 && attempts < maxAttempts) {
+                            eta = calculateNewTime(eta, 5); // เพิ่ม 5 นาทีเพื่อให้เป็น 15 นาทีรวม
+                            attempts++;
+                        }
+                        
+                        // ตรวจสอบว่าเวลาที่เลือกเกิน 14:15 หรือไม่
+                        const [hour, minute] = eta.split(':').map(Number);
+                        if (hour === 14 && minute > 15) {
+                            showAlert(`ไม่สามารถจองคิวได้ เนื่องจากเวลา ${eta} เกินเวลารับสินค้า (14:15)`);
+                            return;
+                        }
+                        
+                        // ตรวจสอบว่าในช่วงเวลาที่เลือกมีคิวอยู่แล้วหรือไม่
+                        if (checkTimeConflict(state.selectedDate, eta) >= 2) {
+                            showAlert(`ไม่สามารถจองคิวได้ เนื่องจากมีคิวในช่วงเวลานั้นแล้ว`);
                             return;
                         }
 
@@ -2426,79 +2572,6 @@
         const handleLogin = (e) => { e.preventDefault(); if (document.getElementById('username').value.trim() === 'inboundlaksi') { state.isLoggedIn = true, state.userRole = 'staff', state.currentView = 'dashboard'; closeModal(); render(); } else { showAlert('ชื่อผู้ใช้ไม่ถูกต้อง'); } };
         const handleLogout = () => { state.isLoggedIn = false, state.userRole = 'guest', state.currentView = 'calendar'; render(); };
         
-        const handleBookingSubmit = async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const companySelect = form.querySelector('#company-name');
-            let companyName = companySelect.value === 'add_new' ? form.querySelector('#new-company-name').value.trim() : companySelect.value;
-            
-            if (!companyName) { 
-                showAlert('กรุณาระบุชื่อบริษัท'); 
-                return; 
-            }
-            
-            const licensePlate = `${form.querySelector('#license-plate-prefix').value.trim()} ${form.querySelector('#license-plate-suffix').value.trim()}`.trim();
-            if (!licensePlate) { 
-                showAlert('กรุณากรอกทะเบียนรถ'); 
-                return; 
-            }
-
-            let eta = form.querySelector('#eta').value;
-            if (!eta) { 
-                showAlert('กรุณาเลือกเวลา'); 
-                return; 
-            }
-
-            let originalTime = eta;
-            let attempts = 0;
-            const maxAttempts = 10;
-            
-            while (checkTimeConflict(state.selectedDate, eta) && attempts < maxAttempts) {
-                eta = calculateNewTime(eta, 15);
-                attempts++;
-            }
-
-            if (attempts >= maxAttempts) {
-                showAlert(`ไม่สามารถจองคิวในเวลาที่คุณเลือกได้ กรุณาเลือกเวลาอื่น\nเวลาที่มีการจองแล้ว: ${originalTime}`);
-                return;
-            }
-
-            if (eta !== originalTime) {
-                showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนมัติ`);
-            }
-
-            const referenceNumber = generateReferenceNumber();
-            const newBooking = { 
-                id: Date.now(), 
-                referenceNumber: referenceNumber,
-                companyName, 
-                driverName: form.querySelector('#driver-name').value, 
-                licensePlate, 
-                invoiceCount: form.querySelector('#invoice-count').value, 
-                boxCount: form.querySelector('#box-count').value, 
-                itemCount: form.querySelector('#item-count').value, 
-                eta, 
-                notes: form.querySelector('#notes').value,
-                documents: [],
-                evaluation: null 
-            };
-            
-            const dateStr = state.selectedDate;
-            if (!state.data.bookings[dateStr]) {
-                state.data.bookings[dateStr] = [];
-            }
-            state.data.bookings[dateStr].push(newBooking);
-            state.data.bookings[dateStr].sort((a,b) => a.eta.localeCompare(b.eta));
-            
-            await setDoc(docRef, state.data);
-
-            state.guestBookingIds.push(newBooking.id);
-            sessionStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
-            
-            closeModal(form.closest('.modal-backdrop')); 
-            renderModal('qrCode', { booking: newBooking });
-        };
-
         const handleEvaluationSubmit = async (e) => {
             e.preventDefault();
             const form = e.target;
