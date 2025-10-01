@@ -122,7 +122,7 @@
         .attendance-stats { display: grid; grid-cols:1 md:grid-cols-3 gap-4 margin-bottom: 1rem; }
         .stat-card { background-color: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
         .stat-value { font-size: 2rem; font-weight: bold; margin-bottom: 0.25rem; }
-        .stat-label { font-size: 0.875rem; color: #6b7280; }
+        .stat-label { font-size: 0.875rem; color: #64748b; }
         .stat-on-time { color: #059669; }
         .stat-late { color: #dc2626; }
         .stat-total { color: #6366f1; }
@@ -202,6 +202,43 @@
         .notification-reminder { background-color: #fef3c7; color: #92400e; }
         .notification-arrival { background-color: #dbeafe; color: #1e40af; }
         .notification-message { background-color: #e0e7ff; color: #4338ca; }
+        
+        /* Animation for new messages */
+        @keyframes messageSlideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-message.new-message {
+            animation: messageSlideIn 0.3s ease-out;
+        }
+        
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            background-color: #e0e7ff;
+            border-radius: 18px;
+            width: fit-content;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            animation: typingAnimation 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
     </style>
 </head>
 <body>
@@ -210,7 +247,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, collection, query, orderBy, limit, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -242,7 +279,9 @@
             selectedKpiCompany: null,
             currentUser: null,
             activeChat: null,
-            unreadNotifications: 0
+            unreadNotifications: 0,
+            typingUsers: new Set(),
+            lastSeenMessages: new Map()
         };
         
         const icons = {
@@ -542,7 +581,7 @@
         };
 
         // ฟังก์ชันสำหรับส่งข้อความในแชท
-        const sendMessage = (chatId, senderId, message) => {
+        const sendMessage = async (chatId, senderId, message) => {
             if (!state.data.chats) {
                 state.data.chats = [];
             }
@@ -566,7 +605,8 @@
                 id: Date.now(),
                 senderId,
                 content: message,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                read: false
             };
             
             chat.messages.push(newMessage);
@@ -587,7 +627,7 @@
             });
             
             // บันทึกข้อมูล
-            setDoc(docRef, state.data);
+            await setDoc(docRef, state.data);
             
             return newMessage;
         };
@@ -641,6 +681,222 @@
                         console.log('Notification permission granted');
                     }
                 });
+            }
+        };
+
+        // ฟังก์ชันสำหรับการอัปเดตแชทแบบเรียลไทม์
+        const setupRealtimeChat = () => {
+            // สร้าง reference สำหรับ collection ของแชท
+            const chatsCollection = collection(db, "chats");
+            
+            // ฟังการเปลี่ยนแปลงใน collection ของแชท
+            onSnapshot(chatsCollection, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "modified") {
+                        const chatData = change.doc.data();
+                        const chatId = change.doc.id;
+                        
+                        // อัปเดตข้อมูลแชทใน state
+                        const chatIndex = state.data.chats.findIndex(c => c.id === chatId);
+                        if (chatIndex !== -1) {
+                            state.data.chats[chatIndex] = { ...chatData, id: chatId };
+                            
+                            // ถ้าเป็นแชทที่กำลังเปิดอยู่ ให้อัปเดต UI
+                            if (state.activeChat === chatId) {
+                                renderChatMessages();
+                            }
+                            
+                            // ถ้ามีข้อความใหม่และไม่ได้เปิดแชทนี้อยู่ ให้แสดงการแจ้งเตือน
+                            const lastMessage = chatData.messages[chatData.messages.length - 1];
+                            if (lastMessage && lastMessage.senderId !== state.currentUser?.id && state.activeChat !== chatId) {
+                                // อัปเดตจำนวนการแจ้งเตือน
+                                updateUnreadNotifications();
+                                
+                                // แสดงการแจ้งเตือนในเบราว์เซอร์
+                                if (Notification.permission === 'granted') {
+                                    const otherParticipantId = chatData.participants.find(p => p !== state.currentUser?.id);
+                                    const otherParticipant = state.data.users.find(u => u.id === otherParticipantId);
+                                    const participantName = otherParticipant ? otherParticipant.name : 'ผู้ใช้';
+                                    
+                                    new Notification(`ข้อความใหม่จาก ${participantName}`, {
+                                        body: lastMessage.content,
+                                        icon: '/favicon.ico',
+                                        tag: chatId
+                                    });
+                                }
+                            }
+                        }
+                    } else if (change.type === "added") {
+                        const chatData = change.doc.data();
+                        const chatId = change.doc.id;
+                        
+                        // เพิ่มแชทใหม่ใน state
+                        if (!state.data.chats) {
+                            state.data.chats = [];
+                        }
+                        
+                        // ตรวจสอบว่าแชทนี้มีอยู่แล้วหรือไม่
+                        const existingChat = state.data.chats.find(c => c.id === chatId);
+                        if (!existingChat) {
+                            state.data.chats.push({ ...chatData, id: chatId });
+                            
+                            // ถ้าอยู่ในหน้าแชท ให้อัปเดตรายการแชท
+                            if (state.currentView === 'chat') {
+                                renderChatList();
+                            }
+                        }
+                    }
+                });
+            });
+        };
+
+        // แยกฟังก์ชันสำหรับการแสดงผลข้อความในแชท
+        const renderChatMessages = () => {
+            const activeChat = state.data.chats.find(c => c.id === state.activeChat);
+            if (!activeChat) return;
+            
+            const chatMessagesContainer = document.querySelector('.chat-messages');
+            if (!chatMessagesContainer) return;
+            
+            // สร้าง HTML สำหรับข้อความในแชท
+            const chatMessagesHtml = activeChat.messages.map((message, index) => {
+                const isSent = message.senderId === state.currentUser?.id;
+                const sender = state.data.users.find(u => u.id === message.senderId);
+                const senderName = sender ? sender.name : message.senderId || 'ไม่ทราบชื่อ';
+                
+                // เพิ่ม class สำหรับ animation ถ้าเป็นข้อความใหม่
+                const isNewMessage = index === activeChat.messages.length - 1 && 
+                                   state.lastSeenMessages.get(state.activeChat) !== message.id;
+                
+                return `
+                <div class="chat-message ${isSent ? 'sent' : 'received'} ${isNewMessage ? 'new-message' : ''}">
+                    <div class="message-bubble">
+                        <div>${message.content}</div>
+                        <div class="message-time">${formatTime24h(new Date(message.timestamp).toLocaleTimeString())}</div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            
+            chatMessagesContainer.innerHTML = chatMessagesHtml;
+            
+            // บันทึกข้อความล่าสุดที่เห็น
+            if (activeChat.messages.length > 0) {
+                state.lastSeenMessages.set(state.activeChat, activeChat.messages[activeChat.messages.length - 1].id);
+            }
+            
+            // เลื่อนไปที่ข้อความล่าสุด
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        };
+
+        // แยกฟังก์ชันสำหรับการแสดงผลรายการแชท
+        const renderChatList = () => {
+            const chats = state.data.chats || [];
+            const chatListContainer = document.querySelector('.chat-list');
+            if (!chatListContainer) return;
+            
+            // สร้าง HTML สำหรับรายการแชท
+            const chatListHtml = chats.map(chat => {
+                // หาข้อความล่าสุด
+                const lastMessage = chat.messages.length > 0 ? chat.messages[chat.messages.length - 1] : null;
+                
+                // หาชื่อผู้ใช้อื่นในแชท
+                const otherParticipantId = chat.participants.find(p => p !== state.currentUser?.id);
+                const otherParticipant = state.data.users.find(u => u.id === otherParticipantId);
+                const participantName = otherParticipant ? otherParticipant.name : otherParticipantId || 'ไม่ทราบชื่อ';
+                
+                // ตรวจสอบว่ามีข้อความที่ยังไม่ได้อ่านหรือไม่
+                const unreadCount = chat.messages.filter(m => 
+                    m.senderId !== state.currentUser?.id && 
+                    !m.read
+                ).length;
+                
+                // แสดงข้อมูลคิวที่เกี่ยวข้องถ้ามี
+                let bookingInfo = '';
+                if (chat.bookingId) {
+                    const booking = findBookingById(chat.bookingId);
+                    if (booking) {
+                        bookingInfo = `
+                            <div class="text-xs text-gray-500 mt-1">
+                                คิว: ${booking.referenceNumber} | ${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}
+                            </div>
+                        `;
+                    }
+                }
+                
+                return `
+                <div class="chat-item ${state.activeChat === chat.id ? 'active' : ''}" data-chat-id="${chat.id}">
+                    <div class="chat-item-header">
+                        <div class="chat-item-name">${participantName}</div>
+                        <div class="chat-item-time">${lastMessage ? formatTime24h(new Date(lastMessage.timestamp).toLocaleTimeString()) : ''}</div>
+                    </div>
+                    <div class="chat-item-preview">${lastMessage ? lastMessage.content : 'ยังไม่มีข้อความ'}</div>
+                    ${bookingInfo}
+                    ${unreadCount > 0 ? `<div class="notification-badge">${unreadCount}</div>` : ''}
+                </div>
+                `;
+            }).join('');
+            
+            chatListContainer.innerHTML = chatListHtml || '<div class="p-4 text-center text-gray-500">ไม่มีแชท</div>';
+            
+            // เพิ่ม event listeners สำหรับรายการแชท
+            document.querySelectorAll('.chat-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const chatId = e.currentTarget.dataset.chatId;
+                    state.activeChat = chatId;
+                    
+                    // ทำเครื่องหมายว่าอ่านแล้วทั้งหมดในแชทนี้
+                    const chat = state.data.chats.find(c => c.id === chatId);
+                    if (chat) {
+                        chat.messages.forEach(message => {
+                            if (message.senderId !== state.currentUser?.id) {
+                                message.read = true;
+                            }
+                        });
+                        
+                        // บันทึกข้อมูล
+                        setDoc(docRef, state.data);
+                        
+                        // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
+                        updateUnreadNotifications();
+                    }
+                    
+                    render();
+                });
+            });
+        };
+
+        // ฟังก์ชันสำหรับแสดงตัวบ่งชี้การพิมพ์
+        const showTypingIndicator = (userId) => {
+            const chatMessagesContainer = document.querySelector('.chat-messages');
+            if (!chatMessagesContainer) return;
+            
+            const user = state.data.users.find(u => u.id === userId);
+            const userName = user ? user.name : 'ผู้ใช้';
+            
+            const typingHtml = `
+                <div class="chat-message received typing-indicator-container">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            
+            // ตรวจสอบว่ามีตัวบ่งชี้การพิมพ์อยู่แล้วหรือไม่
+            const existingIndicator = chatMessagesContainer.querySelector('.typing-indicator-container');
+            if (!existingIndicator) {
+                chatMessagesContainer.insertAdjacentHTML('beforeend', typingHtml);
+                chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+            }
+        };
+
+        // ฟังก์ชันสำหรับซ่อนตัวบ่งชี้การพิมพ์
+        const hideTypingIndicator = () => {
+            const typingIndicator = document.querySelector('.typing-indicator-container');
+            if (typingIndicator) {
+                typingIndicator.remove();
             }
         };
 
@@ -1187,46 +1443,7 @@
             const chats = state.data.chats || [];
             
             // สร้างรายการแชทในแถบด้านข้าง
-            const chatListHtml = chats.map(chat => {
-                // หาข้อความล่าสุด
-                const lastMessage = chat.messages.length > 0 ? chat.messages[chat.messages.length - 1] : null;
-                
-                // หาชื่อผู้ใช้อื่นในแชท
-                const otherParticipantId = chat.participants.find(p => p !== state.currentUser?.id);
-                const otherParticipant = state.data.users.find(u => u.id === otherParticipantId);
-                const participantName = otherParticipant ? otherParticipant.name : otherParticipantId || 'ไม่ทราบชื่อ';
-                
-                // ตรวจสอบว่ามีข้อความที่ยังไม่ได้อ่านหรือไม่
-                const unreadCount = chat.messages.filter(m => 
-                    m.senderId !== state.currentUser?.id && 
-                    !m.read
-                ).length;
-                
-                // แสดงข้อมูลคิวที่เกี่ยวข้องถ้ามี
-                let bookingInfo = '';
-                if (chat.bookingId) {
-                    const booking = findBookingById(chat.bookingId);
-                    if (booking) {
-                        bookingInfo = `
-                            <div class="text-xs text-gray-500 mt-1">
-                                คิว: ${booking.referenceNumber} | ${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}
-                            </div>
-                        `;
-                    }
-                }
-                
-                return `
-                <div class="chat-item ${state.activeChat === chat.id ? 'active' : ''}" data-chat-id="${chat.id}">
-                    <div class="chat-item-header">
-                        <div class="chat-item-name">${participantName}</div>
-                        <div class="chat-item-time">${lastMessage ? formatTime24h(new Date(lastMessage.timestamp).toLocaleTimeString()) : ''}</div>
-                    </div>
-                    <div class="chat-item-preview">${lastMessage ? lastMessage.content : 'ยังไม่มีข้อความ'}</div>
-                    ${bookingInfo}
-                    ${unreadCount > 0 ? `<div class="notification-badge">${unreadCount}</div>` : ''}
-                </div>
-                `;
-            }).join('');
+            renderChatList();
             
             // สร้างหน้าต่างแชท
             let chatMessagesHtml = '';
@@ -1256,20 +1473,7 @@
                     }
                     
                     // สร้างรายการข้อความ
-                    chatMessagesHtml = activeChat.messages.map(message => {
-                        const isSent = message.senderId === state.currentUser?.id;
-                        const sender = state.data.users.find(u => u.id === message.senderId);
-                        const senderName = sender ? sender.name : message.senderId || 'ไม่ทราบชื่อ';
-                        
-                        return `
-                        <div class="chat-message ${isSent ? 'sent' : 'received'}">
-                            <div class="message-bubble">
-                                <div>${message.content}</div>
-                                <div class="message-time">${formatTime24h(new Date(message.timestamp).toLocaleTimeString())}</div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('');
+                    renderChatMessages();
                     
                     // สร้างช่องป้อนข้อความ
                     chatInputHtml = `
@@ -1300,7 +1504,7 @@
                 <div class="chat-sidebar card">
                     <h3 class="p-4 font-semibold border-b">รายการแชท</h3>
                     <div class="chat-list">
-                        ${chatListHtml || '<div class="p-4 text-center text-gray-500">ไม่มีแชท</div>'}
+                        <!-- รายการแชทจะถูกสร้างโดย renderChatList -->
                     </div>
                 </div>
                 <div class="flex-1 card">
@@ -1678,31 +1882,6 @@
             
             // Chat listeners
             if (state.currentView === 'chat') {
-                document.querySelectorAll('.chat-item').forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        const chatId = e.currentTarget.dataset.chatId;
-                        state.activeChat = chatId;
-                        
-                        // ทำเครื่องหมายว่าอ่านแล้วทั้งหมดในแชทนี้
-                        const chat = state.data.chats.find(c => c.id === chatId);
-                        if (chat) {
-                            chat.messages.forEach(message => {
-                                if (message.senderId !== state.currentUser?.id) {
-                                    message.read = true;
-                                }
-                            });
-                            
-                            // บันทึกข้อมูล
-                            setDoc(docRef, state.data);
-                            
-                            // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
-                            updateUnreadNotifications();
-                        }
-                        
-                        render();
-                    });
-                });
-                
                 document.getElementById('send-message-btn')?.addEventListener('click', () => {
                     const messageInput = document.getElementById('chat-message-input');
                     const message = messageInput.value.trim();
@@ -1723,6 +1902,22 @@
                             e.target.value = '';
                             render();
                         }
+                    }
+                });
+                
+                // เพิ่ม typing indicator
+                document.getElementById('chat-message-input')?.addEventListener('input', (e) => {
+                    const message = e.target.value.trim();
+                    
+                    if (message && state.activeChat) {
+                        // แสดงตัวบ่งชี้การพิมพ์
+                        showTypingIndicator(state.currentUser?.id);
+                        
+                        // ซ่อนตัวบ่งชี้หลังจากหยุดพิมพ์ 1 วินาที
+                        clearTimeout(window.typingTimeout);
+                        window.typingTimeout = setTimeout(() => {
+                            hideTypingIndicator();
+                        }, 1000);
                     }
                 });
             }
@@ -3655,6 +3850,9 @@
                 
                 // ขอสิทธิ์การแจ้งเตือน
                 requestNotificationPermission();
+                
+                // เพิ่มการตั้งค่าแชทแบบเรียลไทม์
+                setupRealtimeChat();
                 
                 render();
             });
