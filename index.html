@@ -43,6 +43,7 @@
         .btn-secondary:hover { background-color: #cbd5e1; }
         .btn-success { background-color: var(--success-color); color: white; }
         .btn-danger { background-color: var(--error-color); color: white; }
+        .btn-warning { background-color: var(--warning-color); color: white; }
         .btn-sm { padding: 6px 12px; font-size: 14px; }
         .btn-lg { padding: 14px 28px; font-size: 18px; }
         .input { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; transition: border-color 0.2s; }
@@ -73,6 +74,8 @@
         .booking-card-btn-primary:hover { background: var(--accent-hover); }
         .booking-card-btn-secondary { background: #e5e7eb; color: #333; }
         .booking-card-btn-secondary:hover { background: #d1d5db; }
+        .booking-card-btn-success { background: var(--success-color); color: white; }
+        .booking-card-btn-success:hover { background: #059669; }
         #video-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; aspect-ratio: 1; background: #000; border-radius: 12px; overflow: hidden; }
         #video { width: 100%; height: 100%; object-fit: cover; }
         #scan-region { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 250px; border: 2px solid var(--accent-color); border-radius: 12px; }
@@ -100,12 +103,30 @@
         .manual-section { background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; }
         .manual-title { font-size: 1.25rem; font-weight: 600; color: #0369a1; margin-bottom: 0.5rem; }
         .manual-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-        .manual-content.expanded { max-height: 1000px; transition: max-height 0.5s ease-in; }
+        .manual-content.expanded { max-height: 2000px; transition: max-height 0.5s ease-in; }
         .manual-step { margin-bottom: 1rem; padding-left: 1.5rem; position: relative; }
         .manual-step:before { content: counter(step-counter); counter-increment: step-counter; position: absolute; left: 0; top: 0; width: 1.5rem; height: 1.5rem; background-color: #0369a1; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; }
         .manual-steps { counter-reset: step-counter; }
         .weekend-day { background-color: #fee2e2 !important; color: #991b1b !important; }
         .weekend-label { font-size: 0.7rem; color: #991b1b; margin-top: auto; font-weight: bold; }
+        .status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-confirmed { background-color: #d1fae5; color: #065f46; }
+        .status-completed { background-color: #dbeafe; color: #1e40af; }
+        .status-late { background-color: #fee2e2; color: #991b1b; }
+        .status-cancelled { background-color: #f3f4f6; color: #6b7280; }
+        .check-in-section { background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+        .check-in-time { font-family: 'Courier New', monospace; font-size: 1.125rem; font-weight: bold; color: #059669; }
+        .attendance-stats { display: grid; grid-cols:1 md:grid-cols-3 gap-4 margin-bottom: 1rem; }
+        .stat-card { background-color: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+        .stat-value { font-size: 2rem; font-weight: bold; margin-bottom: 0.25rem; }
+        .stat-label { font-size: 0.875rem; color: #6b7280; }
+        .stat-on-time { color: #059669; }
+        .stat-late { color: #dc2626; }
+        .stat-total { color: #6366f1; }
+        .important-note { color: #dc2626; font-weight: 600; }
+        .manual-important { background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 0.5rem 1rem; margin: 0.5rem 0; border-radius: 0 4px 4px 0; }
+        .manual-important p { margin: 0; color: #991b1b; }
         @media (max-width: 768px) {
             .hero-title { font-size: 2rem; }
             .hero-subtitle { font-size: 1rem; }
@@ -167,7 +188,9 @@
             company: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`,
             booking: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
             scanner: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>`,
-            manual: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`
+            manual: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`,
+            check: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+            clock: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
         };
 
         const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
@@ -175,7 +198,7 @@
         const appContainer = document.getElementById('app-container');
         const modalContainer = document.getElementById('modal-container');
         
-        const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบร์ซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอบเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
+        const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบอร์ซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอบเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
 
         const formatDate = (date) => {
             if (!(date instanceof Date)) {
@@ -193,6 +216,12 @@
             const [hour, minute] = timeStr.split(':');
             return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
         }
+
+        const formatDateTime = (date) => {
+            if (!date) return '';
+            const d = new Date(date);
+            return `${formatDate(d)} ${formatTime24h(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`)}`;
+        };
 
         const generateReferenceNumber = () => {
             const date = new Date();
@@ -368,6 +397,39 @@
             return holiday || false;
         };
 
+        const checkIfLate = (booking) => {
+            if (!booking || !booking.eta || !booking.checkInTime) return false;
+            
+            const bookingDateTime = new Date(`${booking.date} ${booking.eta}`);
+            const checkInDateTime = new Date(booking.checkInTime);
+            
+            // Consider late if check-in is more than 15 minutes after scheduled time
+            const diffMinutes = (checkInDateTime - bookingDateTime) / (1000 * 60);
+            return diffMinutes > 15;
+        };
+
+        const getAttendanceStats = () => {
+            const today = formatDate(new Date());
+            const todayBookings = state.data.bookings[today] || [];
+            
+            let onTime = 0;
+            let late = 0;
+            let total = 0;
+            
+            todayBookings.forEach(booking => {
+                if (booking.checkInTime) {
+                    total++;
+                    if (checkIfLate(booking)) {
+                        late++;
+                    } else {
+                        onTime++;
+                    }
+                }
+            });
+            
+            return { onTime, late, total };
+        };
+
         const renderModalBase = (content, attachListenersCallback) => {
             const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 fade-in"><div class="card bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl text-left max-h-[90vh] overflow-y-auto">${content}</div></div>`;
             modalContainer.insertAdjacentHTML('beforeend', modalHtml);
@@ -468,13 +530,17 @@
                             <div class="manual-step">
                                 <h4 class="font-semibold">การเลือกวันจัดส่งสินค้า</h4>
                                 <p>เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
-                                <p class="text-sm text-red-600 mt-2">หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
+                                <div class="manual-important">
+                                    <p>หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
+                                </div>
                             </div>
                             <div class="manual-step">
                                 <h4 class="font-semibold">การกรอกข้อมูลการจอง</h4>
                                 <p>หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
                                 <p>ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
-                                <p class="text-sm text-blue-600 mt-2">หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
+                                <div class="manual-important">
+                                    <p>หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
+                                </div>
                             </div>
                             <div class="manual-step">
                                 <h4 class="font-semibold">การกรอกรายละเอียด</h4>
@@ -495,18 +561,30 @@
                             <div class="manual-step">
                                 <h4 class="font-semibold">การยืนยันการจองและรับรหัสคิว</h4>
                                 <p>เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
-                                <p class="text-sm text-orange-600 mt-2">หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 15 นาที โดยอัตโนมัติ</p>
+                                <div class="manual-important">
+                                    <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 15 นาที โดยอัตโนมัติ</p>
+                                </div>
                                 <p>เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
-                                <p class="text-sm text-red-600 font-bold mt-2">คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
+                                <div class="manual-important">
+                                    <p>คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
+                                </div>
                             </div>
                             <div class="manual-step">
                                 <h4 class="font-semibold">ข้อควรทราบ</h4>
                                 <ul class="list-disc list-inside ml-4 mt-2">
                                     <li>สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
-                                    <li class="text-red-600">หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
-                                    <li class="text-red-600">กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการมาส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
+                                    <li class="important-note">หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
+                                    <li class="important-note">กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
                                     <li>หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
                                 </ul>
+                            </div>
+                            <div class="manual-step">
+                                <h4 class="font-semibold">การเช็คอินเมื่อถึงคลังสินค้า</h4>
+                                <p>เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
+                                <p>พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
+                                <div class="manual-important">
+                                    <p>คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -549,10 +627,30 @@
                 ? todayBookings.map(b => `<li class="flex justify-between items-center p-2 rounded hover:bg-violet-50"><span>${formatTime24h(b.eta)} - ${b.companyName}</span><span class="font-mono text-sm">${b.licensePlate}</span></li>`).join('')
                 : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
 
+            // Get attendance statistics
+            const stats = getAttendanceStats();
+
             return `
             <div class="mb-4">
                 ${state.userRole === 'guest' ? '<button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> กลับไปยังปฏิทิน</button>' : ''}
             </div>
+            
+            <!-- Attendance Statistics -->
+            <div class="attendance-stats mb-6">
+                <div class="stat-card">
+                    <div class="stat-value stat-on-time">${stats.onTime}</div>
+                    <div class="stat-label">มาตรงเวลา</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-late">${stats.late}</div>
+                    <div class="stat-label">มาสาย</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-total">${stats.total}</div>
+                    <div class="stat-label">รับสินค้าแล้ว</div>
+                </div>
+            </div>
+            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200">
                     <div class="p-3 rounded-full bg-violet-100">${icons.queue}</div>
@@ -681,22 +779,46 @@
                 ? bookings.map((booking, index) => {
                     const isGuestBooking = state.guestBookingIds.includes(booking.id);
                     if(state.userRole === 'guest' && !isGuestBooking) return `<div class="card bg-slate-100 p-4 rounded-lg">คิวที่ ${index + 1}: จองแล้ว</div>`;
+                    
+                    // Determine status
+                    let statusBadge = '';
+                    if (booking.checkInTime) {
+                        if (booking.status === 'completed') {
+                            statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                        } else if (checkIfLate(booking)) {
+                            statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                        } else {
+                            statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                        }
+                    } else {
+                        statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+                    }
+                    
                     return `<div class="card ${isGuestBooking ? 'bg-violet-50 border-l-4 border-violet-500' : ''} p-4 rounded-lg shadow-sm">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                             <div>
                                 <p class="font-bold text-lg">${booking.companyName} ${isGuestBooking ? '<span class="text-xs text-violet-600">(คิวของคุณ)</span>' : ''}</p>
                                 <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
                                 ${booking.referenceNumber ? `<p class="text-xs text-violet-600 font-medium">เลขกำกับ: <span class="reference-number">${booking.referenceNumber}</span></p>` : ''}
+                                ${statusBadge}
                             </div>
                             <div class="text-right">
                                 <p class="font-bold text-xl text-violet-600">${formatTime24h(booking.eta)}</p>
                                 <p class="text-xs text-slate-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</p>
+                                ${booking.checkInTime ? `<p class="text-xs text-green-600">เช็คอิน: ${formatDateTime(booking.checkInTime)}</p>` : ''}
                             </div>
                         </div>
                         <div class="mt-2">
                             <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
                         </div>
-                        ${state.userRole === 'staff' ? `<div class="mt-4 border-t pt-2 flex gap-2"><button data-booking-id="${booking.id}" class="evaluate-btn btn btn-primary btn-sm">ประเมิน KPI</button><button data-booking-id="${booking.id}" class="delete-booking-btn btn btn-danger btn-sm">ลบ</button></div>` : ''}
+                        ${state.userRole === 'staff' ? `
+                            <div class="mt-4 border-t pt-2 flex gap-2">
+                                ${!booking.checkInTime ? `<button data-booking-id="${booking.id}" class="check-in-btn btn btn-success btn-sm">เช็คอิน</button>` : ''}
+                                ${booking.checkInTime && booking.status !== 'completed' ? `<button data-booking-id="${booking.id}" class="complete-btn btn btn-primary btn-sm">ยืนยันรับคิว</button>` : ''}
+                                <button data-booking-id="${booking.id}" class="evaluate-btn btn btn-primary btn-sm">ประเมิน KPI</button>
+                                <button data-booking-id="${booking.id}" class="delete-booking-btn btn btn-danger btn-sm">ลบ</button>
+                            </div>
+                        ` : ''}
                     </div>`;
                 }).join('<div class="my-3"></div>')
                 : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิวในวันนี้</p>`;
@@ -726,7 +848,22 @@
             allBookings.sort((a, b) => new Date(b.date) - new Date(a.date) || b.eta.localeCompare(a.eta));
             
             const bookingsHtml = allBookings.length > 0
-                ? allBookings.map(booking => `
+                ? allBookings.map(booking => {
+                    // Determine status
+                    let statusBadge = '';
+                    if (booking.checkInTime) {
+                        if (booking.status === 'completed') {
+                            statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                        } else if (checkIfLate(booking)) {
+                            statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                        } else {
+                            statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                        }
+                    } else {
+                        statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+                    }
+                    
+                    return `
                     <div class="card p-4 rounded-lg shadow-sm mb-4">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                             <div>
@@ -734,16 +871,18 @@
                                 <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
                                 <p class="text-sm text-slate-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</p>
                                 ${booking.referenceNumber ? `<p class="text-xs text-violet-600 font-medium">เลขกำกับ: <span class="reference-number">${booking.referenceNumber}</span></p>` : ''}
+                                ${statusBadge}
                             </div>
                             <div class="text-right">
                                 <p class="text-sm text-slate-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</p>
+                                ${booking.checkInTime ? `<p class="text-xs text-green-600">เช็คอิน: ${formatDateTime(booking.checkInTime)}</p>` : ''}
                             </div>
                         </div>
                         <div class="mt-2">
                             <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
                         </div>
                     </div>
-                `).join('')
+                `}).join('')
                 : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิว</p>`;
             
             return `
@@ -1150,11 +1289,94 @@
                 state.selectedBookingId = e.currentTarget.dataset.bookingId; 
                 renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId }); 
             }));
+            
+            // Check-in button
+            document.querySelectorAll('.check-in-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const bookingId = e.currentTarget.dataset.bookingId;
+                handleCheckIn(bookingId);
+            }));
+            
+            // Complete button
+            document.querySelectorAll('.complete-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const bookingId = e.currentTarget.dataset.bookingId;
+                handleCompleteBooking(bookingId);
+            }));
+            
             document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => { state.selectedBookingId = e.currentTarget.dataset.bookingId; renderModal('evaluate'); }));
             document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => {
                 const bookingId = e.currentTarget.dataset.bookingId;
                 showConfirm('คุณต้องการลบคิวนี้ใช่หรือไม่?', () => handleDeleteBooking(bookingId));
             }));
+        };
+
+        const handleCheckIn = async (bookingId) => {
+            try {
+                let bookingToUpdate = null;
+                let bookingDate = null;
+
+                // Find the booking and its date in the state
+                for (const date in state.data.bookings) {
+                    const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
+                    if (bookingIndex !== -1) {
+                        bookingToUpdate = state.data.bookings[date][bookingIndex];
+                        bookingDate = date;
+                        break;
+                    }
+                }
+
+                if (!bookingToUpdate) {
+                    showAlert('ไม่พบข้อมูลการจองคิว');
+                    return;
+                }
+
+                // Update the original booking object in the state
+                bookingToUpdate.checkInTime = new Date().toISOString();
+                
+                // Save to database
+                await setDoc(docRef, state.data);
+                
+                showSuccessAnimation('เช็คอินสำเร็จแล้ว');
+                render();
+                
+            } catch (error) {
+                console.error('Error checking in:', error);
+                showAlert('เกิดข้อผิดพลาดในการเช็คอิน กรุณาลองใหม่');
+            }
+        };
+
+        const handleCompleteBooking = async (bookingId) => {
+            try {
+                let bookingToUpdate = null;
+                let bookingDate = null;
+
+                for (const date in state.data.bookings) {
+                    const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
+                    if (bookingIndex !== -1) {
+                        bookingToUpdate = state.data.bookings[date][bookingIndex];
+                        bookingDate = date;
+                        break;
+                    }
+                }
+
+                if (!bookingToUpdate) {
+                    showAlert('ไม่พบข้อมูลการจองคิว');
+                    return;
+                }
+
+                // Update the original booking object in the state
+                bookingToUpdate.status = 'completed';
+                bookingToUpdate.completedTime = new Date().toISOString();
+                
+                // Save to database
+                await setDoc(docRef, state.data);
+                
+                showSuccessAnimation('ยืนยันการรับคิวสำเร็จแล้ว');
+                render();
+                
+            } catch (error) {
+                console.error('Error completing booking:', error);
+                showAlert('เกิดข้อผิดพลาดในการยืนยันการรับคิว กรุณาลองใหม่');
+            }
         };
         
         const renderTimePickerModal = (bookingModal) => {
@@ -1689,7 +1911,7 @@
                         }
 
                         if (eta !== originalTime) {
-                            showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนโนมัติ`);
+                            showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนมัติ`);
                         }
 
                         const referenceNumber = generateReferenceNumber();
@@ -1760,6 +1982,20 @@
                     </div>`
                     : '';
                 
+                // Determine status
+                let statusBadge = '';
+                if (booking.checkInTime) {
+                    if (booking.status === 'completed') {
+                        statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                    } else if (checkIfLate(booking)) {
+                        statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                    } else {
+                        statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                    }
+                } else {
+                    statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+                }
+                
                 modalContent = `
                     <div class="booking-details p-4 rounded-lg">
                         <h3 class="text-xl font-bold mb-4">รายละเอียดการจองคิว</h3>
@@ -1800,6 +2036,16 @@
                                 <span class="detail-label">จำนวนชิ้น:</span>
                                 <span class="detail-value">${booking.itemCount}</span>
                             </div>
+                            <div class="detail-item">
+                                <span class="detail-label">สถานะ:</span>
+                                <span class="detail-value">${statusBadge}</span>
+                            </div>
+                            ${booking.checkInTime ? `
+                            <div class="detail-item">
+                                <span class="detail-label">เวลาเช็คอิน:</span>
+                                <span class="detail-value">${formatDateTime(booking.checkInTime)}</span>
+                            </div>
+                            ` : ''}
                             ${booking.notes ? `
                             <div class="detail-item col-span-2">
                                 <span class="detail-label">เอกสารเพิ่มเติม:</span>
@@ -1831,6 +2077,50 @@
                         <span class="booking-card-value">${booking.documents.length} ไฟล์</span>
                     </div>`
                     : '';
+                
+                // Determine status
+                let statusBadge = '';
+                if (booking.checkInTime) {
+                    if (booking.status === 'completed') {
+                        statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                    } else if (checkIfLate(booking)) {
+                        statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                    } else {
+                        statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                    }
+                } else {
+                    statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+                }
+                
+                // Check-in section for staff
+                let checkInSection = '';
+                if (state.userRole === 'staff' && !booking.checkInTime) {
+                    checkInSection = `
+                        <div class="check-in-section">
+                            <h4 class="font-semibold text-green-700 mb-2">การเช็คอิน</h4>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-sm">เวลาปัจจุบัน:</span>
+                                <span class="check-in-time">${formatDateTime(new Date())}</span>
+                            </div>
+                            <button data-booking-id="${booking.id}" class="check-in-from-qr-btn btn btn-success w-full">
+                                ${icons.check} เช็คอิน
+                            </button>
+                        </div>
+                    `;
+                } else if (state.userRole === 'staff' && booking.checkInTime && booking.status !== 'completed') {
+                    checkInSection = `
+                        <div class="check-in-section">
+                            <h4 class="font-semibold text-blue-700 mb-2">การรับสินค้า</h4>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-sm">เวลาเช็คอิน:</span>
+                                <span class="check-in-time">${formatDateTime(booking.checkInTime)}</span>
+                            </div>
+                            <button data-booking-id="${booking.id}" class="complete-from-qr-btn btn btn-primary w-full">
+                                ${icons.check} ยืนยันรับคิว
+                            </button>
+                        </div>
+                    `;
+                }
                 
                 modalContent = `
                     <div class="booking-card">
@@ -1870,7 +2160,7 @@
                                 </div>
                                 <div class="booking-card-item">
                                     <span class="booking-card-label">สถานะ</span>
-                                    <span class="booking-card-value text-green-600">✓ ยืนยันแล้ว</span>
+                                    <span class="booking-card-value">${statusBadge}</span>
                                 </div>
                                 ${documentsInfo}
                             </div>
@@ -1895,12 +2185,13 @@
                                 </div>
                             </div>
                             ` : ''}
+                            ${checkInSection}
                             <div class="booking-card-footer">
                                 <div class="booking-card-status">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                     </svg>
-                                    พร้อมรับสินค้า
+                                    ${booking.status === 'completed' ? 'ดำเนินการเสร็จสิ้น' : booking.checkInTime ? 'กำลังดำเนินการ' : 'รอการดำเนินการ'}
                                 </div>
                                 <div class="booking-card-actions">
                                     ${state.userRole === 'staff' ? `<button data-booking-id="${booking.id}" class="booking-card-btn booking-card-btn-primary evaluate-from-qr-btn">ประเมิน KPI</button>` : ''}
@@ -1917,6 +2208,16 @@
                             state.selectedDate = booking.date;
                             state.selectedBookingId = booking.id;
                             renderModal('evaluate');
+                        });
+                        
+                        modal.querySelector('.check-in-from-qr-btn')?.addEventListener('click', () => {
+                            handleCheckIn(booking.id);
+                            closeModal(modal);
+                        });
+                        
+                        modal.querySelector('.complete-from-qr-btn')?.addEventListener('click', () => {
+                            handleCompleteBooking(booking.id);
+                            closeModal(modal);
                         });
                     }
                 });
@@ -2163,7 +2464,7 @@
             }
 
             if (eta !== originalTime) {
-                showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนโนมัติ`);
+                showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนมัติ`);
             }
 
             const referenceNumber = generateReferenceNumber();
