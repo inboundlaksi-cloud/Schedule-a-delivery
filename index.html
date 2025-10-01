@@ -10,12 +10,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --bg-color: #f8fafc; --text-color: #1e293b; --card-bg: #ffffff;
             --border-color: #e2e8f0; --accent-color: #6366f1; --accent-hover: #4f46e5;
             --success-color: #10b981; --warning-color: #f59e0b; --error-color: #ef4444;
             --today-bg: #fef3c7; --today-text: #92400e; --hover-bg: #f1f5f9;
+            --chat-bg: #f0f9ff; --chat-sent: #dbeafe; --chat-received: #e0e7ff;
         }
         * { font-family: 'Sarabun', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); font-size: 16px; min-height: 100vh; }
@@ -154,6 +156,52 @@
         .kpi-score-high { color: var(--success-color); }
         .kpi-score-medium { color: var(--warning-color); }
         .kpi-score-low { color: var(--error-color); }
+        
+        /* Chat Styles */
+        .chat-container { display: flex; flex-direction: column; height: 500px; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 1rem; background-color: var(--chat-bg); border-radius: 8px; }
+        .chat-message { margin-bottom: 1rem; display: flex; }
+        .chat-message.sent { justify-content: flex-end; }
+        .chat-message.received { justify-content: flex-start; }
+        .message-bubble { max-width: 70%; padding: 0.75rem 1rem; border-radius: 18px; word-wrap: break-word; }
+        .message-bubble.sent { background-color: var(--chat-sent); color: #1e40af; border-bottom-right-radius: 4px; }
+        .message-bubble.received { background-color: var(--chat-received); color: #4338ca; border-bottom-left-radius: 4px; }
+        .message-time { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+        .chat-input-container { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .chat-input { flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 24px; }
+        .chat-send-btn { width: 48px; height: 48px; border-radius: 50%; background-color: var(--accent-color); color: white; display: flex; align-items: center; justify-content: center; }
+        .chat-sidebar { width: 300px; border-right: 1px solid var(--border-color); }
+        .chat-list { height: 500px; overflow-y: auto; }
+        .chat-item { padding: 1rem; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background-color 0.2s; }
+        .chat-item:hover { background-color: var(--hover-bg); }
+        .chat-item.active { background-color: var(--accent-color); color: white; }
+        .chat-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .chat-item-name { font-weight: 600; }
+        .chat-item-time { font-size: 0.75rem; color: #64748b; }
+        .chat-item-preview { font-size: 0.875rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .notification-badge { background-color: var(--error-color); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; }
+        
+        /* User Management Styles */
+        .user-table { width: 100%; border-collapse: collapse; }
+        .user-table th, .user-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .user-table th { background-color: #f8fafc; font-weight: 600; }
+        .user-table tr:hover { background-color: var(--hover-bg); }
+        .role-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .role-admin { background-color: #fef3c7; color: #92400e; }
+        .role-staff { background-color: #dbeafe; color: #1e40af; }
+        .role-viewer { background-color: #e0e7ff; color: #4338ca; }
+        
+        /* Notification Styles */
+        .notification-item { padding: 1rem; border-bottom: 1px solid var(--border-color); }
+        .notification-item.unread { background-color: #f0f9ff; }
+        .notification-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .notification-title { font-weight: 600; }
+        .notification-time { font-size: 0.75rem; color: #64748b; }
+        .notification-content { font-size: 0.875rem; color: #64748b; }
+        .notification-type { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem; }
+        .notification-reminder { background-color: #fef3c7; color: #92400e; }
+        .notification-arrival { background-color: #dbeafe; color: #1e40af; }
+        .notification-message { background-color: #e0e7ff; color: #4338ca; }
     </style>
 </head>
 <body>
@@ -162,7 +210,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -182,10 +230,19 @@
         const GEMINI_API_KEY = "AIzaSyD_d2g0XgVxkClULTmh6dfl_eKIkRuVo7E";
 
         let state = {
-            isLoggedIn: false, userRole: 'guest', currentView: 'calendar',
-            currentDate: new Date(), selectedDate: null, selectedBookingId: null,
-            guestBookingIds: [], data: { bookings: {}, companies: [], holidays: [] },
-            kpiSearchTerm: '', selectedKpiCompany: null
+            isLoggedIn: false, 
+            userRole: 'guest', 
+            currentView: 'calendar',
+            currentDate: new Date(), 
+            selectedDate: null, 
+            selectedBookingId: null,
+            guestBookingIds: [], 
+            data: { bookings: {}, companies: [], holidays: [], users: [], chats: [], notifications: [] },
+            kpiSearchTerm: '', 
+            selectedKpiCompany: null,
+            currentUser: null,
+            activeChat: null,
+            unreadNotifications: 0
         };
         
         const icons = {
@@ -198,7 +255,10 @@
             scanner: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>`,
             manual: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`,
             check: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-            clock: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
+            clock: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+            chat: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>`,
+            users: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`,
+            notifications: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`
         };
 
         const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
@@ -443,6 +503,147 @@
             return { onTime, late, total };
         };
 
+        // ฟังก์ชันสำหรับระบบแจ้งเตือน
+        const createNotification = (type, title, content, userId = null, bookingId = null) => {
+            const notification = {
+                id: Date.now(),
+                type,
+                title,
+                content,
+                userId,
+                bookingId,
+                timestamp: new Date().toISOString(),
+                read: false
+            };
+            
+            if (!state.data.notifications) {
+                state.data.notifications = [];
+            }
+            
+            state.data.notifications.push(notification);
+            
+            // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
+            if (!userId || userId === state.currentUser?.id) {
+                state.unreadNotifications++;
+            }
+            
+            // บันทึกข้อมูล
+            setDoc(docRef, state.data);
+            
+            // แสดงการแจ้งเตือนในเบราว์เซอร์
+            if (Notification.permission === 'granted' && (!userId || userId === state.currentUser?.id)) {
+                new Notification(title, {
+                    body: content,
+                    icon: '/favicon.ico'
+                });
+            }
+            
+            return notification;
+        };
+
+        // ฟังก์ชันสำหรับส่งข้อความในแชท
+        const sendMessage = (chatId, senderId, message) => {
+            if (!state.data.chats) {
+                state.data.chats = [];
+            }
+            
+            // ค้นหาแชทที่มีอยู่
+            let chat = state.data.chats.find(c => c.id === chatId);
+            
+            if (!chat) {
+                // สร้างแชทใหม่ถ้าไม่พบ
+                chat = {
+                    id: chatId,
+                    participants: [senderId],
+                    messages: [],
+                    lastUpdated: new Date().toISOString()
+                };
+                state.data.chats.push(chat);
+            }
+            
+            // เพิ่มข้อความใหม่
+            const newMessage = {
+                id: Date.now(),
+                senderId,
+                content: message,
+                timestamp: new Date().toISOString()
+            };
+            
+            chat.messages.push(newMessage);
+            chat.lastUpdated = new Date().toISOString();
+            
+            // สร้างการแจ้งเตือนสำหรับผู้รับ
+            const otherParticipants = chat.participants.filter(p => p !== senderId);
+            otherParticipants.forEach(participantId => {
+                const participant = state.data.users.find(u => u.id === participantId);
+                if (participant) {
+                    createNotification(
+                        'message',
+                        `ข้อความใหม่จาก ${state.currentUser?.name || 'พนักงาน'}`,
+                        message,
+                        participantId
+                    );
+                }
+            });
+            
+            // บันทึกข้อมูล
+            setDoc(docRef, state.data);
+            
+            return newMessage;
+        };
+
+        // ฟังก์ชันสำหรับตั้งค่าการแจ้งเตือนอัตโนมัติ
+        const setupAutomaticNotifications = () => {
+            // ตรวจสอบการจองที่จะถึงในอีก 1 ชั่วโมง
+            const checkUpcomingBookings = () => {
+                const now = new Date();
+                const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+                
+                Object.entries(state.data.bookings).forEach(([date, bookings]) => {
+                    bookings.forEach(booking => {
+                        const bookingDateTime = new Date(`${date} ${booking.eta}`);
+                        
+                        // ตรวจสอบว่าการจองจะถึงในอีก 1 ชั่วโมงและยังไม่ได้เช็คอิน
+                        if (bookingDateTime > now && bookingDateTime <= oneHourLater && !booking.checkInTime) {
+                            // ตรวจสอบว่ามีการแจ้งเตือนนี้แล้วหรือไม่
+                            const existingNotification = state.data.notifications?.find(n => 
+                                n.type === 'reminder' && 
+                                n.bookingId === booking.id && 
+                                n.timestamp > new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+                            );
+                            
+                            if (!existingNotification) {
+                                createNotification(
+                                    'reminder',
+                                    'แจ้งเตือนการจองคิว',
+                                    `คิวของคุณกำลังจะถึงในอีก 1 ชั่วโมง (${formatThaiDate(date)} ${formatTime24h(booking.eta)})`,
+                                    null,
+                                    booking.id
+                                );
+                            }
+                        }
+                    });
+                });
+            };
+            
+            // ตรวจสอบทุก 15 นาที
+            setInterval(checkUpcomingBookings, 15 * 60 * 1000);
+            
+            // ตรวจสอบทันทีเมื่อโหลดหน้า
+            checkUpcomingBookings();
+        };
+
+        // ฟังก์ชันสำหรับขอสิทธิ์การแจ้งเตือน
+        const requestNotificationPermission = () => {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        console.log('Notification permission granted');
+                    }
+                });
+            }
+        };
+
         const renderModalBase = (content, attachListenersCallback) => {
             const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 fade-in"><div class="card bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl text-left max-h-[90vh] overflow-y-auto">${content}</div></div>`;
             modalContainer.insertAdjacentHTML('beforeend', modalHtml);
@@ -514,10 +715,16 @@
                                 <p class="hero-subtitle">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p>
                             </div>
                             <div class="flex items-center gap-3 mt-4 md:mt-0">
-                                ${state.isLoggedIn ? '<button id="logout-btn" class="btn btn-secondary flex items-center gap-2">ออกจากระบบ</button>' : '<button id="staff-login-btn" class="btn btn-primary flex items-center gap-2">พนักงาน</button>'}
+                                ${state.isLoggedIn ? `<button id="logout-btn" class="btn btn-secondary flex items-center gap-2">ออกจากระบบ</button>` : '<button id="staff-login-btn" class="btn btn-primary flex items-center gap-2">พนักงาน</button>'}
                                 <button id="quick-scan-btn" class="btn btn-success flex items-center gap-2">
                                     ${icons.scanner} สแกน QR
                                 </button>
+                                ${state.isLoggedIn ? `
+                                <button id="notifications-btn" class="btn btn-secondary flex items-center gap-2 relative">
+                                    ${icons.notifications} การแจ้งเตือน
+                                    ${state.unreadNotifications > 0 ? `<span class="notification-badge">${state.unreadNotifications}</span>` : ''}
+                                </button>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
@@ -613,6 +820,9 @@
                 case 'kpi': viewContent = renderStaffNav() + renderKpiView(); break;
                 case 'bookingDetails': viewContent = renderBookingDetails(); break;
                 case 'scanner': viewContent = renderScannerView(); break;
+                case 'chat': viewContent = renderStaffNav() + renderChatView(); break;
+                case 'users': viewContent = renderStaffNav() + renderUsersView(); break;
+                case 'notifications': viewContent = renderStaffNav() + renderNotificationsView(); break;
             }
             
             appContainer.innerHTML = header + `<div class="fade-in">${viewContent}</div>`;
@@ -627,6 +837,9 @@
                     <button data-view="holidays" class="staff-nav-btn ${state.currentView === 'holidays' ? 'active' : ''}">${icons.booking} วันหยุด</button>
                     <button data-view="kpi" class="staff-nav-btn ${state.currentView === 'kpi' ? 'active' : ''}">${icons.kpi} KPI</button>
                     <button data-view="bookingDetails" class="staff-nav-btn ${state.currentView === 'bookingDetails' ? 'active' : ''}">${icons.booking} รายละเอียด</button>
+                    <button data-view="chat" class="staff-nav-btn ${state.currentView === 'chat' ? 'active' : ''}">${icons.chat} แชท</button>
+                    <button data-view="users" class="staff-nav-btn ${state.currentView === 'users' ? 'active' : ''}">${icons.users} ผู้ใช้</button>
+                    <button data-view="notifications" class="staff-nav-btn ${state.currentView === 'notifications' ? 'active' : ''}">${icons.notifications} การแจ้งเตือน</button>
                     <button data-view="scanner" class="staff-nav-btn ${state.currentView === 'scanner' ? 'active' : ''}">${icons.scanner} สแกน QR</button>
                 </div>
             </div>`;
@@ -829,6 +1042,7 @@
                                 ${!booking.checkInTime ? `<button data-booking-id="${booking.id}" class="check-in-btn btn btn-success btn-sm">เช็คอิน</button>` : ''}
                                 ${booking.checkInTime && booking.status !== 'completed' ? `<button data-booking-id="${booking.id}" class="complete-btn btn btn-primary btn-sm">ยืนยันรับคิว</button>` : ''}
                                 <button data-booking-id="${booking.id}" class="evaluate-btn btn btn-primary btn-sm">ประเมิน KPI</button>
+                                <button data-booking-id="${booking.id}" class="chat-btn btn btn-secondary btn-sm">แชท</button>
                                 <button data-booking-id="${booking.id}" class="delete-booking-btn btn btn-danger btn-sm">ลบ</button>
                             </div>
                         ` : ''}
@@ -946,6 +1160,211 @@
                             <button id="manual-input-btn" class="btn btn-secondary">ป้อนเลขกำกับ</button>
                         </div>
                     </div>
+                </div>
+            </main>
+            `;
+        };
+
+        const renderChatView = () => {
+            // รับรายการแชททั้งหมด
+            const chats = state.data.chats || [];
+            
+            // สร้างรายการแชทในแถบด้านข้าง
+            const chatListHtml = chats.map(chat => {
+                // หาข้อความล่าสุด
+                const lastMessage = chat.messages.length > 0 ? chat.messages[chat.messages.length - 1] : null;
+                
+                // หาชื่อผู้ใช้อื่นในแชท
+                const otherParticipantId = chat.participants.find(p => p !== state.currentUser?.id);
+                const otherParticipant = state.data.users.find(u => u.id === otherParticipantId);
+                const participantName = otherParticipant ? otherParticipant.name : 'ไม่ทราบชื่อ';
+                
+                // ตรวจสอบว่ามีข้อความที่ยังไม่ได้อ่านหรือไม่
+                const unreadCount = chat.messages.filter(m => 
+                    m.senderId !== state.currentUser?.id && 
+                    !m.read
+                ).length;
+                
+                return `
+                <div class="chat-item ${state.activeChat === chat.id ? 'active' : ''}" data-chat-id="${chat.id}">
+                    <div class="chat-item-header">
+                        <div class="chat-item-name">${participantName}</div>
+                        <div class="chat-item-time">${lastMessage ? formatTime24h(new Date(lastMessage.timestamp).toLocaleTimeString()) : ''}</div>
+                    </div>
+                    <div class="chat-item-preview">${lastMessage ? lastMessage.content : 'ยังไม่มีข้อความ'}</div>
+                    ${unreadCount > 0 ? `<div class="notification-badge">${unreadCount}</div>` : ''}
+                </div>
+                `;
+            }).join('');
+            
+            // สร้างหน้าต่างแชท
+            let chatMessagesHtml = '';
+            let chatInputHtml = '';
+            
+            if (state.activeChat) {
+                const activeChat = chats.find(c => c.id === state.activeChat);
+                
+                if (activeChat) {
+                    // สร้างรายการข้อความ
+                    chatMessagesHtml = activeChat.messages.map(message => {
+                        const isSent = message.senderId === state.currentUser?.id;
+                        const sender = state.data.users.find(u => u.id === message.senderId);
+                        const senderName = sender ? sender.name : 'ไม่ทราบชื่อ';
+                        
+                        return `
+                        <div class="chat-message ${isSent ? 'sent' : 'received'}">
+                            <div class="message-bubble">
+                                <div>${message.content}</div>
+                                <div class="message-time">${formatTime24h(new Date(message.timestamp).toLocaleTimeString())}</div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('');
+                    
+                    // สร้างช่องป้อนข้อความ
+                    chatInputHtml = `
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-message-input" class="chat-input" placeholder="พิมพ์ข้อความ...">
+                        <button id="send-message-btn" class="chat-send-btn">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    `;
+                }
+            } else {
+                chatMessagesHtml = '<div class="flex items-center justify-center h-full text-gray-500">เลือกแชทเพื่อเริ่มสนทนา</div>';
+            }
+            
+            return `
+            <div class="mb-4">
+                <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    กลับไปยัง Dashboard
+                </button>
+            </div>
+            <main class="flex gap-4">
+                <div class="chat-sidebar card">
+                    <h3 class="p-4 font-semibold border-b">รายการแชท</h3>
+                    <div class="chat-list">
+                        ${chatListHtml || '<div class="p-4 text-center text-gray-500">ไม่มีแชท</div>'}
+                    </div>
+                </div>
+                <div class="flex-1 card">
+                    <div class="chat-container">
+                        <div class="chat-messages">
+                            ${chatMessagesHtml}
+                        </div>
+                        ${chatInputHtml}
+                    </div>
+                </div>
+            </main>
+            `;
+        };
+
+        const renderUsersView = () => {
+            const users = state.data.users || [];
+            
+            const usersHtml = users.map(user => {
+                const roleClass = user.role === 'admin' ? 'role-admin' : 
+                                 user.role === 'staff' ? 'role-staff' : 'role-viewer';
+                
+                return `
+                <tr>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td><span class="role-badge ${roleClass}">${user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'staff' ? 'พนักงาน' : 'ผู้ดู'}</span></td>
+                    <td>${user.lastLogin ? formatDateTime(user.lastLogin) : 'ไม่เคยเข้าสู่ระบบ'}</td>
+                    <td>
+                        <button data-user-id="${user.id}" class="edit-user-btn btn btn-sm btn-secondary">แก้ไข</button>
+                        <button data-user-id="${user.id}" class="delete-user-btn btn btn-sm btn-danger">ลบ</button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+            
+            return `
+            <div class="mb-4">
+                <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    กลับไปยัง Dashboard
+                </button>
+            </div>
+            <main>
+                <div class="mb-6 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">จัดการผู้ใช้</h2>
+                    <button id="add-user-btn" class="btn btn-primary">เพิ่มผู้ใช้</button>
+                </div>
+                <div class="card overflow-hidden">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>ชื่อ</th>
+                                <th>อีเมล</th>
+                                <th>บทบาท</th>
+                                <th>เข้าสู่ระบบครั้งล่าสุด</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${usersHtml || '<tr><td colspan="5" class="text-center py-4">ไม่มีผู้ใช้</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+            `;
+        };
+
+        const renderNotificationsView = () => {
+            const notifications = state.data.notifications || [];
+            
+            // จัดเรียงการแจ้งเตือนตามเวลา (ล่าสุดขึ้นก่อน)
+            const sortedNotifications = [...notifications].sort((a, b) => 
+                new Date(b.timestamp) - new Date(a.timestamp)
+            );
+            
+            const notificationsHtml = sortedNotifications.map(notification => {
+                const typeClass = notification.type === 'reminder' ? 'notification-reminder' : 
+                                 notification.type === 'arrival' ? 'notification-arrival' : 'notification-message';
+                const typeLabel = notification.type === 'reminder' ? 'การแจ้งเตือน' : 
+                                 notification.type === 'arrival' ? 'การมาถึง' : 'ข้อความ';
+                
+                return `
+                <div class="notification-item ${notification.read ? '' : 'unread'}" data-notification-id="${notification.id}">
+                    <div class="notification-header">
+                        <div>
+                            <span class="notification-type ${typeClass}">${typeLabel}</span>
+                            <span class="notification-title">${notification.title}</span>
+                        </div>
+                        <div class="notification-time">${formatDateTime(notification.timestamp)}</div>
+                    </div>
+                    <div class="notification-content">${notification.content}</div>
+                    ${!notification.read ? '<button class="mark-read-btn btn btn-sm btn-secondary mt-2">ทำเครื่องหมายว่าอ่านแล้ว</button>' : ''}
+                </div>
+                `;
+            }).join('');
+            
+            return `
+            <div class="mb-4">
+                <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    กลับไปยัง Dashboard
+                </button>
+            </div>
+            <main>
+                <div class="mb-6 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">การแจ้งเตือน</h2>
+                    <button id="mark-all-read-btn" class="btn btn-secondary">ทำเครื่องหมายว่าอ่านทั้งหมด</button>
+                </div>
+                <div class="card">
+                    ${notificationsHtml || '<div class="p-4 text-center text-gray-500">ไม่มีการแจ้งเตือน</div>'}
                 </div>
             </main>
             `;
@@ -1140,6 +1559,10 @@
                 state.currentView = 'scanner';
                 render();
             });
+            document.getElementById('notifications-btn')?.addEventListener('click', () => {
+                state.currentView = 'notifications';
+                render();
+            });
             document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { state.currentView = e.currentTarget.dataset.view; render(); }));
             
             document.getElementById('back-to-calendar-btn')?.addEventListener('click', () => {
@@ -1179,6 +1602,141 @@
                 btn.addEventListener('click', (e) => {
                     const companyName = e.currentTarget.dataset.company;
                     renderCompanyKpiDetails(companyName);
+                });
+            });
+            
+            // Chat listeners
+            if (state.currentView === 'chat') {
+                document.querySelectorAll('.chat-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const chatId = e.currentTarget.dataset.chatId;
+                        state.activeChat = chatId;
+                        
+                        // ทำเครื่องหมายว่าอ่านแล้วทั้งหมดในแชทนี้
+                        const chat = state.data.chats.find(c => c.id === chatId);
+                        if (chat) {
+                            chat.messages.forEach(message => {
+                                if (message.senderId !== state.currentUser?.id) {
+                                    message.read = true;
+                                }
+                            });
+                            
+                            // บันทึกข้อมูล
+                            setDoc(docRef, state.data);
+                            
+                            // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
+                            updateUnreadNotifications();
+                        }
+                        
+                        render();
+                    });
+                });
+                
+                document.getElementById('send-message-btn')?.addEventListener('click', () => {
+                    const messageInput = document.getElementById('chat-message-input');
+                    const message = messageInput.value.trim();
+                    
+                    if (message && state.activeChat) {
+                        sendMessage(state.activeChat, state.currentUser?.id, message);
+                        messageInput.value = '';
+                        render();
+                    }
+                });
+                
+                document.getElementById('chat-message-input')?.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const message = e.target.value.trim();
+                        
+                        if (message && state.activeChat) {
+                            sendMessage(state.activeChat, state.currentUser?.id, message);
+                            e.target.value = '';
+                            render();
+                        }
+                    }
+                });
+            }
+            
+            // Users view listeners
+            if (state.currentView === 'users') {
+                document.getElementById('add-user-btn')?.addEventListener('click', () => renderAddUserModal());
+                
+                document.querySelectorAll('.edit-user-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const userId = e.currentTarget.dataset.userId;
+                        renderEditUserModal(userId);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-user-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const userId = e.currentTarget.dataset.userId;
+                        showConfirm('คุณต้องการลบผู้ใช้นี้ใช่หรือไม่?', () => {
+                            handleDeleteUser(userId);
+                        });
+                    });
+                });
+            }
+            
+            // Notifications view listeners
+            if (state.currentView === 'notifications') {
+                document.getElementById('mark-all-read-btn')?.addEventListener('click', () => {
+                    state.data.notifications.forEach(notification => {
+                        notification.read = true;
+                    });
+                    
+                    state.unreadNotifications = 0;
+                    setDoc(docRef, state.data);
+                    render();
+                });
+                
+                document.querySelectorAll('.mark-read-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const notificationId = parseInt(e.currentTarget.parentElement.dataset.notificationId);
+                        const notification = state.data.notifications.find(n => n.id === notificationId);
+                        
+                        if (notification) {
+                            notification.read = true;
+                            updateUnreadNotifications();
+                            setDoc(docRef, state.data);
+                            render();
+                        }
+                    });
+                });
+            }
+            
+            // Daily queue chat button
+            document.querySelectorAll('.chat-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const bookingId = e.currentTarget.dataset.bookingId;
+                    const booking = findBookingById(bookingId);
+                    
+                    if (booking) {
+                        // ค้นหาแชทที่มีอยู่สำหรับบริษัทนี้
+                        let chat = state.data.chats.find(c => 
+                            c.participants.includes(booking.companyName)
+                        );
+                        
+                        if (!chat) {
+                            // สร้างแชทใหม่ถ้าไม่พบ
+                            chat = {
+                                id: Date.now().toString(),
+                                participants: [booking.companyName, state.currentUser?.id],
+                                messages: [],
+                                lastUpdated: new Date().toISOString()
+                            };
+                            
+                            if (!state.data.chats) {
+                                state.data.chats = [];
+                            }
+                            
+                            state.data.chats.push(chat);
+                            setDoc(docRef, state.data);
+                        }
+                        
+                        state.activeChat = chat.id;
+                        state.currentView = 'chat';
+                        render();
+                    }
                 });
             });
             
@@ -1460,6 +2018,15 @@
                 // Update the original booking object in the state
                 bookingToUpdate.checkInTime = new Date().toISOString();
                 
+                // สร้างการแจ้งเตือนเมื่อซัพพลายเออร์มาถึง
+                createNotification(
+                    'arrival',
+                    'ซัพพลายเออร์มาถึงแล้ว',
+                    `${bookingToUpdate.companyName} มาถึงคลังสินค้าแล้วเวลา ${formatDateTime(new Date())}`,
+                    null,
+                    bookingId
+                );
+                
                 // Save to database
                 await setDoc(docRef, state.data);
                 
@@ -1726,6 +2293,174 @@
             renderModalBase(modalContent, modal => {
                 modal.querySelector('#import-holidays-form').addEventListener('submit', handleImportPublicHolidays);
             });
+        };
+
+        const renderAddUserModal = () => {
+            const modalContent = `
+                <h3 class="text-xl font-bold mb-4">เพิ่มผู้ใช้</h3>
+                <form id="user-form" class="space-y-4">
+                    <div>
+                        <label class="text-sm font-medium">ชื่อ</label>
+                        <input type="text" id="user-name" placeholder="ชื่อผู้ใช้" class="input w-full mt-1" required>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">อีเมล</label>
+                        <input type="email" id="user-email" placeholder="อีเมล" class="input w-full mt-1" required>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">รหัสผ่าน</label>
+                        <input type="password" id="user-password" placeholder="รหัสผ่าน" class="input w-full mt-1" required>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">บทบาท</label>
+                        <select id="user-role" class="input w-full mt-1" required>
+                            <option value="viewer">ผู้ดู</option>
+                            <option value="staff">พนักงาน</option>
+                            <option value="admin">ผู้ดูแลระบบ</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    </div>
+                </form>
+            `;
+            
+            renderModalBase(modalContent, modal => {
+                modal.querySelector('#user-form').addEventListener('submit', handleAddUser);
+            });
+        };
+
+        const renderEditUserModal = (userId) => {
+            const user = state.data.users.find(u => u.id === userId);
+            
+            if (!user) {
+                showAlert('ไม่พบข้อมูลผู้ใช้');
+                return;
+            }
+            
+            const modalContent = `
+                <h3 class="text-xl font-bold mb-4">แก้ไขผู้ใช้</h3>
+                <form id="user-form" class="space-y-4">
+                    <input type="hidden" id="user-id" value="${user.id}">
+                    <div>
+                        <label class="text-sm font-medium">ชื่อ</label>
+                        <input type="text" id="user-name" value="${user.name}" placeholder="ชื่อผู้ใช้" class="input w-full mt-1" required>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">อีเมล</label>
+                        <input type="email" id="user-email" value="${user.email}" placeholder="อีเมล" class="input w-full mt-1" required>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">รหัสผ่าน (ปล่อยว่างหากไม่ต้องการเปลี่ยน)</label>
+                        <input type="password" id="user-password" placeholder="รหัสผ่านใหม่" class="input w-full mt-1">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">บทบาท</label>
+                        <select id="user-role" class="input w-full mt-1" required>
+                            <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>ผู้ดู</option>
+                            <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>พนักงาน</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>ผู้ดูแลระบบ</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึก</button>
+                    </div>
+                </form>
+            `;
+            
+            renderModalBase(modalContent, modal => {
+                modal.querySelector('#user-form').addEventListener('submit', handleEditUser);
+            });
+        };
+
+        const handleAddUser = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            
+            const newUser = {
+                id: Date.now().toString(),
+                name: form.querySelector('#user-name').value,
+                email: form.querySelector('#user-email').value,
+                password: form.querySelector('#user-password').value,
+                role: form.querySelector('#user-role').value,
+                createdAt: new Date().toISOString(),
+                lastLogin: null
+            };
+            
+            if (!state.data.users) {
+                state.data.users = [];
+            }
+            
+            state.data.users.push(newUser);
+            
+            await setDoc(docRef, state.data);
+            
+            closeModal(form.closest('.modal-backdrop'));
+            showSuccessAnimation('เพิ่มผู้ใช้สำเร็จแล้ว');
+            render();
+        };
+
+        const handleEditUser = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const userId = form.querySelector('#user-id').value;
+            
+            const userIndex = state.data.users.findIndex(u => u.id === userId);
+            
+            if (userIndex === -1) {
+                showAlert('ไม่พบข้อมูลผู้ใช้');
+                return;
+            }
+            
+            const updatedUser = {
+                ...state.data.users[userIndex],
+                name: form.querySelector('#user-name').value,
+                email: form.querySelector('#user-email').value,
+                role: form.querySelector('#user-role').value
+            };
+            
+            const newPassword = form.querySelector('#user-password').value;
+            if (newPassword) {
+                updatedUser.password = newPassword;
+            }
+            
+            state.data.users[userIndex] = updatedUser;
+            
+            await setDoc(docRef, state.data);
+            
+            closeModal(form.closest('.modal-backdrop'));
+            showSuccessAnimation('แก้ไขผู้ใช้สำเร็จแล้ว');
+            render();
+        };
+
+        const handleDeleteUser = async (userId) => {
+            try {
+                const userIndex = state.data.users.findIndex(u => u.id === userId);
+                
+                if (userIndex === -1) {
+                    showAlert('ไม่พบข้อมูลผู้ใช้');
+                    return;
+                }
+                
+                state.data.users.splice(userIndex, 1);
+                
+                await setDoc(docRef, state.data);
+                
+                showAlert('ลบผู้ใช้สำเร็จแล้ว');
+                render();
+                
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showAlert('เกิดข้อผิดพลาดในการลบผู้ใช้ กรุณาลองใหม่');
+            }
+        };
+
+        const updateUnreadNotifications = () => {
+            state.unreadNotifications = state.data.notifications.filter(n => 
+                !n.read && (!n.userId || n.userId === state.currentUser?.id)
+            ).length;
         };
 
         const handleAddHoliday = async (e) => {
@@ -2569,8 +3304,49 @@
             loadingIndicator.style.display = 'none';
         };
 
-        const handleLogin = (e) => { e.preventDefault(); if (document.getElementById('username').value.trim() === 'inboundlaksi') { state.isLoggedIn = true, state.userRole = 'staff', state.currentView = 'dashboard'; closeModal(); render(); } else { showAlert('ชื่อผู้ใช้ไม่ถูกต้อง'); } };
-        const handleLogout = () => { state.isLoggedIn = false, state.userRole = 'guest', state.currentView = 'calendar'; render(); };
+        const handleLogin = (e) => { 
+            e.preventDefault(); 
+            const username = document.getElementById('username').value.trim();
+            
+            // ตรวจสอบว่าเป็นผู้ใช้ที่มีอยู่ในระบบหรือไม่
+            const user = state.data.users?.find(u => u.email === username || u.name === username);
+            
+            if (user) {
+                // อัปเดตเวลาเข้าสู่ระบบล่าสุด
+                user.lastLogin = new Date().toISOString();
+                setDoc(docRef, state.data);
+                
+                state.isLoggedIn = true;
+                state.userRole = user.role;
+                state.currentUser = user;
+                state.currentView = 'dashboard';
+                closeModal();
+                render();
+            } else if (username === 'inboundlaksi') {
+                // ยังคงการเข้าสู่ระบบแบบเก่าสำหรับความเข้ากันได้
+                state.isLoggedIn = true;
+                state.userRole = 'staff';
+                state.currentUser = {
+                    id: 'default',
+                    name: 'พนักงาน',
+                    email: 'inboundlaksi',
+                    role: 'staff'
+                };
+                state.currentView = 'dashboard';
+                closeModal();
+                render();
+            } else {
+                showAlert('ชื่อผู้ใช้ไม่ถูกต้อง');
+            }
+        };
+        
+        const handleLogout = () => { 
+            state.isLoggedIn = false;
+            state.userRole = 'guest';
+            state.currentUser = null;
+            state.currentView = 'calendar';
+            render();
+        };
         
         const handleEvaluationSubmit = async (e) => {
             e.preventDefault();
@@ -2645,11 +3421,37 @@
                     if (!state.data.holidays) {
                         state.data.holidays = [];
                     }
+                    if (!state.data.users) {
+                        state.data.users = [];
+                    }
+                    if (!state.data.chats) {
+                        state.data.chats = [];
+                    }
+                    if (!state.data.notifications) {
+                        state.data.notifications = [];
+                    }
                 } else {
-                    const initialData = { companies: initialCompanies, bookings: {}, holidays: [] };
+                    const initialData = { 
+                        companies: initialCompanies, 
+                        bookings: {}, 
+                        holidays: [],
+                        users: [],
+                        chats: [],
+                        notifications: []
+                    };
                     setDoc(docRef, initialData); 
                 }
                 state.guestBookingIds = JSON.parse(sessionStorage.getItem('guestBookingIds')) || [];
+                
+                // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
+                updateUnreadNotifications();
+                
+                // ตั้งค่าระบบแจ้งเตือนอัตโนมัติ
+                setupAutomaticNotifications();
+                
+                // ขอสิทธิ์การแจ้งเตือน
+                requestNotificationPermission();
+                
                 render();
             });
 
