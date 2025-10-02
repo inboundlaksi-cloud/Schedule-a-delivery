@@ -199,6 +199,7 @@
         .notification-reminder { background-color: #fef3c7; color: #92400e; }
         .notification-arrival { background-color: #dbeafe; color: #1e40af; }
         .notification-message { background-color: #e0e7ff; color: #4338ca; }
+        .notification-booking { background-color: #d1fae5; color: #065f46; }
         
         /* Holiday name styling */
         .holiday-name {
@@ -223,6 +224,29 @@
             justify-content: center;
             font-size: 12px;
             font-weight: bold;
+        }
+        
+        /* Dashboard item clickable */
+        .dashboard-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .dashboard-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dashboard-item-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .dashboard-item-title span:last-child {
+            font-size: 0.875rem;
+            color: var(--accent-color);
+            font-weight: 500;
         }
     </style>
 </head>
@@ -816,8 +840,18 @@
             const todayBookings = state.data.bookings[todayStr] || [];
             let next7daysBookings = 0;
             for(let i=1; i<=7; i++) { const date = new Date(); date.setDate(date.getDate() + i); next7daysBookings += (state.data.bookings[formatDate(date)] || []).length; }
+            
+            // แก้ไขส่วนแสดงรายการคิววันนี้ให้สามารถคลิกเพื่อดูรายละเอียดได้
             const queueItemsHtml = todayBookings.length > 0
-                ? todayBookings.map(b => `<li class="flex justify-between items-center p-2 rounded hover:bg-violet-50"><span>${formatTime24h(b.eta)} - ${b.companyName}</span><span class="font-mono text-sm">${b.licensePlate}</span></li>`).join('')
+                ? todayBookings.map(b => `
+                    <li class="flex justify-between items-center p-2 rounded hover:bg-violet-50 cursor-pointer dashboard-item" data-booking-id="${b.id}">
+                        <div class="flex items-center gap-2">
+                            <span>${formatTime24h(b.eta)} - ${b.companyName}</span>
+                            <span class="font-mono text-sm">${b.licensePlate}</span>
+                        </div>
+                        <span class="text-xs text-violet-600">ดูรายละเอียด</span>
+                    </li>
+                `).join('')
                 : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
 
             // Get attendance statistics
@@ -845,20 +879,38 @@
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200">
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200 dashboard-item" data-type="today">
                     <div class="p-3 rounded-full bg-violet-100">${icons.queue}</div>
-                    <div><h3 class="font-semibold text-violet-800">คิวสำหรับวันนี้</h3><p class="text-3xl font-bold text-violet-600">${todayBookings.length}<span class="text-base font-medium ml-1">คิว</span></p></div>
+                    <div class="dashboard-item-title">
+                        <h3 class="font-semibold text-violet-800">คิวสำหรับวันนี้</h3>
+                        <p class="text-3xl font-bold text-violet-600">${todayBookings.length}<span class="text-base font-medium ml-1">คิว</span></p>
+                    </div>
+                    <span class="text-xs text-violet-600">ดูทั้งหมด</span>
                 </div>
-                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-green-50 border-green-200">
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-green-50 border-green-200 dashboard-item" data-type="next7days">
                     <div class="p-3 rounded-full bg-green-100">${icons.calendar}</div>
-                    <div><h3 class="font-semibold text-green-800">คิวใน 7 วันข้างหน้า</h3><p class="text-3xl font-bold text-green-600">${next7daysBookings}<span class="text-base font-medium ml-1">คิว</span></p></div>
+                    <div class="dashboard-item-title">
+                        <h3 class="font-semibold text-green-800">คิวใน 7 วันข้างหน้า</h3>
+                        <p class="text-3xl font-bold text-green-600">${next7daysBookings}<span class="text-base font-medium ml-1">คิว</span></p>
+                    </div>
+                    <span class="text-xs text-green-600">ดูทั้งหมด</span>
                 </div>
-                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-sky-50 border-sky-200">
+                <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-sky-50 border-sky-200 dashboard-item" data-type="companies">
                     <div class="p-3 rounded-full bg-sky-100">${icons.company}</div>
-                    <div><h3 class="font-semibold text-sky-800">บริษัทซัพพลายเออร์</h3><p class="text-3xl font-bold text-sky-600">${state.data.companies.length}<span class="text-base font-medium ml-1">บริษัท</span></p></div>
+                    <div class="dashboard-item-title">
+                        <h3 class="font-semibold text-sky-800">บริษัทซัพพลายเออร์</h3>
+                        <p class="text-3xl font-bold text-sky-600">${state.data.companies.length}<span class="text-base font-medium ml-1">บริษัท</span></p>
+                    </div>
+                    <span class="text-xs text-sky-600">ดูทั้งหมด</span>
                 </div>
             </div>
-            <div class="card p-5 rounded-xl shadow-lg mt-6"><h3 class="text-xl font-semibold mb-4">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3><ul class="space-y-2">${queueItemsHtml}</ul></div>`;
+            <div class="card p-5 rounded-xl shadow-lg mt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3>
+                    <button id="view-all-today-btn" class="btn btn-primary btn-sm">ดูทั้งหมด</button>
+                </div>
+                <ul class="space-y-2">${queueItemsHtml}</ul>
+            </div>`;
         };
         
         const renderCalendar = () => {
@@ -1198,9 +1250,13 @@
             
             const notificationsHtml = sortedNotifications.map(notification => {
                 const typeClass = notification.type === 'reminder' ? 'notification-reminder' : 
-                                 notification.type === 'arrival' ? 'notification-arrival' : 'notification-message';
+                                 notification.type === 'arrival' ? 'notification-arrival' : 
+                                 notification.type === 'booking' ? 'notification-booking' :
+                                 'notification-message';
                 const typeLabel = notification.type === 'reminder' ? 'การแจ้งเตือน' : 
-                                 notification.type === 'arrival' ? 'การมาถึง' : 'ข้อความ';
+                                 notification.type === 'arrival' ? 'การมาถึง' : 
+                                 notification.type === 'booking' ? 'การจองคิว' :
+                                 'ข้อความ';
                 
                 return `
                 <div class="notification-item ${notification.read ? '' : 'unread'}" data-notification-id="${notification.id}">
@@ -1517,6 +1573,44 @@
                             setDoc(docRef, state.data);
                             render();
                         }
+                    });
+                });
+            }
+            
+            // Dashboard item listeners
+            if (state.currentView === 'dashboard') {
+                // Dashboard cards click listeners
+                document.querySelectorAll('.dashboard-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const type = e.currentTarget.dataset.type;
+                        
+                        if (type === 'today') {
+                            state.selectedDate = formatDate(new Date());
+                            state.currentView = 'dailyQueue';
+                            render();
+                        } else if (type === 'next7days') {
+                            state.currentView = 'bookingDetails';
+                            render();
+                        } else if (type === 'companies') {
+                            state.currentView = 'kpi';
+                            render();
+                        }
+                    });
+                });
+                
+                // View all today bookings button
+                document.getElementById('view-all-today-btn')?.addEventListener('click', () => {
+                    state.selectedDate = formatDate(new Date());
+                    state.currentView = 'dailyQueue';
+                    render();
+                });
+                
+                // Individual booking items in dashboard
+                document.querySelectorAll('.dashboard-item[data-booking-id]').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const bookingId = e.currentTarget.dataset.bookingId;
+                        state.selectedBookingId = bookingId;
+                        renderModal('bookingDetails', { bookingId });
                     });
                 });
             }
@@ -2539,6 +2633,15 @@
                         }
                         state.data.bookings[dateStr].push(newBooking);
                         state.data.bookings[dateStr].sort((a,b) => a.eta.localeCompare(b.eta));
+                        
+                        // เพิ่มการแจ้งเตือนเมื่อมีการจองคิวใหม่
+                        createNotification(
+                            'booking',
+                            'มีการจองคิวใหม่',
+                            `${newBooking.companyName} ได้จองคิวสำหรับวันที่ ${formatThaiDate(dateStr)} เวลา ${formatTime24h(eta)}`,
+                            null,
+                            newBooking.id
+                        );
                         
                         await setDoc(docRef, state.data);
 
