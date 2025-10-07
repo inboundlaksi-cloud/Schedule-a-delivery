@@ -394,6 +394,30 @@ const requestNotificationPermission = () => {
     }
 };
 
+// ฟังก์ชันตรวจสอบว่าวันที่ผ่านไปแล้วหรือไม่
+const isPastDate = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    return checkDate < today;
+};
+
+// ฟังก์ชันตรวจสอบว่าสามารถยกเลิกคิวได้หรือไม่ (ไม่เกิน 1 วันก่อนวันส่งสินค้า)
+const canCancelBooking = (bookingDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const booking = new Date(bookingDate);
+    booking.setHours(0, 0, 0, 0);
+    
+    // คำนวณความต่างของวัน (มิลลิวินาที)
+    const diffTime = booking - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // สามารถยกเลิกได้ถ้าเหลือเวลาอย่างน้อย 1 วัน
+    return diffDays >= 1;
+};
+
 const renderModalBase = (content, attachListenersCallback) => {
     const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 fade-in"><div class="card bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl text-left max-h-[90vh] overflow-y-auto">${content}</div></div>`;
     modalContainer.insertAdjacentHTML('beforeend', modalHtml);
@@ -727,6 +751,7 @@ const renderCalendar = () => {
         const isFull = checkDailyQueueLimit(dateStr);
         const holiday = isHoliday(currentDateObj);
         const dayOfWeek = currentDateObj.getDay();
+        const isPast = isPastDate(currentDateObj);
         
         let dayClass = 'calendar-day cursor-pointer p-2 border border-violet-100 flex flex-col rounded-md';
         let dayContent = `<span class="font-bold">${day}</span>`;
@@ -742,6 +767,8 @@ const renderCalendar = () => {
             dayClass += ' today';
         } else if (isFull) {
             dayClass += ' bg-red-50';
+        } else if (isPast) {
+            dayClass += ' bg-gray-100 text-gray-400 cursor-not-allowed';
         }
         
         if (hasBookings && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
@@ -763,6 +790,10 @@ const renderCalendar = () => {
         
         if (isFull && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
             dayContent += '<span class="text-xs text-red-500 mt-auto">เต็ม</span>';
+        }
+        
+        if (isPast && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
+            dayContent += '<span class="text-xs text-gray-500 mt-auto">ผ่านไปแล้ว</span>';
         }
         
         daysHtml += `<div data-date="${dateStr}" class="${dayClass}">${dayContent}</div>`;
@@ -796,6 +827,7 @@ const renderDailyQueue = () => {
     const dateStr = state.selectedDate;
     const bookings = state.data.bookings[dateStr] || [];
     const isFull = checkDailyQueueLimit(dateStr);
+    const isPast = isPastDate(new Date(dateStr));
     
     const queueItemsHtml = bookings.length > 0
         ? bookings.map((booking, index) => {
@@ -850,8 +882,9 @@ const renderDailyQueue = () => {
                 <button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800">&lt; กลับไป</button>
                 <h2 class="text-xl font-semibold">${formatThaiDate(dateStr)}</h2>
                 <div class="flex gap-2">
-                    ${state.userRole === 'guest' && !isFull ? '<button id="book-slot-btn" class="btn btn-primary">จองคิวลงสินค้า</button>' : ''}
+                    ${state.userRole === 'guest' && !isFull && !isPast ? '<button id="book-slot-btn" class="btn btn-primary">จองคิวลงสินค้า</button>' : ''}
                     ${isFull ? '<span class="text-red-500 font-semibold">คิวเต็ม (20 คิว/วัน)</span>' : ''}
+                    ${isPast ? '<span class="text-gray-500 font-semibold">วันที่ผ่านไปแล้ว ไม่สามารถจองได้</span>' : ''}
                 </div>
             </div>
             <div class="space-y-4">${queueItemsHtml}</div>
@@ -953,6 +986,9 @@ const renderMyQueueView = () => {
                 statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
             }
             
+            // ตรวจสอบว่าสามารถยกเลิกคิวได้หรือไม่
+            const canCancel = canCancelBooking(booking.date);
+            
             return `
             <div class="card p-4 rounded-lg shadow-sm mb-4 bg-violet-50 border-l-4 border-violet-500">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
@@ -971,6 +1007,7 @@ const renderMyQueueView = () => {
                 <div class="mt-2">
                     <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
                     <button data-booking-id="${booking.id}" class="view-qr-btn text-green-500 text-sm hover:text-green-700 ml-2">ดู QR Code</button>
+                    ${!booking.checkInTime && canCancel ? `<button data-booking-id="${booking.id}" class="cancel-booking-btn text-red-500 text-sm hover:text-red-700 ml-2">ยกเลิกคิว</button>` : ''}
                 </div>
             </div>
         `}).join('')
@@ -988,6 +1025,17 @@ const renderMyQueueView = () => {
     <main>
         <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 class="text-2xl font-bold">คิวของฉัน</h2>
+        </div>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div>
+                    <h3 class="font-semibold text-yellow-800">คำแนะนำ</h3>
+                    <p class="text-sm text-yellow-700 mt-1">หากไม่สามารถกดดู "คิวของฉัน" ได้ ให้เข้าผ่านมือถือเครื่องที่ลงทะเบียนหรือเบาร์เซอร์ PC เครื่องเดิม</p>
+                </div>
+            </div>
         </div>
         <div class="space-y-4">${bookingsHtml}</div>
     </main>`;
@@ -1583,6 +1631,12 @@ const attachAllListeners = () => {
                 renderModal('qrCode', { booking });
             }
         }));
+        
+        // เพิ่ม event listener สำหรับปุ่มยกเลิกคิว
+        document.querySelectorAll('.cancel-booking-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+            const bookingId = e.currentTarget.dataset.bookingId;
+            renderCancelBookingModal(bookingId);
+        }));
     }
     
     if (state.currentView === 'calendar') attachCalendarListeners();
@@ -1631,6 +1685,12 @@ const attachCalendarListeners = () => {
             const holiday = isHoliday(dateObj);
             if (holiday && holiday.type !== 'weekend') {
                 renderHolidayDetailsModal(holiday, clickedDate);
+                return;
+            }
+            
+            // ตรวจสอบว่าเป็นวันที่ผ่านไปแล้วหรือไม่
+            if (isPastDate(dateObj)) {
+                showAlert(`วันที่ ${formatThaiDate(clickedDate)} เป็นวันที่ผ่านไปแล้ว\nไม่สามารถจองคิวได้`);
                 return;
             }
             
@@ -1878,6 +1938,93 @@ const handleCompleteBooking = async (bookingId) => {
     } catch (error) {
         console.error('Error completing booking:', error);
         showAlert('เกิดข้อผิดพลาดในการยืนยันการรับคิว กรุณาลองใหม่');
+    }
+};
+
+// ฟังก์ชันสำหรับแสดง modal ยกเลิกคิว
+const renderCancelBookingModal = (bookingId) => {
+    const booking = findBookingById(bookingId);
+    if (!booking) {
+        showAlert('ไม่พบข้อมูลการจองคิว');
+        return;
+    }
+    
+    const modalContent = `
+        <h3 class="text-xl font-bold mb-4">ยกเลิกคิว</h3>
+        <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="text-sm text-yellow-800">คุณกำลังจะยกเลิกคิวสำหรับวันที่ ${formatThaiDate(booking.date)} เวลา ${formatTime24h(booking.eta)}</p>
+            <p class="text-sm text-yellow-800 mt-1">บริษัท: ${booking.companyName}</p>
+        </div>
+        <form id="cancel-booking-form" class="space-y-4">
+            <div>
+                <label class="text-sm font-medium">เหตุผลในการยกเลิกคิว <span class="text-red-500">*</span></label>
+                <textarea id="cancel-reason" placeholder="กรุณาระบุเหตุผลในการยกเลิกคิว" rows="4" class="input w-full mt-1" required></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-4">
+                <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                <button type="submit" class="btn btn-danger">ยืนยันการยกเลิก</button>
+            </div>
+        </form>
+    `;
+    
+    renderModalBase(modalContent, modal => {
+        modal.querySelector('#cancel-booking-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const reason = modal.querySelector('#cancel-reason').value.trim();
+            
+            if (!reason) {
+                showAlert('กรุณาระบุเหตุผลในการยกเลิกคิว');
+                return;
+            }
+            
+            handleCancelBooking(bookingId, reason);
+            closeModal(modal);
+        });
+    });
+};
+
+// ฟังก์ชันสำหรับยกเลิกคิว
+const handleCancelBooking = async (bookingId, reason) => {
+    try {
+        let bookingToCancel = null;
+        let bookingDate = null;
+        
+        for (const date in state.data.bookings) {
+            const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
+            if (bookingIndex !== -1) {
+                bookingToCancel = state.data.bookings[date][bookingIndex];
+                bookingDate = date;
+                break;
+            }
+        }
+        
+        if (!bookingToCancel) {
+            showAlert('ไม่พบข้อมูลการจองคิวที่ต้องการยกเลิก');
+            return;
+        }
+        
+        // บันทึกข้อมูลการยกเลิก
+        bookingToCancel.cancelled = true;
+        bookingToCancel.cancelledAt = new Date().toISOString();
+        bookingToCancel.cancelReason = reason;
+        
+        // สร้างการแจ้งเตือนให้พนักงาน
+        createNotification(
+            'booking',
+            'มีการยกเลิกคิว',
+            `${bookingToCancel.companyName} ได้ยกเลิกคิวสำหรับวันที่ ${formatThaiDate(bookingDate)} เวลา ${formatTime24h(bookingToCancel.eta)}\nเหตุผล: ${reason}`,
+            null,
+            bookingId
+        );
+        
+        await setDoc(docRef, state.data);
+        
+        showSuccessAnimation('ยกเลิกคิวสำเร็จแล้ว');
+        render();
+        
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        showAlert('เกิดข้อผิดพลาดในการยกเลิกคิว กรุณาลองใหม่');
     }
 };
 
@@ -3282,7 +3429,7 @@ const handleGenerateSummary = async (e) => {
          ${kpiScoresText}
          - ความคิดเห็นเพิ่มเติมจากพนักงาน: ${staffComments || 'ไม่มี'}
 
-         ให้สรุปภาพรวมของประสิทธิภาพ และอาจจะมีการกล่าวถึงข้อดีหรือสิ่งที่ควรปรับปรุงตามความเหมาะสมจากคะแนนและความคิดเห็น
+         ให้สรุปภาพรวมของประสิทธิภาพ และอาจจะมีการกล่าวถึงข้อดีหรือสิ่งที่ควรปรับปรุงตามคะแนนและความคิดเห็น
     `;
 
     const summary = await callGemini(prompt);
