@@ -48,7 +48,9 @@ const icons = {
     clock: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
     users: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`,
     notifications: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`,
-    trash: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
+    trash: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`,
+    download: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
+    myQueue: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`
 };
 
 const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
@@ -478,6 +480,21 @@ const render = () => {
             </div>
         </header>`;
     
+    // เพิ่มข้อความแนะนำการใช้งานบน PC/Chrome
+    const browserWarning = `
+        <div class="browser-warning bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div>
+                    <h3 class="font-semibold text-yellow-800">ข้อแนะนำในการใช้งาน</h3>
+                    <p class="text-sm text-yellow-700 mt-1">แนะนำให้ใช้งานผ่าน PC หรือ Google Chrome เพื่อประสิทธิภาพที่ดีที่สุด หากใช้งานผ่าน Safari บน iPhone อาจมีปัญหาในการแสดง QR Code</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
     const manualSection = `
         <div class="manual-section">
             <div class="flex justify-between items-center">
@@ -561,7 +578,7 @@ const render = () => {
     let viewContent = '';
     switch(state.currentView) {
         case 'dashboard': viewContent = renderStaffNav() + renderDashboard(); break;
-        case 'calendar': viewContent = (state.userRole === 'staff' ? renderStaffNav() : '') + manualSection + renderCalendar(); break;
+        case 'calendar': viewContent = (state.userRole === 'staff' ? renderStaffNav() : '') + browserWarning + manualSection + renderCalendar(); break;
         case 'holidays': viewContent = renderStaffNav() + renderHolidayManagement(); break;
         case 'dailyQueue': viewContent = renderDailyQueue(); break;
         case 'kpi': viewContent = renderStaffNav() + renderKpiView(); break;
@@ -569,6 +586,7 @@ const render = () => {
         case 'scanner': viewContent = renderScannerView(); break;
         case 'users': viewContent = renderStaffNav() + renderUsersView(); break;
         case 'notifications': viewContent = renderStaffNav() + renderNotificationsView(); break;
+        case 'myQueue': viewContent = renderMyQueueView(); break;
     }
     
     appContainer.innerHTML = header + `<div class="fade-in">${viewContent}</div>`;
@@ -662,7 +680,12 @@ const renderDashboard = () => {
     <div class="card p-5 rounded-xl shadow-lg mt-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-semibold">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3>
-            <button id="view-all-today-btn" class="btn btn-primary btn-sm">ดูทั้งหมด</button>
+            <div class="flex gap-2">
+                <button id="download-excel-btn" class="btn btn-primary btn-sm flex items-center gap-1">
+                    ${icons.download} ดาวน์โหลด Excel
+                </button>
+                <button id="view-all-today-btn" class="btn btn-primary btn-sm">ดูทั้งหมด</button>
+            </div>
         </div>
         <ul class="space-y-2">${queueItemsHtml}</ul>
     </div>`;
@@ -898,6 +921,73 @@ const renderBookingDetails = () => {
                 <input type="text" id="reference-search" placeholder="ค้นหาตามเลขกำกับ..." class="input flex-1 md:w-64">
                 <button id="search-reference-btn" class="btn btn-primary">ค้นหา</button>
             </div>
+        </div>
+        <div class="space-y-4">${bookingsHtml}</div>
+    </main>`;
+};
+
+const renderMyQueueView = () => {
+    const allMyBookings = [];
+    Object.entries(state.data.bookings).forEach(([date, bookings]) => {
+        bookings.forEach(booking => {
+            if(state.guestBookingIds.includes(booking.id)) {
+                allMyBookings.push({ ...booking, date });
+            }
+        });
+    });
+    
+    allMyBookings.sort((a, b) => new Date(b.date) - new Date(a.date) || b.eta.localeCompare(a.eta));
+    
+    const bookingsHtml = allMyBookings.length > 0
+        ? allMyBookings.map(booking => {
+            let statusBadge = '';
+            if (booking.checkInTime) {
+                if (booking.status === 'completed') {
+                    statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                } else if (checkIfLate(booking)) {
+                    statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                } else {
+                    statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                }
+            } else {
+                statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+            }
+            
+            return `
+            <div class="card p-4 rounded-lg shadow-sm mb-4 bg-violet-50 border-l-4 border-violet-500">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                    <div>
+                        <p class="font-bold text-lg">${booking.companyName}</p>
+                        <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
+                        <p class="text-sm text-slate-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</p>
+                        ${booking.referenceNumber ? `<p class="text-xs text-violet-600 font-medium">เลขกำกับ: <span class="reference-number">${booking.referenceNumber}</span></p>` : ''}
+                        ${statusBadge}
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-slate-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</p>
+                        ${booking.checkInTime ? `<p class="text-xs text-green-600">เช็คอิน: ${formatDateTime(booking.checkInTime)}</p>` : ''}
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
+                    <button data-booking-id="${booking.id}" class="view-qr-btn text-green-500 text-sm hover:text-green-700 ml-2">ดู QR Code</button>
+                </div>
+            </div>
+        `}).join('')
+        : `<p class="text-center text-slate-500 py-8">คุณยังไม่มีการจองคิว</p>`;
+    
+    return `
+    <div class="mb-6">
+        <button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            กลับไปยังปฏิทิน
+        </button>
+    </div>
+    <main>
+        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h2 class="text-2xl font-bold">คิวของฉัน</h2>
         </div>
         <div class="space-y-4">${bookingsHtml}</div>
     </main>`;
@@ -1313,6 +1403,29 @@ const attachAllListeners = () => {
         });
     });
     
+    // เพิ่ม event listener สำหรับปุ่มดาวน์โหลด Excel
+    document.getElementById('download-excel-btn')?.addEventListener('click', () => {
+        renderModal('downloadExcel');
+    });
+    
+    // เพิ่มปุ่มสำหรับซัพพลายเออร์ดูคิวของตนเอง
+    if (state.userRole === 'guest') {
+        const myQueueBtn = document.createElement('button');
+        myQueueBtn.id = 'my-queue-btn';
+        myQueueBtn.className = 'btn btn-primary flex items-center gap-2';
+        myQueueBtn.innerHTML = `${icons.myQueue} คิวของฉัน`;
+        myQueueBtn.addEventListener('click', () => {
+            state.currentView = 'myQueue';
+            render();
+        });
+        
+        // หาตำแหน่งที่จะแทรกปุ่ม
+        const headerActions = document.querySelector('.hero-section .flex.items-center.gap-3');
+        if (headerActions) {
+            headerActions.insertBefore(myQueueBtn, headerActions.firstChild);
+        }
+    }
+    
     if (state.currentView === 'users') {
         document.getElementById('add-user-btn')?.addEventListener('click', () => renderAddUserModal());
         
@@ -1455,6 +1568,21 @@ const attachAllListeners = () => {
                 renderModal('bookingDetails', { bookingId });
             });
         });
+    }
+    
+    if (state.currentView === 'myQueue') {
+        document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+            state.selectedBookingId = e.currentTarget.dataset.bookingId; 
+            renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId }); 
+        }));
+        
+        document.querySelectorAll('.view-qr-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+            const bookingId = e.currentTarget.dataset.bookingId;
+            const booking = findBookingById(bookingId);
+            if (booking) {
+                renderModal('qrCode', { booking });
+            }
+        }));
     }
     
     if (state.currentView === 'calendar') attachCalendarListeners();
@@ -2289,6 +2417,51 @@ const renderModal = (type, data = {}) => {
         modalContent = `<h3 class="text-xl font-bold mb-4">เข้าสู่ระบบพนักงาน</h3><form id="login-form"><input type="text" id="username" placeholder="ชื่อผู้ใช้" class="input w-full mb-4" required><button type="submit" class="btn btn-primary w-full">เข้าสู่ระบบ</button></form>`;
         renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
     } 
+    else if(type === 'downloadExcel') {
+        const currentYear = new Date().getFullYear();
+        const months = [
+            { value: '01', label: 'มกราคม' },
+            { value: '02', label: 'กุมภาพันธ์' },
+            { value: '03', label: 'มีนาคม' },
+            { value: '04', label: 'เมษายน' },
+            { value: '05', label: 'พฤษภาคม' },
+            { value: '06', label: 'มิถุนายน' },
+            { value: '07', label: 'กรกฎาคม' },
+            { value: '08', label: 'สิงหาคม' },
+            { value: '09', label: 'กันยายน' },
+            { value: '10', label: 'ตุลาคม' },
+            { value: '11', label: 'พฤศจิกายน' },
+            { value: '12', label: 'ธันวาคม' }
+        ];
+        
+        const years = [currentYear, currentYear - 1, currentYear - 2];
+        
+        modalContent = `
+            <h3 class="text-xl font-bold mb-4">ดาวน์โหลดข้อมูลคิว (Excel)</h3>
+            <form id="download-excel-form" class="space-y-4">
+                <div>
+                    <label class="text-sm font-medium">เลือกเดือน</label>
+                    <select id="excel-month" class="input w-full mt-1" required>
+                        ${months.map(month => `<option value="${month.value}">${month.label}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-medium">เลือกปี</label>
+                    <select id="excel-year" class="input w-full mt-1" required>
+                        ${years.map(year => `<option value="${year}">${year + 543}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">ดาวน์โหลด</button>
+                </div>
+            </form>
+        `;
+        
+        renderModalBase(modalContent, modal => {
+            modal.querySelector('#download-excel-form').addEventListener('submit', handleDownloadExcel);
+        });
+    }
     else if(type === 'booking') {
         if (isHoliday(new Date(state.selectedDate))) {
             const holiday = isHoliday(new Date(state.selectedDate));
@@ -2952,6 +3125,85 @@ const handleSearchByReferenceNumber = (referenceNumber) => {
         renderModal('bookingCard', { booking });
     } else {
         showAlert(`ไม่พบข้อมูลการจองคิวสำหรับเลขกำกับ: ${referenceNumber}`);
+    }
+};
+
+const handleDownloadExcel = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const month = form.querySelector('#excel-month').value;
+    const year = form.querySelector('#excel-year').value;
+    
+    try {
+        // สร้างข้อมูลสำหรับ Excel
+        const excelData = [];
+        
+        // เพิ่มหัวตาราง
+        excelData.push([
+            'วันที่',
+            'เวลา',
+            'บริษัท',
+            'ชื่อคนขับ',
+            'ทะเบียนรถ',
+            'จำนวนบิล',
+            'จำนวนกล่อง',
+            'จำนวนชิ้น',
+            'เวลาเช็คอิน',
+            'สถานะ',
+            'มาตรงเวลา'
+        ]);
+        
+        // ดึงข้อมูลการจองคิวตามเดือนและปีที่เลือก
+        Object.entries(state.data.bookings).forEach(([date, bookings]) => {
+            const bookingDate = new Date(date);
+            if (bookingDate.getMonth() + 1 === parseInt(month) && bookingDate.getFullYear() === parseInt(year)) {
+                bookings.forEach(booking => {
+                    const checkInTime = booking.checkInTime ? formatDateTime(booking.checkInTime) : '-';
+                    let status = 'รอเช็คอิน';
+                    let isOnTime = '-';
+                    
+                    if (booking.checkInTime) {
+                        if (booking.status === 'completed') {
+                            status = 'เสร็จสิ้น';
+                        } else if (checkIfLate(booking)) {
+                            status = 'มาสาย';
+                            isOnTime = 'ไม่';
+                        } else {
+                            status = 'เช็คอินแล้ว';
+                            isOnTime = 'ใช่';
+                        }
+                    }
+                    
+                    excelData.push([
+                        formatThaiDate(date),
+                        formatTime24h(booking.eta),
+                        booking.companyName,
+                        booking.driverName,
+                        booking.licensePlate,
+                        booking.invoiceCount,
+                        booking.boxCount,
+                        booking.itemCount,
+                        checkInTime,
+                        status,
+                        isOnTime
+                    ]);
+                });
+            }
+        });
+        
+        // สร้างไฟล์ Excel
+        const ws = XLSX.utils.aoa_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `คิวเดือน${month}-${year}`);
+        
+        // ดาวน์โหลดไฟล์
+        XLSX.writeFile(wb, `คิวเดือน${month}-${year}.xlsx`);
+        
+        closeModal(form.closest('.modal-backdrop'));
+        showSuccessAnimation('ดาวน์โหลดไฟล์ Excel สำเร็จแล้ว');
+    } catch (error) {
+        console.error('Error downloading Excel:', error);
+        showAlert('เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์ Excel กรุณาลองใหม่');
     }
 };
 
