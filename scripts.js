@@ -1,6 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, collection, query, orderBy, limit, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, onSnapshot, setDoc, collection, query, orderBy, limit, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBezNic5rqHg2xh9_9dHo5DUDoHZx1Z_v8",
@@ -30,7 +30,9 @@ let state = {
     kpiSearchTerm: '', 
     selectedKpiCompany: null,
     currentUser: null,
-    unreadNotifications: 0
+    unreadNotifications: 0,
+    notificationPage: 1,
+    notificationsPerPage: 10
 };
 
 const icons = {
@@ -45,7 +47,8 @@ const icons = {
     check: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
     clock: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
     users: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`,
-    notifications: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`
+    notifications: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`,
+    trash: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
 };
 
 const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
@@ -65,15 +68,19 @@ const formatDate = (date) => {
     return `${year}-${month}-${day}`;
 };
 
-const formatThaiDate = (dateStr) => new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+const formatThaiDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+};
+
 const formatTime24h = (timeStr) => {
-    if (!timeStr) return '';
+    if (!timeStr) return '-';
     const [hour, minute] = timeStr.split(':');
     return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
 }
 
 const formatDateTime = (date) => {
-    if (!date) return '';
+    if (!date) return '-';
     const d = new Date(date);
     return `${formatDate(d)} ${formatTime24h(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`)}`;
 };
@@ -90,6 +97,14 @@ const generateReferenceNumber = () => {
 const handleFileUpload = (fileInput) => {
     const files = fileInput.files;
     const filePromises = [];
+    const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    // ตรวจสอบขนาดรวมของไฟล์
+    const totalSize = Array.from(files).reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > MAX_TOTAL_SIZE) {
+        showAlert(`ขนาดรวมของไฟล์เกิน ${MAX_TOTAL_SIZE / (1024 * 1024)}MB`);
+        return Promise.reject(new Error('Total file size exceeds limit'));
+    }
     
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -121,78 +136,65 @@ const formatFileSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// แก้ไขฟังก์ชันสร้าง QR Code สำหรับ Safari บน iPhone
 const generateQRCode = (data, container) => {
     const canvas = document.createElement('canvas');
     canvas.width = 200;
     canvas.height = 200;
     const ctx = canvas.getContext('2d');
     
-    loadQRCodeLibrary().then(QRCode => {
-        try {
-            QRCode.toCanvas(canvas, data, {
-                width: 200,
-                margin: 2,
-                color: { dark: '#000000', light: '#FFFFFF' }
-            }, function (error) {
-                if (error) {
-                    console.error('Error generating QR Code:', error);
-                    showQRCodeError(container, data);
-                } else {
-                    container.innerHTML = '';
-                    container.appendChild(canvas);
-                    
-                    // เพิ่มการแก้ไขสำหรับ Safari บน iPhone
-                    // แปลง Canvas เป็นรูปภาพและแสดงผลแทน
-                    if (navigator.userAgent.includes('iPhone') && navigator.userAgent.includes('Safari')) {
-                        try {
-                            const img = new Image();
-                            img.onload = function() {
-                                container.innerHTML = '';
-                                container.appendChild(img);
-                                
-                                // เพิ่มปุ่มดาวน์โหลดที่ทำงานใน Safari
-                                const downloadBtn = document.createElement('button');
-                                downloadBtn.id = 'download-qr-btn';
-                                downloadBtn.className = 'btn btn-primary mt-3';
-                                downloadBtn.textContent = 'บันทึก QR Code';
-                                downloadBtn.addEventListener('click', downloadQRCodeForSafari);
-                                container.appendChild(downloadBtn);
-                            };
-                            img.src = canvas.toDataURL('image/png');
-                        } catch (e) {
-                            console.error('Safari image conversion error:', e);
-                            showQRCodeError(container, data);
-                        }
+    try {
+        QRCode.toCanvas(canvas, data, {
+            width: 200,
+            margin: 2,
+            color: { dark: '#000000', light: '#FFFFFF' }
+        }, function (error) {
+            if (error) {
+                console.error('Error generating QR Code:', error);
+                showQRCodeError(container, data);
+            } else {
+                container.innerHTML = '';
+                container.appendChild(canvas);
+                
+                // เพิ่มการแก้ไขสำหรับ Safari บน iPhone
+                if (navigator.userAgent.includes('iPhone') && navigator.userAgent.includes('Safari')) {
+                    try {
+                        const img = new Image();
+                        img.onload = function() {
+                            container.innerHTML = '';
+                            container.appendChild(img);
+                            
+                            const downloadBtn = document.createElement('button');
+                            downloadBtn.id = 'download-qr-btn';
+                            downloadBtn.className = 'btn btn-primary mt-3';
+                            downloadBtn.textContent = 'บันทึก QR Code';
+                            downloadBtn.addEventListener('click', downloadQRCodeForSafari);
+                            container.appendChild(downloadBtn);
+                        };
+                        img.src = canvas.toDataURL('image/png');
+                    } catch (e) {
+                        console.error('Safari image conversion error:', e);
+                        showQRCodeError(container, data);
                     }
                 }
-            });
-        } catch (error) {
-            console.error('Error using QRCode library:', error);
-            showQRCodeError(container, data);
-        }
-    }).catch(error => {
-        console.error('Error loading QRCode library:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Error using QRCode library:', error);
         showQRCodeError(container, data);
-    });
+    }
 };
 
-// เพิ่มฟังก์ชันสำหรับการดาวน์โหลด QR Code ใน Safari
 const downloadQRCodeForSafari = () => {
     const img = document.querySelector('#qrcode-container img');
     if (img) {
-        // สร้างลิงก์สำหรับดาวน์โหลด
         const link = document.createElement('a');
         link.download = `qrcode-${Date.now()}.png`;
         link.href = img.src;
         
-        // บังคับให้ Safari เริ่มการดาวน์โหลด
         if (navigator.userAgent.includes('Safari')) {
-            // เปิดในแท็บใหม่แล้วให้ผู้ใช้บันทึกเอง
             const newWindow = window.open();
             newWindow.document.write(`<img src="${img.src}" />`);
         } else {
-            // สำหรับเบราว์เซอร์อื่น
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -222,28 +224,6 @@ const showQRCodeError = (container, data) => {
     `;
 };
 
-const loadQRCodeLibrary = () => {
-    return new Promise((resolve, reject) => {
-        if (window.QRCode) {
-            resolve(window.QRCode);
-            return;
-        }
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
-        script.onload = () => {
-            if (window.QRCode) {
-                resolve(window.QRCode);
-            } else {
-                reject(new Error('QRCode library loaded but not available'));
-            }
-        };
-        script.onerror = () => {
-            reject(new Error('Failed to load QRCode library'));
-        };
-        document.head.appendChild(script);
-    });
-};
-
 const downloadQRCode = () => {
     const canvas = document.querySelector('#qrcode-container canvas');
     if (canvas) {
@@ -256,18 +236,15 @@ const downloadQRCode = () => {
     }
 };
 
-// แก้ไขฟังก์ชันตรวจสอบความขัดแย้งของเวลา
 const checkTimeConflict = (date, time, excludeBookingId = null) => {
     const bookings = state.data.bookings[date] || [];
     const sameTimeBookings = bookings.filter(booking => 
         booking.id !== excludeBookingId && booking.eta === time
     );
     
-    // ตรวจสอบว่ามีการจองในเวลาเดียวกันแล้วกี่คิว
     return sameTimeBookings.length;
 };
 
-// แก้ไขฟังก์ชันคำนวณเวลาใหม่
 const calculateNewTime = (time, addMinutes = 10) => {
     const [hours, minutes] = time.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes + addMinutes;
@@ -287,13 +264,11 @@ const isHoliday = (date) => {
     const dateStr = formatDate(date);
     const monthDay = `${date.getMonth() + 1}-${date.getDate()}`;
     
-    // Check if it's a weekend (Saturday=6, Sunday=0)
     const dayOfWeek = date.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
         return { name: 'วันหยุดสุดสัปดาห์', type: 'weekend' };
     }
     
-    // Check if it's a defined holiday
     const holiday = state.data.holidays.find(h => {
         if (h.date === dateStr) return true;
         if (h.recurring) {
@@ -313,7 +288,6 @@ const checkIfLate = (booking) => {
     const bookingDateTime = new Date(`${booking.date} ${booking.eta}`);
     const checkInDateTime = new Date(booking.checkInTime);
     
-    // Consider late if check-in is more than 15 minutes after scheduled time
     const diffMinutes = (checkInDateTime - bookingDateTime) / (1000 * 60);
     return diffMinutes > 15;
 };
@@ -340,7 +314,6 @@ const getAttendanceStats = () => {
     return { onTime, late, total };
 };
 
-// ฟังก์ชันสำหรับระบบแจ้งเตือน
 const createNotification = (type, title, content, userId = null, bookingId = null) => {
     const notification = {
         id: Date.now(),
@@ -359,15 +332,12 @@ const createNotification = (type, title, content, userId = null, bookingId = nul
     
     state.data.notifications.push(notification);
     
-    // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
     if (!userId || userId === state.currentUser?.id) {
         state.unreadNotifications++;
     }
     
-    // บันทึกข้อมูล
     setDoc(docRef, state.data);
     
-    // แสดงการแจ้งเตือนในเบราว์เซอร์
     if (Notification.permission === 'granted' && (!userId || userId === state.currentUser?.id)) {
         new Notification(title, {
             body: content,
@@ -378,9 +348,7 @@ const createNotification = (type, title, content, userId = null, bookingId = nul
     return notification;
 };
 
-// ฟังก์ชันสำหรับตั้งค่าการแจ้งเตือนอัตโนมัติ
 const setupAutomaticNotifications = () => {
-    // ตรวจสอบการจองที่จะถึงในอีก 1 ชั่วโมง
     const checkUpcomingBookings = () => {
         const now = new Date();
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
@@ -389,9 +357,7 @@ const setupAutomaticNotifications = () => {
             bookings.forEach(booking => {
                 const bookingDateTime = new Date(`${date} ${booking.eta}`);
                 
-                // ตรวจสอบว่าการจองจะถึงในอีก 1 ชั่วโมงและยังไม่ได้เช็คอิน
                 if (bookingDateTime > now && bookingDateTime <= oneHourLater && !booking.checkInTime) {
-                    // ตรวจสอบว่ามีการแจ้งเตือนนี้แล้วหรือไม่
                     const existingNotification = state.data.notifications?.find(n => 
                         n.type === 'reminder' && 
                         n.bookingId === booking.id && 
@@ -412,14 +378,10 @@ const setupAutomaticNotifications = () => {
         });
     };
     
-    // ตรวจสอบทุก 15 นาที
     setInterval(checkUpcomingBookings, 15 * 60 * 1000);
-    
-    // ตรวจสอบทันทีเมื่อโหลดหน้า
     checkUpcomingBookings();
 };
 
-// ฟังก์ชันสำหรับขอสิทธิ์การแจ้งเตือน
 const requestNotificationPermission = () => {
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission().then(permission => {
@@ -516,7 +478,6 @@ const render = () => {
             </div>
         </header>`;
     
-    // Add manual section for all users
     const manualSection = `
         <div class="manual-section">
             <div class="flex justify-between items-center">
@@ -632,9 +593,12 @@ const renderDashboard = () => {
     const todayStr = formatDate(new Date());
     const todayBookings = state.data.bookings[todayStr] || [];
     let next7daysBookings = 0;
-    for(let i=1; i<=7; i++) { const date = new Date(); date.setDate(date.getDate() + i); next7daysBookings += (state.data.bookings[formatDate(date)] || []).length; }
+    for(let i=1; i<=7; i++) { 
+        const date = new Date(); 
+        date.setDate(date.getDate() + i); 
+        next7daysBookings += (state.data.bookings[formatDate(date)] || []).length; 
+    }
     
-    // แก้ไขส่วนแสดงรายการคิววันนี้ให้สามารถคลิกเพื่อดูรายละเอียดได้
     const queueItemsHtml = todayBookings.length > 0
         ? todayBookings.map(b => `
             <li class="flex justify-between items-center p-2 rounded hover:bg-violet-50 cursor-pointer dashboard-item" data-booking-id="${b.id}">
@@ -647,7 +611,6 @@ const renderDashboard = () => {
         `).join('')
         : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
 
-    // Get attendance statistics
     const stats = getAttendanceStats();
 
     return `
@@ -655,7 +618,6 @@ const renderDashboard = () => {
         ${state.userRole === 'guest' ? '<button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> กลับไปยังปฏิทิน</button>' : ''}
     </div>
     
-    <!-- Attendance Statistics -->
     <div class="attendance-stats mb-6">
         <div class="stat-card">
             <div class="stat-value stat-on-time">${stats.onTime}</div>
@@ -725,7 +687,7 @@ const renderCalendar = () => {
                  }
              });
          });
-         allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || a.eta.localeCompare(b.eta));
+         allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || b.eta.localeCompare(b.eta));
 
          if(allMyBookings.length > 0) {
               myBookingsHtml = `<div class="card p-4 rounded-xl shadow-lg mb-6 bg-violet-50 border-violet-200"><h3 class="font-semibold text-violet-800 mb-2">สรุปคิวของฉัน</h3><ul class="space-y-1 text-sm">` +
@@ -746,13 +708,11 @@ const renderCalendar = () => {
         let dayClass = 'calendar-day cursor-pointer p-2 border border-violet-100 flex flex-col rounded-md';
         let dayContent = `<span class="font-bold">${day}</span>`;
         
-        // Check if it's a weekend
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             dayClass += ' weekend-day';
             dayContent += `<span class="weekend-label">วันหยุด</span>`;
         } else if (holiday) {
             dayClass += ' bg-red-50 border-red-200';
-            // จำกัดความยาวของชื่อวันหยุดและเพิ่ม title attribute
             const holidayName = holiday.name.length > 12 ? holiday.name.substring(0, 12) + '...' : holiday.name;
             dayContent += `<span class="text-xs text-red-600 mt-auto font-medium holiday-name" title="${holiday.name}">${holidayName}</span>`;
         } else if (isToday) {
@@ -764,7 +724,6 @@ const renderCalendar = () => {
         if (hasBookings && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
             dayClass += ' has-bookings';
             
-            // Show booking times for suppliers
             if (state.userRole === 'guest') {
                 const bookings = state.data.bookings[dateStr];
                 const myBookings = bookings.filter(b => state.guestBookingIds.includes(b.id));
@@ -820,7 +779,6 @@ const renderDailyQueue = () => {
             const isGuestBooking = state.guestBookingIds.includes(booking.id);
             if(state.userRole === 'guest' && !isGuestBooking) return `<div class="card bg-slate-100 p-4 rounded-lg">คิวที่ ${index + 1}: จองแล้ว</div>`;
             
-            // Determine status
             let statusBadge = '';
             if (booking.checkInTime) {
                 if (booking.status === 'completed') {
@@ -889,7 +847,6 @@ const renderBookingDetails = () => {
     
     const bookingsHtml = allBookings.length > 0
         ? allBookings.map(booking => {
-            // Determine status
             let statusBadge = '';
             if (booking.checkInTime) {
                 if (booking.status === 'completed') {
@@ -1041,7 +998,15 @@ const renderNotificationsView = () => {
         new Date(b.timestamp) - new Date(a.timestamp)
     );
     
-    const notificationsHtml = sortedNotifications.map(notification => {
+    // แบ่งหน้า
+    const startIndex = (state.notificationPage - 1) * state.notificationsPerPage;
+    const endIndex = startIndex + state.notificationsPerPage;
+    const paginatedNotifications = sortedNotifications.slice(startIndex, endIndex);
+    
+    // คำนวณจำนวนหน้า
+    const totalPages = Math.ceil(sortedNotifications.length / state.notificationsPerPage);
+    
+    const notificationsHtml = paginatedNotifications.map(notification => {
         const typeClass = notification.type === 'reminder' ? 'notification-reminder' : 
                          notification.type === 'arrival' ? 'notification-arrival' : 
                          notification.type === 'booking' ? 'notification-booking' :
@@ -1061,10 +1026,32 @@ const renderNotificationsView = () => {
                 <div class="notification-time">${formatDateTime(notification.timestamp)}</div>
             </div>
             <div class="notification-content">${notification.content}</div>
-            ${!notification.read ? '<button class="mark-read-btn btn btn-sm btn-secondary mt-2">ทำเครื่องหมายว่าอ่านแล้ว</button>' : ''}
+            <div class="notification-actions">
+                ${!notification.read ? '<button class="mark-read-btn btn btn-sm btn-secondary mt-2">ทำเครื่องหมายว่าอ่านแล้ว</button>' : ''}
+                <button class="delete-notification-btn btn btn-sm btn-danger mt-2" data-notification-id="${notification.id}">
+                    ${icons.trash} ลบ
+                </button>
+            </div>
         </div>
         `;
     }).join('');
+    
+    // สร้างปุ่มสำหรับการแบ่งหน้า
+    const paginationHtml = totalPages > 1 ? `
+        <div class="flex justify-center items-center gap-2 mt-4">
+            <button id="prev-page-btn" class="btn btn-sm btn-secondary ${state.notificationPage === 1 ? 'disabled' : ''}" 
+                    ${state.notificationPage === 1 ? 'disabled' : ''}>
+                ก่อนหน้า
+            </button>
+            <span class="text-sm text-gray-600">
+                หน้า ${state.notificationPage} จาก ${totalPages}
+            </span>
+            <button id="next-page-btn" class="btn btn-sm btn-secondary ${state.notificationPage === totalPages ? 'disabled' : ''}" 
+                    ${state.notificationPage === totalPages ? 'disabled' : ''}>
+                ถัดไป
+            </button>
+        </div>
+    ` : '';
     
     return `
     <div class="mb-4">
@@ -1076,13 +1063,18 @@ const renderNotificationsView = () => {
         </button>
     </div>
     <main>
-        <div class="mb-6 flex justify-between items-center">
+        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 class="text-2xl font-bold">การแจ้งเตือน</h2>
-            <button id="mark-all-read-btn" class="btn btn-secondary">ทำเครื่องหมายว่าอ่านทั้งหมด</button>
+            <div class="flex gap-2 flex-wrap">
+                <button id="mark-all-read-btn" class="btn btn-secondary">ทำเครื่องหมายว่าอ่านทั้งหมด</button>
+                <button id="delete-read-btn" class="btn btn-danger">ลบที่อ่านแล้ว</button>
+                <button id="delete-all-btn" class="btn btn-danger">ลบทั้งหมด</button>
+            </div>
         </div>
         <div class="card">
             ${notificationsHtml || '<div class="p-4 text-center text-gray-500">ไม่มีการแจ้งเตือน</div>'}
         </div>
+        ${paginationHtml}
     </main>
     `;
 };
@@ -1104,7 +1096,6 @@ const getKpiData = () => {
         companyData[b.companyName].scores.push(avgScore);
         companyData[b.companyName].count++;
         
-        // Add booking details for company history
         companyData[b.companyName].bookings.push({
             date: b.date,
             eta: b.eta,
@@ -1116,7 +1107,6 @@ const getKpiData = () => {
         });
     });
     
-    // Sort bookings by date for each company
     Object.keys(companyData).forEach(company => {
         companyData[company].bookings.sort((a, b) => new Date(b.date) - new Date(a.date));
     });
@@ -1140,7 +1130,7 @@ const renderKpiView = () => {
         <div class="col-span-4">
             <button data-company="${company.name}" class="view-company-details-btn text-blue-500 text-sm hover:text-blue-700">ดูประวัติการจัดส่ง</button>
         </div>
-    `).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเออร์</p>`;
+    `).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเอร์</p>`;
 
     return `
     <div class="mb-4">
@@ -1153,8 +1143,8 @@ const renderKpiView = () => {
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <div class="lg:col-span-2 card p-5 rounded-xl shadow-lg">
-             <h2 class="text-2xl font-bold mb-4">ผลการประเมิน KPI ซัพพลายเออร์</h2>
-             <input type="text" id="kpi-search" placeholder="ค้นหาชื่อซัพพลายเออร์..." value="${state.kpiSearchTerm}" class="input w-full mb-4">
+             <h2 class="text-2xl font-bold mb-4">ผลการประเมิน KPI ซัพพลายเอร์</h2>
+             <input type="text" id="kpi-search" placeholder="ค้นหาชื่อซัพพลายเอร์..." value="${state.kpiSearchTerm}" class="input w-full mb-4">
              <div class="grid grid-cols-4 font-semibold text-slate-500 p-3 border-b-2"><span>อันดับ</span><span class="col-span-2">ชื่อบริษัท</span><span>คะแนนเฉลี่ย</span></div>
              <div class="space-y-2 mt-2 custom-scroll" style="max-height: 400px; overflow-y: auto;">${supplierListHtml}</div>
         </div>
@@ -1280,7 +1270,10 @@ const attachAllListeners = () => {
         state.currentView = 'notifications';
         render();
     });
-    document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { state.currentView = e.currentTarget.dataset.view; render(); }));
+    document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { 
+        state.currentView = e.currentTarget.dataset.view; 
+        render(); 
+    }));
     
     document.getElementById('back-to-calendar-btn')?.addEventListener('click', () => {
         state.currentView = 'calendar';
@@ -1300,7 +1293,6 @@ const attachAllListeners = () => {
     document.getElementById('add-holiday-btn')?.addEventListener('click', () => renderAddHolidayModal());
     document.getElementById('import-public-holidays-btn')?.addEventListener('click', () => renderImportPublicHolidaysModal());
     
-    // Manual toggle button
     document.getElementById('toggle-manual-btn')?.addEventListener('click', () => {
         const manualContent = document.getElementById('manual-content');
         const toggleText = document.getElementById('manual-toggle-text');
@@ -1314,7 +1306,6 @@ const attachAllListeners = () => {
         }
     });
     
-    // KPI company details button
     document.querySelectorAll('.view-company-details-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const companyName = e.currentTarget.dataset.company;
@@ -1322,7 +1313,6 @@ const attachAllListeners = () => {
         });
     });
     
-    // Users view listeners
     if (state.currentView === 'users') {
         document.getElementById('add-user-btn')?.addEventListener('click', () => renderAddUserModal());
         
@@ -1343,7 +1333,6 @@ const attachAllListeners = () => {
         });
     }
     
-    // Notifications view listeners
     if (state.currentView === 'notifications') {
         document.getElementById('mark-all-read-btn')?.addEventListener('click', () => {
             state.data.notifications.forEach(notification => {
@@ -1353,6 +1342,35 @@ const attachAllListeners = () => {
             state.unreadNotifications = 0;
             setDoc(docRef, state.data);
             render();
+        });
+        
+        document.getElementById('delete-read-btn')?.addEventListener('click', () => {
+            showConfirm('คุณต้องการลบการแจ้งเตือนที่อ่านแล้วทั้งหมดใช่หรือไม่?', async () => {
+                try {
+                    state.data.notifications = state.data.notifications.filter(n => !n.read);
+                    await setDoc(docRef, state.data);
+                    showAlert('ลบการแจ้งเตือนที่อ่านแล้วสำเร็จแล้ว');
+                    render();
+                } catch (error) {
+                    console.error('Error deleting read notifications:', error);
+                    showAlert('เกิดข้อผิดพลาดในการลบการแจ้งเตือน');
+                }
+            });
+        });
+        
+        document.getElementById('delete-all-btn')?.addEventListener('click', () => {
+            showConfirm('คุณต้องการลบการแจ้งเตือนทั้งหมดใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้', async () => {
+                try {
+                    state.data.notifications = [];
+                    state.unreadNotifications = 0;
+                    await setDoc(docRef, state.data);
+                    showAlert('ลบการแจ้งเตือนทั้งหมดสำเร็จแล้ว');
+                    render();
+                } catch (error) {
+                    console.error('Error deleting all notifications:', error);
+                    showAlert('เกิดข้อผิดพลาดในการลบการแจ้งเตือน');
+                }
+            });
         });
         
         document.querySelectorAll('.mark-read-btn').forEach(btn => {
@@ -1368,11 +1386,44 @@ const attachAllListeners = () => {
                 }
             });
         });
+        
+        document.querySelectorAll('.delete-notification-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const notificationId = parseInt(e.currentTarget.dataset.notificationId);
+                showConfirm('คุณต้องการลบการแจ้งเตือนนี้ใช่หรือไม่?', async () => {
+                    try {
+                        state.data.notifications = state.data.notifications.filter(n => n.id !== notificationId);
+                        updateUnreadNotifications();
+                        await setDoc(docRef, state.data);
+                        showAlert('ลบการแจ้งเตือนสำเร็จแล้ว');
+                        render();
+                    } catch (error) {
+                        console.error('Error deleting notification:', error);
+                        showAlert('เกิดข้อผิดพลาดในการลบการแจ้งเตือน');
+                    }
+                });
+            });
+        });
+        
+        // Pagination
+        document.getElementById('prev-page-btn')?.addEventListener('click', () => {
+            if (state.notificationPage > 1) {
+                state.notificationPage--;
+                render();
+            }
+        });
+        
+        document.getElementById('next-page-btn')?.addEventListener('click', () => {
+            const notifications = state.data.notifications || [];
+            const totalPages = Math.ceil(notifications.length / state.notificationsPerPage);
+            if (state.notificationPage < totalPages) {
+                state.notificationPage++;
+                render();
+            }
+        });
     }
     
-    // Dashboard item listeners
     if (state.currentView === 'dashboard') {
-        // Dashboard cards click listeners
         document.querySelectorAll('.dashboard-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const type = e.currentTarget.dataset.type;
@@ -1391,14 +1442,12 @@ const attachAllListeners = () => {
             });
         });
         
-        // View all today bookings button
         document.getElementById('view-all-today-btn')?.addEventListener('click', () => {
             state.selectedDate = formatDate(new Date());
             state.currentView = 'dailyQueue';
             render();
         });
         
-        // Individual booking items in dashboard
         document.querySelectorAll('.dashboard-item[data-booking-id]').forEach(item => {
             item.addEventListener('click', (e) => {
                 const bookingId = e.currentTarget.dataset.bookingId;
@@ -1415,7 +1464,6 @@ const attachAllListeners = () => {
     else if (state.currentView === 'scanner') attachScannerListeners();
 };
 
-// เพิ่มฟังก์ชันค้นหาคิวจากเลขกำกับ QR
 const findBookingByReferenceNumber = (referenceNumber) => {
     for (const date in state.data.bookings) {
         const booking = state.data.bookings[date].find(b => b.referenceNumber === referenceNumber);
@@ -1447,13 +1495,11 @@ const attachCalendarListeners = () => {
             const dateObj = new Date(clickedDate);
             const dayOfWeek = dateObj.getDay();
             
-            // Check if it's a weekend
             if (dayOfWeek === 0 || dayOfWeek === 6) {
                 showAlert(`วันที่ ${formatThaiDate(clickedDate)} เป็นวันหยุดสุดสัปดาห์\nไม่สามารถจองคิวได้`);
                 return;
             }
             
-            // Check if it's a holiday
             const holiday = isHoliday(dateObj);
             if (holiday && holiday.type !== 'weekend') {
                 renderHolidayDetailsModal(holiday, clickedDate);
@@ -1468,11 +1514,31 @@ const attachCalendarListeners = () => {
 };
 
 const attachKpiListeners = () => {
-    document.getElementById('kpi-search').addEventListener('input', e => { state.kpiSearchTerm = e.target.value; render(); });
+    document.getElementById('kpi-search').addEventListener('input', e => { 
+        state.kpiSearchTerm = e.target.value; 
+        render(); 
+    });
     const kpiData = getKpiData().slice(0, 5);
     const ctx = document.getElementById('kpi-chart')?.getContext('2d');
     if (ctx) {
-        new Chart(ctx, { type: 'bar', data: { labels: kpiData.map(d => d.name), datasets: [{ label: 'คะแนนเฉลี่ย', data: kpiData.map(d => d.averageScore), backgroundColor: ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fde047', '#f87171'] }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } } });
+        new Chart(ctx, { 
+            type: 'bar', 
+            data: { 
+                labels: kpiData.map(d => d.name), 
+                datasets: [{ 
+                    label: 'คะแนนเฉลี่ย', 
+                    data: kpiData.map(d => d.averageScore), 
+                    backgroundColor: ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fde047', '#f87171'] 
+                }] 
+            }, 
+            options: { 
+                indexAxis: 'y', 
+                responsive: true, 
+                plugins: { 
+                    legend: { display: false } 
+                } 
+            } 
+        });
     }
 };
 
@@ -1500,6 +1566,11 @@ let scanInterval = null;
 
 const startCamera = async () => {
     try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showAlert('เบราว์เซอร์ของคุณไม่รองรับการใช้งานกล้อง');
+            return;
+        }
+        
         const video = document.getElementById('video');
         const startBtn = document.getElementById('start-camera-btn');
         const stopBtn = document.getElementById('stop-camera-btn');
@@ -1578,26 +1649,31 @@ const handleQRCodeScanned = (qrData) => {
 };
 
 const attachDailyQueueListeners = () => {
-    document.getElementById('back-to-calendar-btn').addEventListener('click', () => { state.currentView = 'calendar'; state.selectedDate = null; render(); });
+    document.getElementById('back-to-calendar-btn').addEventListener('click', () => { 
+        state.currentView = 'calendar'; 
+        state.selectedDate = null; 
+        render(); 
+    });
     document.getElementById('book-slot-btn')?.addEventListener('click', () => renderModal('booking'));
     document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => { 
         state.selectedBookingId = e.currentTarget.dataset.bookingId; 
         renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId }); 
     }));
     
-    // Check-in button
     document.querySelectorAll('.check-in-btn').forEach(btn => btn.addEventListener('click', (e) => {
         const bookingId = e.currentTarget.dataset.bookingId;
         handleCheckIn(bookingId);
     }));
     
-    // Complete button
     document.querySelectorAll('.complete-btn').forEach(btn => btn.addEventListener('click', (e) => {
         const bookingId = e.currentTarget.dataset.bookingId;
         handleCompleteBooking(bookingId);
     }));
     
-    document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => { state.selectedBookingId = e.currentTarget.dataset.bookingId; renderModal('evaluate'); }));
+    document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+        state.selectedBookingId = e.currentTarget.dataset.bookingId; 
+        renderModal('evaluate'); 
+    }));
     document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => {
         const bookingId = e.currentTarget.dataset.bookingId;
         showConfirm('คุณต้องการลบคิวนี้ใช่หรือไม่?', () => handleDeleteBooking(bookingId));
@@ -1609,7 +1685,6 @@ const handleCheckIn = async (bookingId) => {
         let bookingToUpdate = null;
         let bookingDate = null;
 
-        // Find the booking and its date in the state
         for (const date in state.data.bookings) {
             const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
             if (bookingIndex !== -1) {
@@ -1624,10 +1699,8 @@ const handleCheckIn = async (bookingId) => {
             return;
         }
 
-        // Update the original booking object in the state
         bookingToUpdate.checkInTime = new Date().toISOString();
         
-        // สร้างการแจ้งเตือนเมื่อซัพพลายเออร์มาถึง
         createNotification(
             'arrival',
             'ซัพพลายเออร์มาถึงแล้ว',
@@ -1636,7 +1709,6 @@ const handleCheckIn = async (bookingId) => {
             bookingId
         );
         
-        // Save to database
         await setDoc(docRef, state.data);
         
         showSuccessAnimation('เช็คอินสำเร็จแล้ว');
@@ -1667,11 +1739,9 @@ const handleCompleteBooking = async (bookingId) => {
             return;
         }
 
-        // Update the original booking object in the state
         bookingToUpdate.status = 'completed';
         bookingToUpdate.completedTime = new Date().toISOString();
         
-        // Save to database
         await setDoc(docRef, state.data);
         
         showSuccessAnimation('ยืนยันการรับคิวสำเร็จแล้ว');
@@ -1683,7 +1753,6 @@ const handleCompleteBooking = async (bookingId) => {
     }
 };
 
-// แก้ไขฟังก์ชันเลือกเวลาให้เพิ่มทีละ 10 นาที
 const renderTimePickerModal = (bookingModal) => {
     const modalContent = `
         <div class="flex justify-center items-center gap-2 mb-4">
@@ -1712,11 +1781,10 @@ const renderTimePickerModal = (bookingModal) => {
             minutePreview.textContent = selectedMinute !== null ? selectedMinute.toString().padStart(2, '0') : '--';
             confirmBtn.disabled = selectedHour === null || selectedMinute === null;
             
-            // ตรวจสอบว่าเวลาที่เลือกอยู่ในช่วงพักเที่ยงหรือไม่
             if (selectedHour !== null && selectedMinute !== null) {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
-                const lunchStart = 11 * 60 + 30; // 11:30
-                const lunchEnd = 12 * 60 + 30; // 12:30
+                const lunchStart = 11 * 60 + 30;
+                const lunchEnd = 12 * 60 + 30;
                 
                 if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
                     confirmBtn.disabled = true;
@@ -1788,7 +1856,6 @@ const renderTimePickerModal = (bookingModal) => {
                     clockFace.appendChild(numberEl);
                 }
             } else {
-                // เปลี่ยนจาก 15 นาที เป็น 10 นาที
                 ['00', '10', '20', '30', '40', '50'].forEach((minute, index) => {
                     const angle = ((index * 2) / 12) * 360 - 90;
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
@@ -1796,7 +1863,6 @@ const renderTimePickerModal = (bookingModal) => {
                     const numberEl = document.createElement('div');
                     numberEl.className = 'clock-number';
                     
-                    // ตรวจสอบว่าเป็นช่วงเวลาพักเที่ยงหรือไม่
                     if (selectedHour === 11 && minute === '30') {
                         numberEl.classList.add('disabled');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
@@ -1836,8 +1902,8 @@ const renderTimePickerModal = (bookingModal) => {
         confirmBtn.addEventListener('click', () => {
             if (selectedHour !== null && selectedMinute !== null) {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
-                const lunchStart = 11 * 60 + 30; // 11:30
-                const lunchEnd = 12 * 60 + 30; // 12:30
+                const lunchStart = 11 * 60 + 30;
+                const lunchEnd = 12 * 60 + 30;
                 
                 if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
                     showAlert('ไม่สามารถเลือกเวลาในช่วงพักพนักงาน (11:30-12:30) ได้');
@@ -2036,11 +2102,15 @@ const handleAddUser = async (e) => {
     
     state.data.users.push(newUser);
     
-    await setDoc(docRef, state.data);
-    
-    closeModal(form.closest('.modal-backdrop'));
-    showSuccessAnimation('เพิ่มผู้ใช้สำเร็จแล้ว');
-    render();
+    try {
+        await setDoc(docRef, state.data);
+        closeModal(form.closest('.modal-backdrop'));
+        showSuccessAnimation('เพิ่มผู้ใช้สำเร็จแล้ว');
+        render();
+    } catch (error) {
+        console.error('Error adding user:', error);
+        showAlert('เกิดข้อผิดพลาดในการเพิ่มผู้ใช้ กรุณาลองใหม่');
+    }
 };
 
 const handleEditUser = async (e) => {
@@ -2069,11 +2139,15 @@ const handleEditUser = async (e) => {
     
     state.data.users[userIndex] = updatedUser;
     
-    await setDoc(docRef, state.data);
-    
-    closeModal(form.closest('.modal-backdrop'));
-    showSuccessAnimation('แก้ไขผู้ใช้สำเร็จแล้ว');
-    render();
+    try {
+        await setDoc(docRef, state.data);
+        closeModal(form.closest('.modal-backdrop'));
+        showSuccessAnimation('แก้ไขผู้ใช้สำเร็จแล้ว');
+        render();
+    } catch (error) {
+        console.error('Error editing user:', error);
+        showAlert('เกิดข้อผิดพลาดในการแก้ไขผู้ใช้ กรุณาลองใหม่');
+    }
 };
 
 const handleDeleteUser = async (userId) => {
@@ -2121,22 +2195,37 @@ const handleAddHoliday = async (e) => {
         state.data.holidays = [];
     }
     
+    const existingHoliday = state.data.holidays.find(h => h.date === holiday.date);
+    if (existingHoliday) {
+        showAlert('มีวันหยุดในวันที่เลือกแล้ว');
+        return;
+    }
+    
     state.data.holidays.push(holiday);
     state.data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    await setDoc(docRef, state.data);
-    
-    closeModal(form.closest('.modal-backdrop'));
-    showSuccessAnimation('เพิ่มวันหยุดสำเร็จแล้ว');
-    render();
+    try {
+        await setDoc(docRef, state.data);
+        closeModal(form.closest('.modal-backdrop'));
+        showSuccessAnimation('เพิ่มวันหยุดสำเร็จแล้ว');
+        render();
+    } catch (error) {
+        console.error('Error adding holiday:', error);
+        showAlert('เกิดข้อผิดพลาดในการเพิ่มวันหยุด กรุณาลองใหม่');
+    }
 };
 
 window.deleteHoliday = async (index) => {
     showConfirm('คุณต้องการลบวันหยุดนี้ใช่หรือไม่?', async () => {
-        state.data.holidays.splice(index, 1);
-        await setDoc(docRef, state.data);
-        showAlert('ลบวันหยุดสำเร็จแล้ว');
-        render();
+        try {
+            state.data.holidays.splice(index, 1);
+            await setDoc(docRef, state.data);
+            showAlert('ลบวันหยุดสำเร็จแล้ว');
+            render();
+        } catch (error) {
+            console.error('Error deleting holiday:', error);
+            showAlert('เกิดข้อผิดพลาดในการลบวันหยุด กรุณาลองใหม่');
+        }
     });
 };
 
@@ -2183,11 +2272,15 @@ const handleImportPublicHolidays = async (e) => {
     
     state.data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    await setDoc(docRef, state.data);
-    
-    closeModal(form.closest('.modal-backdrop'));
-    showSuccessAnimation(`นำเข้าวันหยุดราชการสำเร็จ ${addedCount} วัน`);
-    render();
+    try {
+        await setDoc(docRef, state.data);
+        closeModal(form.closest('.modal-backdrop'));
+        showSuccessAnimation(`นำเข้าวันหยุดราชการสำเร็จ ${addedCount} วัน`);
+        render();
+    } catch (error) {
+        console.error('Error importing holidays:', error);
+        showAlert('เกิดข้อผิดพลาดในการนำเข้าวันหยุด กรุณาลองใหม่');
+    }
 };
 
 const renderModal = (type, data = {}) => {
@@ -2323,24 +2416,13 @@ const renderModal = (type, data = {}) => {
             };
             
             fileInput.addEventListener('change', async (e) => {
-                const files = Array.from(e.target.files);
-                const validFiles = files.filter(file => {
-                    const isValidType = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type);
-                    const isValidSize = file.size <= 5 * 1024 * 1024;
-                    if (!isValidType) {
-                        showAlert(`ไฟล์ ${file.name} ไม่รองรับประเภทนี้`);
-                        return false;
-                    }
-                    if (!isValidSize) {
-                        showAlert(`ไฟล์ ${file.name} มีขนาดเกิน 5MB`);
-                        return false;
-                    }
-                    return true;
-                });
-                
-                const newFiles = await handleFileUpload({ files: validFiles });
-                uploadedFiles = [...uploadedFiles, ...newFiles];
-                displayFiles();
+                try {
+                    const newFiles = await handleFileUpload({ files: e.target.files });
+                    uploadedFiles = [...uploadedFiles, ...newFiles];
+                    displayFiles();
+                } catch (error) {
+                    console.error('Error handling files:', error);
+                }
             });
             
             const dropZone = modal.querySelector('.border-dashed').parentElement;
@@ -2359,27 +2441,15 @@ const renderModal = (type, data = {}) => {
                 e.preventDefault();
                 dropZone.classList.remove('border-blue-500', 'bg-blue-50');
                 
-                const files = Array.from(e.dataTransfer.files);
-                const validFiles = files.filter(file => {
-                    const isValidType = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type);
-                    const isValidSize = file.size <= 5 * 1024 * 1024;
-                    if (!isValidType) {
-                        showAlert(`ไฟล์ ${file.name} ไม่รองรับประเภทนี้`);
-                        return false;
-                    }
-                    if (!isValidSize) {
-                        showAlert(`ไฟล์ ${file.name} มีขนาดเกิน 5MB`);
-                        return false;
-                    }
-                    return true;
-                });
-                
-                const newFiles = await handleFileUpload({ files: validFiles });
-                uploadedFiles = [...uploadedFiles, ...newFiles];
-                displayFiles();
+                try {
+                    const newFiles = await handleFileUpload({ files: e.dataTransfer.files });
+                    uploadedFiles = [...uploadedFiles, ...newFiles];
+                    displayFiles();
+                } catch (error) {
+                    console.error('Error handling dropped files:', error);
+                }
             });
             
-            // แก้ไขฟังก์ชันการจองคิว
             modal.querySelector('#booking-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const form = e.target;
@@ -2407,26 +2477,22 @@ const renderModal = (type, data = {}) => {
                 let attempts = 0;
                 const maxAttempts = 10;
                 
-                // แก้ไขการตรวจสอบคิวซ้ำ
                 while (checkTimeConflict(state.selectedDate, eta) >= 2 && attempts < maxAttempts) {
                     eta = calculateNewTime(eta, 10);
                     attempts++;
                 }
                 
-                // ถ้ายังมีคิวซ้ำ 2 คิว ให้เพิ่มเป็น 15 นาที
                 if (checkTimeConflict(state.selectedDate, eta) >= 2 && attempts < maxAttempts) {
-                    eta = calculateNewTime(eta, 5); // เพิ่ม 5 นาทีเพื่อให้เป็น 15 นาทีรวม
+                    eta = calculateNewTime(eta, 5);
                     attempts++;
                 }
                 
-                // ตรวจสอบว่าเวลาที่เลือกเกิน 14:15 หรือไม่
                 const [hour, minute] = eta.split(':').map(Number);
                 if (hour === 14 && minute > 15) {
                     showAlert(`ไม่สามารถจองคิวได้ เนื่องจากเวลา ${eta} เกินเวลารับสินค้า (14:15)`);
                     return;
                 }
                 
-                // ตรวจสอบว่าในช่วงเวลาที่เลือกมีคิวอยู่แล้วหรือไม่
                 if (checkTimeConflict(state.selectedDate, eta) >= 2) {
                     showAlert(`ไม่สามารถจองคิวได้ เนื่องจากมีคิวในช่วงเวลานั้นแล้ว`);
                     return;
@@ -2459,7 +2525,6 @@ const renderModal = (type, data = {}) => {
                 state.data.bookings[dateStr].push(newBooking);
                 state.data.bookings[dateStr].sort((a,b) => a.eta.localeCompare(b.eta));
                 
-                // เพิ่มการแจ้งเตือนเมื่อมีการจองคิวใหม่
                 createNotification(
                     'booking',
                     'มีการจองคิวใหม่',
@@ -2468,13 +2533,18 @@ const renderModal = (type, data = {}) => {
                     newBooking.id
                 );
                 
-                await setDoc(docRef, state.data);
+                try {
+                    await setDoc(docRef, state.data);
 
-                state.guestBookingIds.push(newBooking.id);
-                sessionStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
-                
-                closeModal(form.closest('.modal-backdrop')); 
-                renderModal('qrCode', { booking: newBooking });
+                    state.guestBookingIds.push(newBooking.id);
+                    sessionStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+                    
+                    closeModal(form.closest('.modal-backdrop')); 
+                    renderModal('qrCode', { booking: newBooking });
+                } catch (error) {
+                    console.error('Error saving booking:', error);
+                    showAlert('เกิดข้อผิดพลาดในการจองคิว กรุณาลองใหม่');
+                }
             });
         });
     }
@@ -2513,7 +2583,6 @@ const renderModal = (type, data = {}) => {
             </div>`
             : '';
         
-        // Determine status
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
@@ -2609,7 +2678,6 @@ const renderModal = (type, data = {}) => {
             </div>`
             : '';
         
-        // Determine status
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
@@ -2623,7 +2691,6 @@ const renderModal = (type, data = {}) => {
             statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
         }
         
-        // Check-in section for staff
         let checkInSection = '';
         if (state.userRole === 'staff' && !booking.checkInTime) {
             checkInSection = `
@@ -2948,11 +3015,9 @@ const handleLogin = (e) => {
     e.preventDefault(); 
     const username = document.getElementById('username').value.trim();
     
-    // ตรวจสอบว่าเป็นผู้ใช้ที่มีอยู่ในระบบหรือไม่
     const user = state.data.users?.find(u => u.email === username || u.name === username);
     
     if (user) {
-        // อัปเดตเวลาเข้าสู่ระบบล่าสุด
         user.lastLogin = new Date().toISOString();
         setDoc(docRef, state.data);
         
@@ -2963,7 +3028,6 @@ const handleLogin = (e) => {
         closeModal();
         render();
     } else if (username === 'inboundlaksi') {
-        // ยังคงการเข้าสู่ระบบแบบเก่าสำหรับความเข้ากันได้
         state.isLoggedIn = true;
         state.userRole = 'staff';
         state.currentUser = {
@@ -3002,10 +3066,15 @@ const handleEvaluationSubmit = async (e) => {
             booking.evaluation.scores[sel.dataset.kpiId] = parseInt(sel.value, 10);
         });
         
-        await setDoc(docRef, state.data);
-        
-        closeModal(form.closest('.modal-backdrop')); 
-        showSuccessAnimation("บันทึกผลสำเร็จ!");
+        try {
+            await setDoc(docRef, state.data);
+            
+            closeModal(form.closest('.modal-backdrop')); 
+            showSuccessAnimation("บันทึกผลสำเร็จ!");
+        } catch (error) {
+            console.error('Error saving evaluation:', error);
+            showAlert('เกิดข้อผิดพลาดในการบันทึกผลการประเมิน กรุณาลองใหม่');
+        }
     }
 };
 
@@ -3046,57 +3115,6 @@ const handleDeleteBooking = async (bookingId) => {
     }
 };
 
-const init = async () => {
-    await signInAnonymously(auth);
-
-    onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            state.data = docSnap.data();
-            if (!state.data.companies || state.data.companies.length === 0) {
-                state.data.companies = initialCompanies;
-            }
-             if (!state.data.bookings) {
-                 state.data.bookings = {};
-            }
-            if (!state.data.holidays) {
-                state.data.holidays = [];
-            }
-            if (!state.data.users) {
-                state.data.users = [];
-            }
-            if (!state.data.notifications) {
-                state.data.notifications = [];
-            }
-        } else {
-            const initialData = { 
-                companies: initialCompanies, 
-                bookings: {}, 
-                holidays: [],
-                users: [],
-                notifications: []
-            };
-            setDoc(docRef, initialData); 
-        }
-        state.guestBookingIds = JSON.parse(sessionStorage.getItem('guestBookingIds')) || [];
-        
-        // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
-        updateUnreadNotifications();
-        
-        // ตั้งค่าระบบแจ้งเตือนอัตโนมัติ
-        setupAutomaticNotifications();
-        
-        // ขอสิทธิ์การแจ้งเตือน
-        requestNotificationPermission();
-        
-        render();
-    });
-
-    state.userRole = 'guest';
-    state.isLoggedIn = false;
-    state.currentView = 'calendar';
-};
-
-// เพิ่มฟังก์ชันสำหรับแสดงรายละเอียดวันหยุด
 const renderHolidayDetailsModal = (holiday, date) => {
     const modalContent = `
         <div class="text-center">
@@ -3119,6 +3137,96 @@ const renderHolidayDetailsModal = (holiday, date) => {
     `;
     
     renderModalBase(modalContent);
+};
+
+const renderCompanyKpiDetails = (companyName) => {
+    const kpiData = getKpiData();
+    const company = kpiData.find(c => c.name === companyName);
+    
+    if (!company) {
+        showAlert('ไม่พบข้อมูลบริษัท');
+        return;
+    }
+    
+    const bookingHistoryHtml = company.bookings.map(booking => `
+        <div class="kpi-booking-item">
+            <div class="kpi-booking-details">
+                <span class="kpi-booking-date">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</span>
+                <span class="kpi-booking-score ${booking.score >= 4 ? 'kpi-score-high' : booking.score >= 2.5 ? 'kpi-score-medium' : 'kpi-score-low'}">
+                    คะแนน: ${booking.score.toFixed(2)}
+                </span>
+            </div>
+            <div class="text-sm text-gray-600 mt-1">
+                คนขับ: ${booking.driverName} | ทะเบียน: ${booking.licensePlate}
+            </div>
+        </div>
+    `).join('');
+    
+    const modalContent = `
+        <h3 class="text-xl font-bold mb-4">ประวัติการจัดส่ง - ${companyName}</h3>
+        <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+            <p class="text-lg">คะแนนเฉลี่ย: <span class="font-bold ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span></p>
+            <p class="text-sm text-gray-600">จากการจัดส่งทั้งหมด ${company.bookings.length} ครั้ง</p>
+        </div>
+        <div class="kpi-company-details">
+            ${bookingHistoryHtml}
+        </div>
+        <div class="flex justify-end gap-2 pt-4">
+            <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
+        </div>
+    `;
+    
+    renderModalBase(modalContent);
+};
+
+const init = async () => {
+    try {
+        await signInAnonymously(auth);
+
+        onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                state.data = docSnap.data();
+                if (!state.data.companies || state.data.companies.length === 0) {
+                    state.data.companies = initialCompanies;
+                }
+                 if (!state.data.bookings) {
+                     state.data.bookings = {};
+                }
+                if (!state.data.holidays) {
+                    state.data.holidays = [];
+                }
+                if (!state.data.users) {
+                    state.data.users = [];
+                }
+                if (!state.data.notifications) {
+                    state.data.notifications = [];
+                }
+            } else {
+                const initialData = { 
+                    companies: initialCompanies, 
+                    bookings: {}, 
+                    holidays: [],
+                    users: [],
+                    notifications: []
+                };
+                setDoc(docRef, initialData); 
+            }
+            state.guestBookingIds = JSON.parse(sessionStorage.getItem('guestBookingIds')) || [];
+            
+            updateUnreadNotifications();
+            setupAutomaticNotifications();
+            requestNotificationPermission();
+            
+            render();
+        });
+
+        state.userRole = 'guest';
+        state.isLoggedIn = false;
+        state.currentView = 'calendar';
+    } catch (error) {
+        console.error('Error initializing app:', error);
+        showAlert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ กรุณารีเฟรชหน้าเว็บ');
+    }
 };
 
 init();
