@@ -121,6 +121,7 @@ const formatFileSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+// แก้ไขฟังก์ชันสร้าง QR Code สำหรับ Safari บน iPhone
 const generateQRCode = (data, container) => {
     const canvas = document.createElement('canvas');
     canvas.width = 200;
@@ -140,6 +141,30 @@ const generateQRCode = (data, container) => {
                 } else {
                     container.innerHTML = '';
                     container.appendChild(canvas);
+                    
+                    // เพิ่มการแก้ไขสำหรับ Safari บน iPhone
+                    // แปลง Canvas เป็นรูปภาพและแสดงผลแทน
+                    if (navigator.userAgent.includes('iPhone') && navigator.userAgent.includes('Safari')) {
+                        try {
+                            const img = new Image();
+                            img.onload = function() {
+                                container.innerHTML = '';
+                                container.appendChild(img);
+                                
+                                // เพิ่มปุ่มดาวน์โหลดที่ทำงานใน Safari
+                                const downloadBtn = document.createElement('button');
+                                downloadBtn.id = 'download-qr-btn';
+                                downloadBtn.className = 'btn btn-primary mt-3';
+                                downloadBtn.textContent = 'บันทึก QR Code';
+                                downloadBtn.addEventListener('click', downloadQRCodeForSafari);
+                                container.appendChild(downloadBtn);
+                            };
+                            img.src = canvas.toDataURL('image/png');
+                        } catch (e) {
+                            console.error('Safari image conversion error:', e);
+                            showQRCodeError(container, data);
+                        }
+                    }
                 }
             });
         } catch (error) {
@@ -150,6 +175,31 @@ const generateQRCode = (data, container) => {
         console.error('Error loading QRCode library:', error);
         showQRCodeError(container, data);
     });
+};
+
+// เพิ่มฟังก์ชันสำหรับการดาวน์โหลด QR Code ใน Safari
+const downloadQRCodeForSafari = () => {
+    const img = document.querySelector('#qrcode-container img');
+    if (img) {
+        // สร้างลิงก์สำหรับดาวน์โหลด
+        const link = document.createElement('a');
+        link.download = `qrcode-${Date.now()}.png`;
+        link.href = img.src;
+        
+        // บังคับให้ Safari เริ่มการดาวน์โหลด
+        if (navigator.userAgent.includes('Safari')) {
+            // เปิดในแท็บใหม่แล้วให้ผู้ใช้บันทึกเอง
+            const newWindow = window.open();
+            newWindow.document.write(`<img src="${img.src}" />`);
+        } else {
+            // สำหรับเบราว์เซอร์อื่น
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    } else {
+        alert('ไม่พบ QR Code ที่จะดาวน์โหลด');
+    }
 };
 
 const showQRCodeError = (container, data) => {
@@ -1661,6 +1711,22 @@ const renderTimePickerModal = (bookingModal) => {
             hourPreview.textContent = selectedHour !== null ? selectedHour.toString().padStart(2, '0') : '--';
             minutePreview.textContent = selectedMinute !== null ? selectedMinute.toString().padStart(2, '0') : '--';
             confirmBtn.disabled = selectedHour === null || selectedMinute === null;
+            
+            // ตรวจสอบว่าเวลาที่เลือกอยู่ในช่วงพักเที่ยงหรือไม่
+            if (selectedHour !== null && selectedMinute !== null) {
+                const timeInMinutes = selectedHour * 60 + selectedMinute;
+                const lunchStart = 11 * 60 + 30; // 11:30
+                const lunchEnd = 12 * 60 + 30; // 12:30
+                
+                if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = 'เวลาพักพนักงาน';
+                    confirmBtn.classList.add('btn-disabled');
+                } else {
+                    confirmBtn.textContent = 'ยืนยัน';
+                    confirmBtn.classList.remove('btn-disabled');
+                }
+            }
         };
 
         const attachClockListeners = () => {
@@ -1729,9 +1795,16 @@ const renderTimePickerModal = (bookingModal) => {
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
                     const numberEl = document.createElement('div');
                     numberEl.className = 'clock-number';
-                    if (selectedHour === 14 && minute !== '00') {
+                    
+                    // ตรวจสอบว่าเป็นช่วงเวลาพักเที่ยงหรือไม่
+                    if (selectedHour === 11 && minute === '30') {
                         numberEl.classList.add('disabled');
+                        numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
+                    } else if (selectedHour === 12 && (minute === '00' || minute === '10' || minute === '20' || minute === '30')) {
+                        numberEl.classList.add('disabled');
+                        numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
                     }
+                    
                     numberEl.textContent = minute;
                     numberEl.style.left = `${x}px`;
                     numberEl.style.top = `${y}px`;
@@ -1762,6 +1835,15 @@ const renderTimePickerModal = (bookingModal) => {
 
         confirmBtn.addEventListener('click', () => {
             if (selectedHour !== null && selectedMinute !== null) {
+                const timeInMinutes = selectedHour * 60 + selectedMinute;
+                const lunchStart = 11 * 60 + 30; // 11:30
+                const lunchEnd = 12 * 60 + 30; // 12:30
+                
+                if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
+                    showAlert('ไม่สามารถเลือกเวลาในช่วงพักพนักงาน (11:30-12:30) ได้');
+                    return;
+                }
+                
                 const finalTime = `${selectedHour.toString().padStart(2,'0')}:${selectedMinute.toString().padStart(2,'0')}`;
                 bookingModal.querySelector('#eta').value = finalTime;
                 bookingModal.querySelector('#eta-display').textContent = finalTime;
