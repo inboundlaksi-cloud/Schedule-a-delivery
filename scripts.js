@@ -1911,10 +1911,16 @@ const renderTimePickerModal = (bookingModal) => {
             
             if (selectedHour !== null && selectedMinute !== null) {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
-                const lunchStart = 11 * 60 + 30;
-                const lunchEnd = 12 * 60 + 30;
+                const workStart = 8 * 60; // 08:00
+                const workEnd = 14 * 60; // 14:00
+                const lunchStart = 11 * 60 + 30; // 11:30
+                const lunchEnd = 12 * 60 + 30; // 12:30
                 
-                if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
+                if (timeInMinutes < workStart || timeInMinutes > workEnd) {
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = 'นอกเวลาทำการ';
+                    confirmBtn.classList.add('btn-disabled');
+                } else if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
                     confirmBtn.disabled = true;
                     confirmBtn.textContent = 'เวลาพักพนักงาน';
                     confirmBtn.classList.add('btn-disabled');
@@ -1957,7 +1963,8 @@ const renderTimePickerModal = (bookingModal) => {
             clockFace.appendChild(clockCenter);
 
             if (currentPickerView === 'hours') {
-                for (let i = 1; i <= 12; i++) {
+                // แสดงเฉพาะชั่วโมงที่สามารถจองได้ (08:00 - 14:00)
+                for (let i = 8; i <= 14; i++) {
                     const angle = (i / 12) * 360 - 90;
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
@@ -1969,20 +1976,6 @@ const renderTimePickerModal = (bookingModal) => {
                     numberEl.dataset.hour = i;
                     clockFace.appendChild(numberEl);
                 }
-                 for (let i = 13; i <= 24; i++) {
-                    const displayHour = i === 24 ? '00' : i;
-                    const dataHour = i === 24 ? 0 : i;
-                    const angle = ((i-12) / 12) * 360 - 90;
-                    const x = 112 + 60 * Math.cos(angle * Math.PI / 180);
-                    const y = 112 + 60 * Math.sin(angle * Math.PI / 180);
-                    const numberEl = document.createElement('div');
-                    numberEl.className = `clock-number ${dataHour > 14 ? 'disabled' : ''}`;
-                    numberEl.textContent = displayHour;
-                    numberEl.style.left = `${x}px`;
-                    numberEl.style.top = `${y}px`;
-                    numberEl.dataset.hour = dataHour;
-                    clockFace.appendChild(numberEl);
-                }
             } else {
                 ['00', '10', '20', '30', '40', '50'].forEach((minute, index) => {
                     const angle = ((index * 2) / 12) * 360 - 90;
@@ -1991,6 +1984,7 @@ const renderTimePickerModal = (bookingModal) => {
                     const numberEl = document.createElement('div');
                     numberEl.className = 'clock-number';
                     
+                    // ปิดช่วงเวลาพัก 11:30-12:30
                     if (selectedHour === 11 && minute === '30') {
                         numberEl.classList.add('disabled');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
@@ -2030,8 +2024,15 @@ const renderTimePickerModal = (bookingModal) => {
         confirmBtn.addEventListener('click', () => {
             if (selectedHour !== null && selectedMinute !== null) {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
-                const lunchStart = 11 * 60 + 30;
-                const lunchEnd = 12 * 60 + 30;
+                const workStart = 8 * 60; // 08:00
+                const workEnd = 14 * 60; // 14:00
+                const lunchStart = 11 * 60 + 30; // 11:30
+                const lunchEnd = 12 * 60 + 30; // 12:30
+                
+                if (timeInMinutes < workStart || timeInMinutes > workEnd) {
+                    showAlert('ไม่สามารถเลือกเวลานอกช่วงเวลาทำการ (08:00-14:00) ได้');
+                    return;
+                }
                 
                 if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
                     showAlert('ไม่สามารถเลือกเวลาในช่วงพักพนักงาน (11:30-12:30) ได้');
@@ -2646,6 +2647,24 @@ const renderModal = (type, data = {}) => {
                     return; 
                 }
 
+                // ตรวจสอบว่าเวลาอยู่ในช่วงที่อนุญาตหรือไม่
+                const [hour, minute] = eta.split(':').map(Number);
+                const timeInMinutes = hour * 60 + minute;
+                const workStart = 8 * 60; // 08:00
+                const workEnd = 14 * 60; // 14:00
+                const lunchStart = 11 * 60 + 30; // 11:30
+                const lunchEnd = 12 * 60 + 30; // 12:30
+                
+                if (timeInMinutes < workStart || timeInMinutes > workEnd) {
+                    showAlert(`ไม่สามารถจองคิวนอกช่วงเวลาทำการ (08:00-14:00) ได้`);
+                    return;
+                }
+                
+                if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
+                    showAlert(`ไม่สามารถจองคิวในช่วงพักพนักงาน (11:30-12:30) ได้`);
+                    return;
+                }
+
                 let originalTime = eta;
                 let attempts = 0;
                 const maxAttempts = 10;
@@ -2660,9 +2679,17 @@ const renderModal = (type, data = {}) => {
                     attempts++;
                 }
                 
-                const [hour, minute] = eta.split(':').map(Number);
-                if (hour === 14 && minute > 15) {
-                    showAlert(`ไม่สามารถจองคิวได้ เนื่องจากเวลา ${eta} เกินเวลารับสินค้า (14:15)`);
+                // ตรวจสอบว่าเวลาใหม่ยังอยู่ในช่วงที่อนุญาตหรือไม่
+                const [newHour, newMinute] = eta.split(':').map(Number);
+                const newTimeInMinutes = newHour * 60 + newMinute;
+                
+                if (newTimeInMinutes > workEnd) {
+                    showAlert(`ไม่สามารถจองคิวได้ เนื่องจากเวลาที่มีคงเหลืออยู่นอกช่วงเวลาทำการ (08:00-14:00)`);
+                    return;
+                }
+                
+                if (newTimeInMinutes >= lunchStart && newTimeInMinutes <= lunchEnd) {
+                    showAlert(`ไม่สามารถจองคิวได้ เนื่องจากเวลาที่มีคงเหลืออยู่ในช่วงพักพนักงาน (11:30-12:30)`);
                     return;
                 }
                 
@@ -2960,7 +2987,7 @@ const renderModal = (type, data = {}) => {
                     <div class="booking-card-footer">
                         <div class="booking-card-status">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 0116 0zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                             </svg>
                             ${booking.status === 'completed' ? 'ดำเนินการเสร็จสิ้น' : booking.checkInTime ? 'กำลังดำเนินการ' : 'รอการดำเนินการ'}
                         </div>
@@ -3046,7 +3073,7 @@ const renderModal = (type, data = {}) => {
             <div class="text-center">
                 <div class="inline-block p-4 rounded-lg bg-green-50 mb-4">
                     <svg class="w-16 h-16 mx-auto text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 0116 0zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                     </svg>
                 </div>
                 <h3 class="text-xl font-bold text-green-500 mb-2">การจองคิวสำเร็จ!</h3>
