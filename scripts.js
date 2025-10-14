@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, collection, query, orderBy, limit, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -18,6 +18,7 @@ const auth = getAuth(app);
 const docRef = doc(db, "schedules", "main");
 const GEMINI_API_KEY = "AIzaSyD_d2g0XgVxkClULTmh6dfl_eKIkRuVo7E";
 
+// --- MODIFIED START ---
 let state = {
     isLoggedIn: false, 
     userRole: 'guest', 
@@ -25,6 +26,7 @@ let state = {
     currentDate: new Date(), 
     selectedDate: null, 
     selectedBookingId: null,
+    guestSessionId: null, // ID สำหรับผู้ใช้ทั่วไป (Guest)
     guestBookingIds: [], 
     data: { bookings: {}, companies: [], holidays: [], users: [], notifications: [] },
     kpiSearchTerm: '', 
@@ -34,6 +36,7 @@ let state = {
     notificationPage: 1,
     notificationsPerPage: 10
 };
+// --- MODIFIED END ---
 
 const icons = {
     dashboard: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`,
@@ -668,6 +671,7 @@ const renderDashboard = () => {
     </div>`;
 };
 
+// --- MODIFIED START ---
 const renderCalendar = () => {
     const date = new Date(state.currentDate);
     const month = date.getMonth();
@@ -675,7 +679,18 @@ const renderCalendar = () => {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const monthName = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
-    const todayStr = formatDate(new Date());
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set time to midnight for accurate date comparison
+
+    let guestNoticeHtml = '';
+    if (state.userRole === 'guest') {
+        guestNoticeHtml = `
+            <div class="guest-data-notice">
+                ข้อมูลการจองของคุณจะถูกบันทึกไว้ในเบราว์เซอร์นี้สำหรับการใช้งานครั้งถัดไป
+            </div>
+        `;
+    }
 
     let myBookingsHtml = '';
     if (state.userRole === 'guest' && state.guestBookingIds.length > 0) {
@@ -700,13 +715,20 @@ const renderCalendar = () => {
         const currentDateObj = new Date(year, month, day);
         const dateStr = formatDate(currentDateObj);
         const hasBookings = state.data.bookings[dateStr]?.length > 0;
-        const isToday = dateStr === todayStr;
+        const isToday = formatDate(currentDateObj) === formatDate(new Date());
+        const isPast = currentDateObj < today;
         const isFull = checkDailyQueueLimit(dateStr);
         const holiday = isHoliday(currentDateObj);
         const dayOfWeek = currentDateObj.getDay();
         
-        let dayClass = 'calendar-day cursor-pointer p-2 border border-violet-100 flex flex-col rounded-md';
+        let dayClass = 'calendar-day p-2 border border-violet-100 flex flex-col rounded-md';
         let dayContent = `<span class="font-bold">${day}</span>`;
+
+        if (isPast) {
+            dayClass += ' disabled';
+        } else {
+            dayClass += ' cursor-pointer';
+        }
         
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             dayClass += ' weekend-day';
@@ -745,7 +767,7 @@ const renderCalendar = () => {
         daysHtml += `<div data-date="${dateStr}" class="${dayClass}">${dayContent}</div>`;
     }
 
-    return myBookingsHtml + `
+    return guestNoticeHtml + myBookingsHtml + `
         <main class="card p-4 md:p-5 rounded-xl shadow-lg">
             <div class="flex justify-between items-center mb-4">
                 <button id="prev-month-btn" class="p-2 rounded-full hover:bg-violet-100">&lt;</button>
@@ -768,7 +790,7 @@ const renderCalendar = () => {
             ` : ''}
         </main>`;
 };
-
+// --- MODIFIED END ---
 const renderDailyQueue = () => {
     const dateStr = state.selectedDate;
     const bookings = state.data.bookings[dateStr] || [];
@@ -1491,6 +1513,12 @@ const attachCalendarListeners = () => {
     
     document.querySelectorAll('.calendar-day').forEach(day => {
         day.addEventListener('click', (e) => { 
+            // --- MODIFIED START ---
+            if (e.currentTarget.classList.contains('disabled')) {
+                return; // Do nothing if the day is disabled (in the past)
+            }
+            // --- MODIFIED END ---
+
             const clickedDate = e.currentTarget.dataset.date;
             const dateObj = new Date(clickedDate);
             const dayOfWeek = dateObj.getDay();
@@ -1752,7 +1780,6 @@ const handleCompleteBooking = async (bookingId) => {
         showAlert('เกิดข้อผิดพลาดในการยืนยันการรับคิว กรุณาลองใหม่');
     }
 };
-
 const renderTimePickerModal = (bookingModal) => {
     const modalContent = `
         <div class="flex justify-center items-center gap-2 mb-4">
@@ -2283,6 +2310,7 @@ const handleImportPublicHolidays = async (e) => {
     }
 };
 
+// --- MODIFIED START ---
 const renderModal = (type, data = {}) => {
     let modalContent = '';
     if(type === 'login') {
@@ -2537,7 +2565,16 @@ const renderModal = (type, data = {}) => {
                     await setDoc(docRef, state.data);
 
                     state.guestBookingIds.push(newBooking.id);
-                    sessionStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+                    
+                    // Save to localStorage (Layer 1)
+                    localStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+
+                    // Save to Firebase (Layer 2)
+                    const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
+                    await setDoc(guestDocRef, { 
+                        bookingIds: state.guestBookingIds,
+                        lastActivity: serverTimestamp() 
+                    }, { merge: true });
                     
                     closeModal(form.closest('.modal-backdrop')); 
                     renderModal('qrCode', { booking: newBooking });
@@ -2548,6 +2585,7 @@ const renderModal = (type, data = {}) => {
             });
         });
     }
+// --- MODIFIED END ---
     else if(type === 'bookingDetails') {
         const booking = findBookingById(data.bookingId);
         if (!booking) {
@@ -3179,28 +3217,29 @@ const renderCompanyKpiDetails = (companyName) => {
     renderModalBase(modalContent);
 };
 
+// --- MODIFIED START ---
 const init = async () => {
     try {
         await signInAnonymously(auth);
 
-        onSnapshot(docRef, (docSnap) => {
+        // 1. Get or create a persistent Guest Session ID from localStorage
+        let sessionId = localStorage.getItem('guestSessionId');
+        if (!sessionId) {
+            sessionId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            localStorage.setItem('guestSessionId', sessionId);
+        }
+        state.guestSessionId = sessionId;
+
+        onSnapshot(docRef, async (docSnap) => {
             if (docSnap.exists()) {
                 state.data = docSnap.data();
                 if (!state.data.companies || state.data.companies.length === 0) {
                     state.data.companies = initialCompanies;
                 }
-                 if (!state.data.bookings) {
-                     state.data.bookings = {};
-                }
-                if (!state.data.holidays) {
-                    state.data.holidays = [];
-                }
-                if (!state.data.users) {
-                    state.data.users = [];
-                }
-                if (!state.data.notifications) {
-                    state.data.notifications = [];
-                }
+                 if (!state.data.bookings) state.data.bookings = {};
+                if (!state.data.holidays) state.data.holidays = [];
+                if (!state.data.users) state.data.users = [];
+                if (!state.data.notifications) state.data.notifications = [];
             } else {
                 const initialData = { 
                     companies: initialCompanies, 
@@ -3211,7 +3250,22 @@ const init = async () => {
                 };
                 setDoc(docRef, initialData); 
             }
-            state.guestBookingIds = JSON.parse(sessionStorage.getItem('guestBookingIds')) || [];
+            
+            // 2. Fetch guest's booking history from Firebase using the session ID
+            if (state.guestSessionId && state.userRole === 'guest') {
+                const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
+                const guestDocSnap = await getDoc(guestDocRef);
+
+                if (guestDocSnap.exists()) {
+                    const guestData = guestDocSnap.data();
+                    state.guestBookingIds = guestData.bookingIds || [];
+                    // Sync Firebase data back to localStorage to ensure it's up to date
+                    localStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+                } else {
+                    // If no session in Firebase, try to load from localStorage as a fallback
+                    state.guestBookingIds = JSON.parse(localStorage.getItem('guestBookingIds')) || [];
+                }
+            }
             
             updateUnreadNotifications();
             setupAutomaticNotifications();
@@ -3228,5 +3282,6 @@ const init = async () => {
         showAlert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ กรุณารีเฟรชหน้าเว็บ');
     }
 };
+// --- MODIFIED END ---
 
 init();
