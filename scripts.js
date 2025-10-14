@@ -26,102 +26,7 @@ let state = {
     selectedDate: null, 
     selectedBookingId: null,
     guestBookingIds: [], 
-    data: { 
-        bookings: {}, 
-        companies: [], 
-        holidays: [], 
-        users: [], 
-        notifications: [],
-        // เพิ่มส่วนจัดการข้อความและการตั้งค่า
-        settings: {
-            browserWarning: {
-                title: "ข้อแนะนำในการใช้งาน",
-                message: "แนะนำให้ใช้งานผ่าน PC หรือ Google Chrome เพื่อประสิทธิภาพที่ดีที่สุด หากใช้งานผ่าน Safari บน iPhone อาจมีปัญหาในการแสดง QR Code",
-                color: "#F59E0B"
-            },
-            manual: {
-                title: "คู่มือการใช้งานระบบจองคิว",
-                content: `
-                    <div class="manual-steps mt-4">
-                        <div class="manual-step">
-                            <h4 class="font-semibold">การเข้าสู่ระบบจัดการคิว</h4>
-                            <p>เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
-                        </div>
-                        <div class="manual-step">
-                            <h4 class="font-semibold">การเลือกวันจัดส่งสินค้า</h4>
-                            <p>เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
-                            <div class="manual-important">
-                                <p>หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
-                            </div>
-                        </div>
-                        <div class="manual-step">
-                            <h4 class="font-semibold">การกรอกข้อมูลการจอง</h4>
-                            <p>หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
-                            <p>ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
-                            <div class="manual-important">
-                                <p>หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
-                            </div>
-                        </div>
-                        <div class="manual-step">
-                            <h4 class="font-semibold">การกรอกรายละเอียด</h4>
-                            <p>กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
-                            <ul class="list-disc list-inside ml-4 mt-2">
-                                <li>ชื่อ-นามสกุล คนขับ: กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
-                                <li>ทะเบียนรถ: ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
-                                <li>จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น: กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
-                                <li>เวลาที่คาดว่าจะมาถึง: กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
-                            </ul>
-                        </div>
-                        <div class="manual-step">
-                            <h4 class="font-semibold">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
-                            <p>สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
-                            <p>คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
-                            <p>ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
-                        </div>
-                        <div class="manual-step">
-                            <h4 class="font-semibold">การยืนยันการจองและรับรหัสคิว</h4>
-                            <p>เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
-                            <div class="manual-important">
-                                <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
-                            </div>
-                            <p>เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
-                            <div class="manual-important">
-                                <p>คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
-                            </div>
-                        </div>
-                        <div class="manual-step">
-                            <h4 class="font-semibold">ข้อควรทราบ</h4>
-                            <ul class="list-disc list-inside ml-4 mt-2">
-                                <li>สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
-                                <li class="important-note">หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
-                                <li class="important-note">กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
-                                <li>หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
-                            </ul>
-                        </div>
-                        <div class="manual-step">
-                            <h4 class="font-semibold">การเช็คอินเมื่อถึงคลังสินค้า</h4>
-                            <p>เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
-                            <p>พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
-                            <div class="manual-important">
-                                <p>คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
-                            </div>
-                        </div>
-                    </div>
-                `
-            },
-            cancelQueueSettings: {
-                autoCancel: false,
-                cancelTimeLimit: 24, // ชั่วโมง
-                requireConfirmation: true,
-                notificationMessage: "มีการยกเลิกคิวโดยซัพพลายเออร์ กรุณาทำการยืนยันการยกเลิก"
-            },
-            maxQueuesPerDay: 20,
-            workHoursStart: "08:00",
-            workHoursEnd: "17:00",
-            breakHoursStart: "12:00",
-            breakHoursEnd: "13:00"
-        }
-    },
+    data: { bookings: {}, companies: [], holidays: [], users: [], notifications: [] },
     kpiSearchTerm: '', 
     selectedKpiCompany: null,
     currentUser: null,
@@ -145,8 +50,7 @@ const icons = {
     notifications: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`,
     trash: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`,
     download: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
-    myQueue: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`,
-    settings: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`
+    myQueue: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`
 };
 
 const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
@@ -353,7 +257,7 @@ const calculateNewTime = (time, addMinutes = 10) => {
 
 const checkDailyQueueLimit = (date) => {
     const bookings = state.data.bookings[date] || [];
-    return bookings.length >= (state.data.settings?.maxQueuesPerDay || 20);
+    return bookings.length >= 20;
 };
 
 const isHoliday = (date) => {
@@ -391,8 +295,8 @@ const checkIfLate = (booking) => {
 };
 
 const getAttendanceStats = () => {
-    const todayStr = formatDate(new Date());
-    const todayBookings = state.data.bookings[todayStr] || [];
+    const today = formatDate(new Date());
+    const todayBookings = state.data.bookings[today] || [];
     
     let onTime = 0;
     let late = 0;
@@ -506,15 +410,12 @@ const canCancelBooking = (bookingDate) => {
     const booking = new Date(bookingDate);
     booking.setHours(0, 0, 0, 0);
     
-    // ใช้การตั้งค่าจาก settings
-    const cancelTimeLimit = state.data.settings?.cancelQueueSettings?.cancelTimeLimit || 24;
-    
     // คำนวณความต่างของวัน (มิลลิวินาที)
     const diffTime = booking - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    // สามารถยกเลิกได้ถ้าเหลือเวลาอย่างน้อยตามที่ตั้งค่า
-    return diffDays >= (cancelTimeLimit / 24);
+    // สามารถยกเลิกได้ถ้าเหลือเวลาอย่างน้อย 1 วัน
+    return diffDays >= 1;
 };
 
 const renderModalBase = (content, attachListenersCallback) => {
@@ -578,190 +479,6 @@ const showSuccessAnimation = (message, onComplete) => {
     }, 1800);
 };
 
-// ฟังก์ชันสำหรับแสดงหน้าตั้งค่าระบบ
-const renderSettingsView = () => {
-    const settings = state.data.settings || {};
-    
-    return `
-    <div class="mb-4">
-        <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยัง Dashboard
-        </button>
-    </div>
-    <main>
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold">ตั้งค่าระบบ</h2>
-            <p class="text-gray-600 mt-1">จัดการข้อความและการตั้งค่าต่างๆ ของระบบ</p>
-        </div>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- ตั้งค่าข้อความแนะนำ -->
-            <div class="card p-5 rounded-xl shadow-lg">
-                <h3 class="text-lg font-semibold mb-4">ข้อความแนะนำในการใช้งาน</h3>
-                <form id="browser-warning-form" class="space-y-4">
-                    <div>
-                        <label class="text-sm font-medium">หัวข้อ</label>
-                        <input type="text" id="browser-warning-title" value="${settings.browserWarning?.title || ''}" class="input w-full mt-1" required>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">ข้อความ</label>
-                        <textarea id="browser-warning-message" rows="3" class="input w-full mt-1" required>${settings.browserWarning?.message || ''}</textarea>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">สีข้อความ</label>
-                        <div class="flex items-center gap-2 mt-1">
-                            <input type="color" id="browser-warning-color" value="${settings.browserWarning?.color || '#F59E0B'}" class="h-10 w-20">
-                            <input type="text" id="browser-warning-color-text" value="${settings.browserWarning?.color || '#F59E0B'}" class="input flex-1" readonly>
-                        </div>
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn btn-primary">บันทึก</button>
-                    </div>
-                </form>
-            </div>
-            
-            <!-- ตั้งค่าคู่มือการใช้งาน -->
-            <div class="card p-5 rounded-xl shadow-lg">
-                <h3 class="text-lg font-semibold mb-4">คู่มือการใช้งานระบบจองคิว</h3>
-                <form id="manual-form" class="space-y-4">
-                    <div>
-                        <label class="text-sm font-medium">หัวข้อ</label>
-                        <input type="text" id="manual-title" value="${settings.manual?.title || ''}" class="input w-full mt-1" required>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">เนื้อหา (HTML)</label>
-                        <textarea id="manual-content" rows="10" class="input w-full mt-1 font-mono text-sm" required>${settings.manual?.content || ''}</textarea>
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn btn-primary">บันทึก</button>
-                    </div>
-                </form>
-            </div>
-            
-            <!-- ตั้งค่าการยกเลิกคิว -->
-            <div class="card p-5 rounded-xl shadow-lg">
-                <h3 class="text-lg font-semibold mb-4">การตั้งค่าการยกเลิกคิว</h3>
-                <form id="cancel-queue-form" class="space-y-4">
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="auto-cancel" ${settings.cancelQueueSettings?.autoCancel ? 'checked' : ''} class="w-4 h-4">
-                        <label for="auto-cancel" class="text-sm font-medium">ยกเลิกคิวอัตโนมัติเมื่อหมดเวลา</label>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">ระยะเวลาที่สามารถยกเลิกได้ (ชั่วโมง)</label>
-                        <input type="number" id="cancel-time-limit" value="${settings.cancelQueueSettings?.cancelTimeLimit || 24}" min="1" max="168" class="input w-full mt-1">
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="require-confirmation" ${settings.cancelQueueSettings?.requireConfirmation ? 'checked' : ''} class="w-4 h-4">
-                        <label for="require-confirmation" class="text-sm font-medium">ต้องการการยืนยันจากพนักงานเมื่อซัพพลายเออร์ยกเลิกคิว</label>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">ข้อความแจ้งเตือนเมื่อมีการยกเลิกคิว</label>
-                        <textarea id="notification-message" rows="3" class="input w-full mt-1">${settings.cancelQueueSettings?.notificationMessage || ''}</textarea>
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn btn-primary">บันทึก</button>
-                    </div>
-                </form>
-            </div>
-            
-            <!-- ตั้งค่าอื่นๆ -->
-            <div class="card p-5 rounded-xl shadow-lg">
-                <h3 class="text-lg font-semibold mb-4">ตั้งค่าอื่นๆ</h3>
-                <form id="other-settings-form" class="space-y-4">
-                    <div>
-                        <label class="text-sm font-medium">จำนวนคิวสูงสุดต่อวัน</label>
-                        <input type="number" id="max-queues-per-day" value="${settings.maxQueuesPerDay || 20}" min="1" max="100" class="input w-full mt-1">
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">ช่วงเวลาทำการ (เริ่ม)</label>
-                        <input type="time" id="work-hours-start" value="${settings.workHoursStart || '08:00'}" class="input w-full mt-1">
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">ช่วงเวลาทำการ (สิ้นสุด)</label>
-                        <input type="time" id="work-hours-end" value="${settings.workHoursEnd || '17:00'}" class="input w-full mt-1">
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">ช่วงเวลาพัก (เริ่ม)</label>
-                        <input type="time" id="break-hours-start" value="${settings.breakHoursStart || '12:00'}" class="input w-full mt-1">
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium">ช่วงเวลาพัก (สิ้นสุด)</label>
-                        <input type="time" id="break-hours-end" value="${settings.breakHoursEnd || '13:00'}" class="input w-full mt-1">
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn btn-primary">บันทึก</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </main>`;
-};
-
-// ฟังก์ชันสำหรับแสดงหน้าจัดการการยกเลิกคิว
-const renderCancelQueueManagement = () => {
-    // ค้นหาคิวที่รอการยืนยันการยกเลิก
-    const pendingCancellations = [];
-    
-    Object.entries(state.data.bookings).forEach(([date, bookings]) => {
-        bookings.forEach(booking => {
-            if (booking.cancelRequested && !booking.cancelConfirmed) {
-                pendingCancellations.push({ ...booking, date });
-            }
-        });
-    });
-    
-    const pendingCancellationsHtml = pendingCancellations.length > 0
-        ? pendingCancellations.map(booking => `
-            <div class="card p-4 rounded-lg shadow-sm mb-4 bg-yellow-50 border-l-4 border-yellow-500">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                    <div>
-                        <p class="font-bold text-lg">${booking.companyName}</p>
-                        <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
-                        <p class="text-sm text-slate-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</p>
-                        ${booking.referenceNumber ? `<p class="text-xs text-violet-600 font-medium">เลขกำกับ: <span class="reference-number">${booking.referenceNumber}</span></p>` : ''}
-                        <p class="text-sm text-red-600 mt-2">เหตุผลการยกเลิก: ${booking.cancelReason || 'ไม่ระบุ'}</p>
-                        <p class="text-xs text-gray-500 mt-1">ผู้ขอยกเลิก: ${booking.cancelledBy || 'ซัพพลายเออร์'}</p>
-                        <p class="text-xs text-gray-500">เวลาที่ขอยกเลิก: ${formatDateTime(booking.cancelRequestedAt)}</p>
-                    </div>
-                    <div class="text-right">
-                        <span class="status-badge status-pending">รอการยืนยัน</span>
-                    </div>
-                </div>
-                <div class="mt-4 flex gap-2">
-                    <button data-booking-id="${booking.id}" class="confirm-cancel-btn btn btn-danger">ยืนยันการยกเลิก</button>
-                    <button data-booking-id="${booking.id}" class="reject-cancel-btn btn btn-secondary">ปฏิเสธการยกเลิก</button>
-                </div>
-            </div>
-        `).join('')
-        : `<p class="text-center text-slate-500 py-8">ไม่มีคิวที่รอการยืนยันการยกเลิก</p>`;
-    
-    return `
-    <div class="mb-4">
-        <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยัง Dashboard
-        </button>
-    </div>
-    <main>
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold">จัดการการยกเลิกคิว</h2>
-            <p class="text-gray-600 mt-1">ตรวจสอบและยืนยันการยกเลิกคิวที่ร้องขอโดยซัพพลายเออร์</p>
-        </div>
-        
-        <div class="card p-5 rounded-xl shadow-lg">
-            <h3 class="text-lg font-semibold mb-4">คิวที่รอการยืนยันการยกเลิก</h3>
-            <div class="space-y-4">
-                ${pendingCancellationsHtml}
-            </div>
-        </div>
-    </main>`;
-};
-
 const render = () => {
     const header = `
         <header class="hero-section">
@@ -787,37 +504,100 @@ const render = () => {
             </div>
         </header>`;
     
-    // แก้ไขส่วนแสดงข้อความแนะนำให้ดึงจาก settings
-    const browserWarning = state.data.settings?.browserWarning ? `
-        <div class="browser-warning" style="background-color: ${state.data.settings.browserWarning.color}20; border-color: ${state.data.settings.browserWarning.color}40; color: ${state.data.settings.browserWarning.color};">
+    // เพิ่มข้อความแนะนำการใช้งานบน PC/Chrome
+    const browserWarning = `
+        <div class="browser-warning bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <div class="flex items-start gap-3">
-                <svg class="w-6 h-6 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <svg class="w-6 h-6 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                 </svg>
                 <div>
-                    <h3 class="font-semibold">${state.data.settings.browserWarning.title}</h3>
-                    <p class="text-sm mt-1">${state.data.settings.browserWarning.message}</p>
+                    <h3 class="font-semibold text-yellow-800">ข้อแนะนำในการใช้งาน</h3>
+                    <p class="text-sm text-yellow-700 mt-1">แนะนำให้ใช้งานผ่าน PC หรือ Google Chrome เพื่อประสิทธิภาพที่ดีที่สุด หากใช้งานผ่าน Safari บน iPhone อาจมีปัญหาในการแสดง QR Code</p>
                 </div>
             </div>
         </div>
-    ` : '';
+    `;
     
-    // แก้ไขส่วนแสดงคู่มือการใช้งานให้ดึงจาก settings
-    const manualSection = state.data.settings?.manual ? `
+    const manualSection = `
         <div class="manual-section">
             <div class="flex justify-between items-center">
                 <h3 class="manual-title flex items-center gap-2">
-                    ${icons.manual} ${state.data.settings.manual.title}
+                    ${icons.manual} คู่มือการใช้งานระบบจองคิว
                 </h3>
                 <button id="toggle-manual-btn" class="btn btn-primary btn-sm">
                     <span id="manual-toggle-text">แสดง</span>
                 </button>
             </div>
             <div id="manual-content" class="manual-content">
-                ${state.data.settings.manual.content}
+                <div class="manual-steps mt-4">
+                    <div class="manual-step">
+                        <h4 class="font-semibold">การเข้าสู่ระบบจัดการคิว</h4>
+                        <p>เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
+                    </div>
+                    <div class="manual-step">
+                        <h4 class="font-semibold">การเลือกวันจัดส่งสินค้า</h4>
+                        <p>เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
+                        <div class="manual-important">
+                            <p>หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
+                        </div>
+                    </div>
+                    <div class="manual-step">
+                        <h4 class="font-semibold">การกรอกข้อมูลการจอง</h4>
+                        <p>หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
+                        <p>ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
+                        <div class="manual-important">
+                            <p>หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
+                        </div>
+                    </div>
+                    <div class="manual-step">
+                        <h4 class="font-semibold">การกรอกรายละเอียด</h4>
+                        <p>กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
+                        <ul class="list-disc list-inside ml-4 mt-2">
+                            <li>ชื่อ-นามสกุล คนขับ: กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
+                            <li>ทะเบียนรถ: ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
+                            <li>จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น: กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
+                            <li>เวลาที่คาดว่าจะมาถึง: กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
+                        </ul>
+                    </div>
+                    <div class="manual-step">
+                        <h4 class="font-semibold">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
+                        <p>สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
+                        <p>คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
+                        <p>ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
+                    </div>
+                    <div class="manual-step">
+                        <h4 class="font-semibold">การยืนยันการจองและรับรหัสคิว</h4>
+                        <p>เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
+                        <div class="manual-important">
+                            <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
+                        </div>
+                        <p>เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
+                        <div class="manual-important">
+                            <p>คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
+                        </div>
+                    </div>
+                    <div class="manual-step">
+                        <h4 class="font-semibold">ข้อควรทราบ</h4>
+                        <ul class="list-disc list-inside ml-4 mt-2">
+                            <li>สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
+                            <li class="important-note">หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
+                            <li class="important-note">กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
+                            <li>หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
+                        </ul>
+                    </div>
+                    <div class="manual-step">
+                        <h4 class="font-semibold">การเช็คอินเมื่อถึงคลังสินค้า</h4>
+                        <p>เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
+                        <p>พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
+                        <div class="manual-important">
+                            <p>คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    ` : '';
+    `;
     
     let viewContent = '';
     switch(state.currentView) {
@@ -831,8 +611,6 @@ const render = () => {
         case 'users': viewContent = renderStaffNav() + renderUsersView(); break;
         case 'notifications': viewContent = renderStaffNav() + renderNotificationsView(); break;
         case 'myQueue': viewContent = renderMyQueueView(); break;
-        case 'settings': viewContent = renderStaffNav() + renderSettingsView(); break; // เพิ่มหน้าตั้งค่า
-        case 'cancelQueueManagement': viewContent = renderStaffNav() + renderCancelQueueManagement(); break; // เพิ่มหน้าจัดการการยกเลิกคิว
     }
     
     appContainer.innerHTML = header + `<div class="fade-in">${viewContent}</div>`;
@@ -849,8 +627,6 @@ const renderStaffNav = () => `
             <button data-view="bookingDetails" class="staff-nav-btn ${state.currentView === 'bookingDetails' ? 'active' : ''}">${icons.booking} รายละเอียด</button>
             <button data-view="users" class="staff-nav-btn ${state.currentView === 'users' ? 'active' : ''}">${icons.users} ผู้ใช้</button>
             <button data-view="notifications" class="staff-nav-btn ${state.currentView === 'notifications' ? 'active' : ''}">${icons.notifications} การแจ้งเตือน</button>
-            <button data-view="cancelQueueManagement" class="staff-nav-btn ${state.currentView === 'cancelQueueManagement' ? 'active' : ''}">${icons.trash} จัดการยกเลิกคิว</button>
-            <button data-view="settings" class="staff-nav-btn ${state.currentView === 'settings' ? 'active' : ''}">${icons.settings} ตั้งค่าระบบ</button>
             <button data-view="scanner" class="staff-nav-btn ${state.currentView === 'scanner' ? 'active' : ''}">${icons.scanner} สแกน QR</button>
         </div>
     </div>`;
@@ -1067,10 +843,6 @@ const renderDailyQueue = () => {
                 } else {
                     statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
                 }
-            } else if (booking.cancelRequested && !booking.cancelConfirmed) {
-                statusBadge = '<span class="status-badge status-pending">รอการยืนยันการยกเลิก</span>';
-            } else if (booking.cancelConfirmed) {
-                statusBadge = '<span class="status-badge status-cancelled">ยกเลิกแล้ว</span>';
             } else {
                 statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
             }
@@ -1094,7 +866,7 @@ const renderDailyQueue = () => {
                 </div>
                 ${state.userRole === 'staff' ? `
                     <div class="mt-4 border-t pt-2 flex gap-2">
-                        ${!booking.checkInTime && !booking.cancelRequested ? `<button data-booking-id="${booking.id}" class="check-in-btn btn btn-success btn-sm">เช็คอิน</button>` : ''}
+                        ${!booking.checkInTime ? `<button data-booking-id="${booking.id}" class="check-in-btn btn btn-success btn-sm">เช็คอิน</button>` : ''}
                         ${booking.checkInTime && booking.status !== 'completed' ? `<button data-booking-id="${booking.id}" class="complete-btn btn btn-primary btn-sm">ยืนยันรับคิว</button>` : ''}
                         <button data-booking-id="${booking.id}" class="evaluate-btn btn btn-primary btn-sm">ประเมิน KPI</button>
                         <button data-booking-id="${booking.id}" class="delete-booking-btn btn btn-danger btn-sm">ลบ</button>
@@ -1140,10 +912,6 @@ const renderBookingDetails = () => {
                 } else {
                     statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
                 }
-            } else if (booking.cancelRequested && !booking.cancelConfirmed) {
-                statusBadge = '<span class="status-badge status-pending">รอการยืนยันการยกเลิก</span>';
-            } else if (booking.cancelConfirmed) {
-                statusBadge = '<span class="status-badge status-cancelled">ยกเลิกแล้ว</span>';
             } else {
                 statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
             }
@@ -1214,10 +982,6 @@ const renderMyQueueView = () => {
                 } else {
                     statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
                 }
-            } else if (booking.cancelRequested && !booking.cancelConfirmed) {
-                statusBadge = '<span class="status-badge status-pending">รอการยืนยันการยกเลิก</span>';
-            } else if (booking.cancelConfirmed) {
-                statusBadge = '<span class="status-badge status-cancelled">ยกเลิกแล้ว</span>';
             } else {
                 statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
             }
@@ -1243,7 +1007,7 @@ const renderMyQueueView = () => {
                 <div class="mt-2">
                     <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
                     <button data-booking-id="${booking.id}" class="view-qr-btn text-green-500 text-sm hover:text-green-700 ml-2">ดู QR Code</button>
-                    ${!booking.checkInTime && !booking.cancelRequested && canCancel ? `<button data-booking-id="${booking.id}" class="cancel-booking-btn text-red-500 text-sm hover:text-red-700 ml-2">ยกเลิกคิว</button>` : ''}
+                    ${!booking.checkInTime && canCancel ? `<button data-booking-id="${booking.id}" class="cancel-booking-btn text-red-500 text-sm hover:text-red-700 ml-2">ยกเลิกคิว</button>` : ''}
                 </div>
             </div>
         `}).join('')
@@ -1360,7 +1124,8 @@ const renderUsersView = () => {
                 </tbody>
             </table>
         </div>
-    </main>`;
+    </main>
+    `;
 };
 
 const renderNotificationsView = () => {
@@ -1448,7 +1213,8 @@ const renderNotificationsView = () => {
             ${notificationsHtml || '<div class="p-4 text-center text-gray-500">ไม่มีการแจ้งเตือน</div>'}
         </div>
         ${paginationHtml}
-    </main>`;
+    </main>
+    `;
 };
 
 const getKpiData = () => {
@@ -1878,41 +1644,6 @@ const attachAllListeners = () => {
     else if (state.currentView === 'kpi') attachKpiListeners();
     else if (state.currentView === 'bookingDetails') attachBookingDetailsListeners();
     else if (state.currentView === 'scanner') attachScannerListeners();
-    
-    // เพิ่ม event listeners สำหรับหน้าตั้งค่า
-    if (state.currentView === 'settings') {
-        document.getElementById('browser-warning-form')?.addEventListener('submit', handleBrowserWarningSettings);
-        document.getElementById('manual-form')?.addEventListener('submit', handleManualSettings);
-        document.getElementById('cancel-queue-form')?.addEventListener('submit', handleCancelQueueSettings);
-        document.getElementById('other-settings-form')?.addEventListener('submit', handleOtherSettings);
-        
-        // จัดการการเปลี่ยนแปลงสี
-        const colorInput = document.getElementById('browser-warning-color');
-        const colorText = document.getElementById('browser-warning-color-text');
-        
-        if (colorInput && colorText) {
-            colorInput.addEventListener('input', (e) => {
-                colorText.value = e.target.value;
-            });
-        }
-    }
-    
-    // เพิ่ม event listeners สำหรับหน้าจัดการการยกเลิกคิว
-    if (state.currentView === 'cancelQueueManagement') {
-        document.querySelectorAll('.confirm-cancel-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const bookingId = e.currentTarget.dataset.bookingId;
-                handleConfirmCancelBooking(bookingId);
-            });
-        });
-        
-        document.querySelectorAll('.reject-cancel-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const bookingId = e.currentTarget.dataset.bookingId;
-                handleRejectCancelBooking(bookingId);
-            });
-        });
-    }
 };
 
 const findBookingByReferenceNumber = (referenceNumber) => {
@@ -2252,196 +1983,7 @@ const renderCancelBookingModal = (bookingId) => {
     });
 };
 
-// ฟังก์ชันสำหรับจัดการการตั้งค่าข้อความแนะนำ
-const handleBrowserWarningSettings = async (e) => {
-    e.preventDefault();
-    
-    if (!state.data.settings) {
-        state.data.settings = {};
-    }
-    
-    if (!state.data.settings.browserWarning) {
-        state.data.settings.browserWarning = {};
-    }
-    
-    state.data.settings.browserWarning.title = document.getElementById('browser-warning-title').value;
-    state.data.settings.browserWarning.message = document.getElementById('browser-warning-message').value;
-    state.data.settings.browserWarning.color = document.getElementById('browser-warning-color').value;
-    
-    try {
-        await setDoc(docRef, state.data);
-        showSuccessAnimation('บันทึกการตั้งค่าข้อความแนะนำสำเร็จแล้ว');
-    } catch (error) {
-        console.error('Error saving browser warning settings:', error);
-        showAlert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่');
-    }
-};
-
-// ฟังก์ชันสำหรับจัดการการตั้งค่าคู่มือการใช้งาน
-const handleManualSettings = async (e) => {
-    e.preventDefault();
-    
-    if (!state.data.settings) {
-        state.data.settings = {};
-    }
-    
-    if (!state.data.settings.manual) {
-        state.data.settings.manual = {};
-    }
-    
-    state.data.settings.manual.title = document.getElementById('manual-title').value;
-    state.data.settings.manual.content = document.getElementById('manual-content').value;
-    
-    try {
-        await setDoc(docRef, state.data);
-        showSuccessAnimation('บันทึกการตั้งค่าคู่มือการใช้งานสำเร็จแล้ว');
-    } catch (error) {
-        console.error('Error saving manual settings:', error);
-        showAlert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่');
-    }
-};
-
-// ฟังก์ชันสำหรับจัดการการตั้งค่าการยกเลิกคิว
-const handleCancelQueueSettings = async (e) => {
-    e.preventDefault();
-    
-    if (!state.data.settings) {
-        state.data.settings = {};
-    }
-    
-    if (!state.data.settings.cancelQueueSettings) {
-        state.data.settings.cancelQueueSettings = {};
-    }
-    
-    state.data.settings.cancelQueueSettings.autoCancel = document.getElementById('auto-cancel').checked;
-    state.data.settings.cancelQueueSettings.cancelTimeLimit = parseInt(document.getElementById('cancel-time-limit').value);
-    state.data.settings.cancelQueueSettings.requireConfirmation = document.getElementById('require-confirmation').checked;
-    state.data.settings.cancelQueueSettings.notificationMessage = document.getElementById('notification-message').value;
-    
-    try {
-        await setDoc(docRef, state.data);
-        showSuccessAnimation('บันทึกการตั้งค่าการยกเลิกคิวสำเร็จแล้ว');
-    } catch (error) {
-        console.error('Error saving cancel queue settings:', error);
-        showAlert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่');
-    }
-};
-
-// ฟังก์ชันสำหรับจัดการการตั้งค่าอื่นๆ
-const handleOtherSettings = async (e) => {
-    e.preventDefault();
-    
-    if (!state.data.settings) {
-        state.data.settings = {};
-    }
-    
-    state.data.settings.maxQueuesPerDay = parseInt(document.getElementById('max-queues-per-day').value);
-    state.data.settings.workHoursStart = document.getElementById('work-hours-start').value;
-    state.data.settings.workHoursEnd = document.getElementById('work-hours-end').value;
-    state.data.settings.breakHoursStart = document.getElementById('break-hours-start').value;
-    state.data.settings.breakHoursEnd = document.getElementById('break-hours-end').value;
-    
-    try {
-        await setDoc(docRef, state.data);
-        showSuccessAnimation('บันทึกการตั้งค่าอื่นๆ สำเร็จแล้ว');
-    } catch (error) {
-        console.error('Error saving other settings:', error);
-        showAlert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่');
-    }
-};
-
-// ฟังก์ชันสำหรับยืนยันการยกเลิกคิว
-const handleConfirmCancelBooking = async (bookingId) => {
-    try {
-        let bookingToCancel = null;
-        let bookingDate = null;
-        
-        for (const date in state.data.bookings) {
-            const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
-            if (bookingIndex !== -1) {
-                bookingToCancel = state.data.bookings[date][bookingIndex];
-                bookingDate = date;
-                break;
-            }
-        }
-        
-        if (!bookingToCancel) {
-            showAlert('ไม่พบข้อมูลการจองคิวที่ต้องการยกเลิก');
-            return;
-        }
-        
-        // อัปเดตสถานะการยกเลิก
-        bookingToCancel.cancelConfirmed = true;
-        bookingToCancel.cancelConfirmedAt = new Date().toISOString();
-        bookingToCancel.cancelConfirmedBy = state.currentUser?.name || 'พนักงาน';
-        
-        // สร้างการแจ้งเตือนให้ซัพพลายเออร์
-        createNotification(
-            'booking',
-            'การยกเลิกคิวได้รับการยืนยัน',
-            `การยกเลิกคิวสำหรับวันที่ ${formatThaiDate(bookingDate)} เวลา ${formatTime24h(bookingToCancel.eta)} ได้รับการยืนยันแล้ว`,
-            bookingToCancel.userId,
-            bookingId
-        );
-        
-        await setDoc(docRef, state.data);
-        
-        showSuccessAnimation('ยืนยันการยกเลิกคิวสำเร็จแล้ว');
-        render();
-        
-    } catch (error) {
-        console.error('Error confirming cancel booking:', error);
-        showAlert('เกิดข้อผิดพลาดในการยืนยันการยกเลิกคิว กรุณาลองใหม่');
-    }
-};
-
-// ฟังก์ชันสำหรับปฏิเสธการยกเลิกคิว
-const handleRejectCancelBooking = async (bookingId) => {
-    try {
-        let bookingToReject = null;
-        let bookingDate = null;
-        
-        for (const date in state.data.bookings) {
-            const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
-            if (bookingIndex !== -1) {
-                bookingToReject = state.data.bookings[date][bookingIndex];
-                bookingDate = date;
-                break;
-            }
-        }
-        
-        if (!bookingToReject) {
-            showAlert('ไม่พบข้อมูลการจองคิวที่ต้องการปฏิเสธการยกเลิก');
-            return;
-        }
-        
-        // ลบข้อมูลการขอยกเลิก
-        delete bookingToReject.cancelRequested;
-        delete bookingToReject.cancelRequestedAt;
-        delete bookingToReject.cancelReason;
-        delete bookingToReject.cancelledBy;
-        
-        // สร้างการแจ้งเตือนให้ซัพพลายเออร์
-        createNotification(
-            'booking',
-            'การยกเลิกคิวถูกปฏิเสธ',
-            `การขอยกเลิกคิวสำหรับวันที่ ${formatThaiDate(bookingDate)} เวลา ${formatTime24h(bookingToReject.eta)} ถูกปฏิเสธ กรุณาติดต่อพนักงานหากยังต้องการยกเลิก`,
-            bookingToReject.userId,
-            bookingId
-        );
-        
-        await setDoc(docRef, state.data);
-        
-        showSuccessAnimation('ปฏิเสธการยกเลิกคิวสำเร็จแล้ว');
-        render();
-        
-    } catch (error) {
-        console.error('Error rejecting cancel booking:', error);
-        showAlert('เกิดข้อผิดพลาดในการปฏิเสธการยกเลิกคิว กรุณาลองใหม่');
-    }
-};
-
-// แก้ไขฟังก์ชัน handleCancelBooking สำหรับการยกเลิกคิวของซัพพลายเออร์
+// ฟังก์ชันสำหรับยกเลิกคิว
 const handleCancelBooking = async (bookingId, reason) => {
     try {
         let bookingToCancel = null;
@@ -2461,49 +2003,24 @@ const handleCancelBooking = async (bookingId, reason) => {
             return;
         }
         
-        // ตรวจสอบว่าต้องการการยืนยันจากพนักงานหรือไม่
-        const requireConfirmation = state.data.settings?.cancelQueueSettings?.requireConfirmation;
+        // บันทึกข้อมูลการยกเลิก
+        bookingToCancel.cancelled = true;
+        bookingToCancel.cancelledAt = new Date().toISOString();
+        bookingToCancel.cancelReason = reason;
         
-        if (requireConfirmation) {
-            // บันทึกข้อมูลการขอยกเลิก
-            bookingToCancel.cancelRequested = true;
-            bookingToCancel.cancelRequestedAt = new Date().toISOString();
-            bookingToCancel.cancelReason = reason;
-            bookingToCancel.cancelledBy = state.currentUser?.name || 'ซัพพลายเออร์';
-            
-            // สร้างการแจ้งเตือนให้พนักงาน
-            createNotification(
-                'booking',
-                'มีการขอยกเลิกคิว',
-                `${bookingToCancel.companyName} ได้ขอยกเลิกคิวสำหรับวันที่ ${formatThaiDate(bookingDate)} เวลา ${formatTime24h(bookingToCancel.eta)}\nเหตุผล: ${reason}`,
-                null,
-                bookingId
-            );
-            
-            await setDoc(docRef, state.data);
-            
-            showSuccessAnimation('ส่งคำขอยกเลิกคิวสำเร็จแล้ว รอการยืนยันจากพนักงาน');
-            render();
-        } else {
-            // ยกเลิกคิวทันที (กรณีไม่ต้องการการยืนยัน)
-            bookingToCancel.cancelled = true;
-            bookingToCancel.cancelledAt = new Date().toISOString();
-            bookingToCancel.cancelReason = reason;
-            
-            // สร้างการแจ้งเตือนให้พนักงาน
-            createNotification(
-                'booking',
-                'มีการยกเลิกคิว',
-                `${bookingToCancel.companyName} ได้ยกเลิกคิวสำหรับวันที่ ${formatThaiDate(bookingDate)} เวลา ${formatTime24h(bookingToCancel.eta)}\nเหตุผล: ${reason}`,
-                null,
-                bookingId
-            );
-            
-            await setDoc(docRef, state.data);
-            
-            showSuccessAnimation('ยกเลิกคิวสำเร็จแล้ว');
-            render();
-        }
+        // สร้างการแจ้งเตือนให้พนักงาน
+        createNotification(
+            'booking',
+            'มีการยกเลิกคิว',
+            `${bookingToCancel.companyName} ได้ยกเลิกคิวสำหรับวันที่ ${formatThaiDate(bookingDate)} เวลา ${formatTime24h(bookingToCancel.eta)}\nเหตุผล: ${reason}`,
+            null,
+            bookingId
+        );
+        
+        await setDoc(docRef, state.data);
+        
+        showSuccessAnimation('ยกเลิกคิวสำเร็จแล้ว');
+        render();
         
     } catch (error) {
         console.error('Error cancelling booking:', error);
@@ -3422,10 +2939,6 @@ const renderModal = (type, data = {}) => {
             } else {
                 statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
             }
-        } else if (booking.cancelRequested && !booking.cancelConfirmed) {
-            statusBadge = '<span class="status-badge status-pending">รอการยืนยันการยกเลิก</span>';
-        } else if (booking.cancelConfirmed) {
-            statusBadge = '<span class="status-badge status-cancelled">ยกเลิกแล้ว</span>';
         } else {
             statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
         }
@@ -3521,16 +3034,12 @@ const renderModal = (type, data = {}) => {
             } else {
                 statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
             }
-        } else if (booking.cancelRequested && !booking.cancelConfirmed) {
-            statusBadge = '<span class="status-badge status-pending">รอการยืนยันการยกเลิก</span>';
-        } else if (booking.cancelConfirmed) {
-            statusBadge = '<span class="status-badge status-cancelled">ยกเลิกแล้ว</span>';
         } else {
             statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
         }
         
         let checkInSection = '';
-        if (state.userRole === 'staff' && !booking.checkInTime && !booking.cancelRequested) {
+        if (state.userRole === 'staff' && !booking.checkInTime) {
             checkInSection = `
                 <div class="check-in-section">
                     <h4 class="font-semibold text-green-700 mb-2">การเช็คอิน</h4>
@@ -4096,7 +3605,6 @@ const renderCompanyKpiDetails = (companyName) => {
     renderModalBase(modalContent);
 };
 
-// แก้ไขฟังก์ชัน init เพื่อเพิ่มค่าเริ่มต้นของ settings
 const init = async () => {
     try {
         await signInAnonymously(auth);
@@ -4104,102 +3612,6 @@ const init = async () => {
         onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 state.data = docSnap.data();
-                
-                // ตรวจสอบและเพิ่มค่าเริ่มต้นของ settings หากไม่มี
-                if (!state.data.settings) {
-                    state.data.settings = {
-                        browserWarning: {
-                            title: "ข้อแนะนำในการใช้งาน",
-                            message: "แนะนำให้ใช้งานผ่าน PC หรือ Google Chrome เพื่อประสิทธิภาพที่ดีที่สุด หากใช้งานผ่าน Safari บน iPhone อาจมีปัญหาในการแสดง QR Code",
-                            color: "#F59E0B"
-                        },
-                        manual: {
-                            title: "คู่มือการใช้งานระบบจองคิว",
-                            content: `
-                                <div class="manual-steps mt-4">
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การเข้าสู่ระบบจัดการคิว</h4>
-                                        <p>เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การเลือกวันจัดส่งสินค้า</h4>
-                                        <p>เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
-                                        <div class="manual-important">
-                                            <p>หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
-                                        </div>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การกรอกข้อมูลการจอง</h4>
-                                        <p>หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
-                                        <p>ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
-                                        <div class="manual-important">
-                                            <p>หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
-                                        </div>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การกรอกรายละเอียด</h4>
-                                        <p>กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
-                                        <ul class="list-disc list-inside ml-4 mt-2">
-                                            <li>ชื่อ-นามสกุล คนขับ: กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
-                                            <li>ทะเบียนรถ: ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
-                                            <li>จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น: กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
-                                            <li>เวลาที่คาดว่าจะมาถึง: กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
-                                        </ul>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
-                                        <p>สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
-                                        <p>คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
-                                        <p>ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การยืนยันการจองและรับรหัสคิว</h4>
-                                        <p>เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
-                                        <div class="manual-important">
-                                            <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
-                                        </div>
-                                        <p>เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
-                                        <div class="manual-important">
-                                            <p>คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
-                                        </div>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">ข้อควรทราบ</h4>
-                                        <ul class="list-disc list-inside ml-4 mt-2">
-                                            <li>สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
-                                            <li class="important-note">หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
-                                            <li class="important-note">กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
-                                            <li>หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
-                                        </ul>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การเช็คอินเมื่อถึงคลังสินค้า</h4>
-                                        <p>เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
-                                        <p>พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
-                                        <div class="manual-important">
-                                            <p>คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            `
-                        },
-                        cancelQueueSettings: {
-                            autoCancel: false,
-                            cancelTimeLimit: 24, // ชั่วโมง
-                            requireConfirmation: true,
-                            notificationMessage: "มีการยกเลิกคิวโดยซัพพลายเออร์ กรุณาทำการยืนยันการยกเลิก"
-                        },
-                        maxQueuesPerDay: 20,
-                        workHoursStart: "08:00",
-                        workHoursEnd: "17:00",
-                        breakHoursStart: "12:00",
-                        breakHoursEnd: "13:00"
-                    };
-                    
-                    // บันทึกค่าเริ่มต้น
-                    setDoc(docRef, state.data);
-                }
-                
                 if (!state.data.companies || state.data.companies.length === 0) {
                     state.data.companies = initialCompanies;
                 }
@@ -4221,99 +3633,10 @@ const init = async () => {
                     bookings: {}, 
                     holidays: [],
                     users: [],
-                    notifications: [],
-                    settings: {
-                        browserWarning: {
-                            title: "ข้อแนะนำในการใช้งาน",
-                            message: "แนะนำให้ใช้งานผ่าน PC หรือ Google Chrome เพื่อประสิทธิภาพที่ดีที่สุด หากใช้งานผ่าน Safari บน iPhone อาจมีปัญหาในการแสดง QR Code",
-                            color: "#F59E0B"
-                        },
-                        manual: {
-                            title: "คู่มือการใช้งานระบบจองคิว",
-                            content: `
-                                <div class="manual-steps mt-4">
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การเข้าสู่ระบบจัดการคิว</h4>
-                                        <p>เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การเลือกวันจัดส่งสินค้า</h4>
-                                        <p>เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
-                                        <div class="manual-important">
-                                            <p>หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
-                                        </div>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การกรอกข้อมูลการจอง</h4>
-                                        <p>หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
-                                        <p>ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
-                                        <div class="manual-important">
-                                            <p>หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
-                                        </div>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การกรอกรายละเอียด</h4>
-                                        <p>กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
-                                        <ul class="list-disc list-inside ml-4 mt-2">
-                                            <li>ชื่อ-นามสกุล คนขับ: กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
-                                            <li>ทะเบียนรถ: ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
-                                            <li>จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น: กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
-                                            <li>เวลาที่คาดว่าจะมาถึง: กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
-                                        </ul>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
-                                        <p>สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
-                                        <p>คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
-                                        <p>ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การยืนยันการจองและรับรหัสคิว</h4>
-                                        <p>เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
-                                        <div class="manual-important">
-                                            <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
-                                        </div>
-                                        <p>เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
-                                        <div class="manual-important">
-                                            <p>คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
-                                        </div>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">ข้อควรทราบ</h4>
-                                        <ul class="list-disc list-inside ml-4 mt-2">
-                                            <li>สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
-                                            <li class="important-note">หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
-                                            <li class="important-note">กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
-                                            <li>หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
-                                        </ul>
-                                    </div>
-                                    <div class="manual-step">
-                                        <h4 class="font-semibold">การเช็คอินเมื่อถึงคลังสินค้า</h4>
-                                        <p>เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
-                                        <p>พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
-                                        <div class="manual-important">
-                                            <p>คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            `
-                        },
-                        cancelQueueSettings: {
-                            autoCancel: false,
-                            cancelTimeLimit: 24,
-                            requireConfirmation: true,
-                            notificationMessage: "มีการยกเลิกคิวโดยซัพพลายเออร์ กรุณาทำการยืนยันการยกเลิก"
-                        },
-                        maxQueuesPerDay: 20,
-                        workHoursStart: "08:00",
-                        workHoursEnd: "17:00",
-                        breakHoursStart: "12:00",
-                        breakHoursEnd: "13:00"
-                    }
+                    notifications: []
                 };
                 setDoc(docRef, initialData); 
             }
-            
             state.guestBookingIds = JSON.parse(sessionStorage.getItem('guestBookingIds')) || [];
             
             updateUnreadNotifications();
@@ -4332,5 +3655,4 @@ const init = async () => {
     }
 };
 
-// เรียกใช้ฟังก์ชัน init
 init();
