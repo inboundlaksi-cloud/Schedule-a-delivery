@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBezNic5rqHg2xh9_9dHo5DUDoHZx1Z_v8",
@@ -122,18 +124,18 @@ const handleFileUpload = (fileInput) => {
     const files = fileInput.files;
     const filePromises = [];
     const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB
-    
+
     // ตรวจสอบขนาดรวมของไฟล์
     const totalSize = Array.from(files).reduce((sum, file) => sum + file.size, 0);
     if (totalSize > MAX_TOTAL_SIZE) {
         showAlert(`ขนาดรวมของไฟล์เกิน ${MAX_TOTAL_SIZE / (1024 * 1024)}MB`);
         return Promise.reject(new Error('Total file size exceeds limit'));
     }
-    
+
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const reader = new FileReader();
-        
+
         const filePromise = new Promise((resolve) => {
             reader.onload = (e) => {
                 resolve({
@@ -145,10 +147,10 @@ const handleFileUpload = (fileInput) => {
             };
             reader.readAsDataURL(file);
         });
-        
+
         filePromises.push(filePromise);
     }
-    
+
     return Promise.all(filePromises);
 };
 
@@ -165,7 +167,7 @@ const generateQRCode = (data, container) => {
     canvas.width = 200;
     canvas.height = 200;
     const ctx = canvas.getContext('2d');
-    
+
     try {
         QRCode.toCanvas(canvas, data, {
             width: 200,
@@ -178,7 +180,7 @@ const generateQRCode = (data, container) => {
             } else {
                 container.innerHTML = '';
                 container.appendChild(canvas);
-                
+
                 // เพิ่มการแก้ไขสำหรับ Safari บน iPhone
                 if (navigator.userAgent.includes('iPhone') && navigator.userAgent.includes('Safari')) {
                     try {
@@ -186,7 +188,7 @@ const generateQRCode = (data, container) => {
                         img.onload = function() {
                             container.innerHTML = '';
                             container.appendChild(img);
-                            
+
                             const downloadBtn = document.createElement('button');
                             downloadBtn.id = 'download-qr-btn';
                             downloadBtn.className = 'btn btn-primary mt-3';
@@ -214,7 +216,7 @@ const downloadQRCodeForSafari = () => {
         const link = document.createElement('a');
         link.download = `qrcode-${Date.now()}.png`;
         link.href = img.src;
-        
+
         if (navigator.userAgent.includes('Safari')) {
             const newWindow = window.open();
             newWindow.document.write(`<img src="${img.src}" />`);
@@ -260,10 +262,10 @@ const downloadQRCode = () => {
 
 const checkTimeConflict = (date, time, excludeBookingId = null) => {
     const bookings = state.data.bookings[date] || [];
-    const sameTimeBookings = bookings.filter(booking => 
+    const sameTimeBookings = bookings.filter(booking =>
         booking.id !== excludeBookingId && booking.eta === time
     );
-    
+
     return sameTimeBookings.length;
 };
 
@@ -282,15 +284,15 @@ const checkDailyQueueLimit = (date) => {
 
 const isHoliday = (date) => {
     if (!state.data.holidays) return false;
-    
+
     const dateStr = formatDate(date);
     const monthDay = `${date.getMonth() + 1}-${date.getDate()}`;
-    
+
     const dayOfWeek = date.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
         return { name: 'วันหยุดสุดสัปดาห์', type: 'weekend' };
     }
-    
+
     const holiday = state.data.holidays.find(h => {
         if (h.date === dateStr) return true;
         if (h.recurring) {
@@ -300,16 +302,16 @@ const isHoliday = (date) => {
         }
         return false;
     });
-    
+
     return holiday || false;
 };
 
 const checkIfLate = (booking) => {
     if (!booking || !booking.eta || !booking.checkInTime) return false;
-    
+
     const bookingDateTime = new Date(`${booking.date} ${booking.eta}`);
     const checkInDateTime = new Date(booking.checkInTime);
-    
+
     const diffMinutes = (checkInDateTime - bookingDateTime) / (1000 * 60);
     return diffMinutes > 15;
 };
@@ -317,11 +319,11 @@ const checkIfLate = (booking) => {
 const getAttendanceStats = () => {
     const today = formatDate(new Date());
     const todayBookings = state.data.bookings[today] || [];
-    
+
     let onTime = 0;
     let late = 0;
     let total = 0;
-    
+
     todayBookings.forEach(booking => {
         if (booking.checkInTime) {
             total++;
@@ -332,7 +334,7 @@ const getAttendanceStats = () => {
             }
         }
     });
-    
+
     return { onTime, late, total };
 };
 
@@ -346,21 +348,21 @@ const createNotification = async (type, title, content, userId = null, bookingId
         timestamp: new Date().toISOString(),
         read: false
     };
-    
+
     try {
         await addDoc(collection(db, "notifications"), notification);
-        
+
         if (!userId || userId === state.currentUser?.id) {
             state.unreadNotifications++;
         }
-        
+
         if (Notification.permission === 'granted' && (!userId || userId === state.currentUser?.id)) {
             new Notification(title, {
                 body: content,
                 icon: '/favicon.ico'
             });
         }
-        
+
         return notification;
     } catch (error) {
         console.error('Error creating notification:', error);
@@ -371,18 +373,18 @@ const setupAutomaticNotifications = () => {
     const checkUpcomingBookings = () => {
         const now = new Date();
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-        
+
         Object.entries(state.data.bookings).forEach(([date, bookings]) => {
             bookings.forEach(booking => {
                 const bookingDateTime = new Date(`${date} ${booking.eta}`);
-                
+
                 if (bookingDateTime > now && bookingDateTime <= oneHourLater && !booking.checkInTime) {
-                    const existingNotification = state.data.notifications?.find(n => 
+                    const existingNotification = state.data.notifications?.find(n =>
                         n.type === 'reminder' &&
                         n.bookingId === booking.id &&
                         n.timestamp > new Date(now.getTime() - 60 * 60 * 1000).toISOString()
                     );
-                    
+
                     if (!existingNotification) {
                         createNotification(
                             'reminder',
@@ -396,7 +398,7 @@ const setupAutomaticNotifications = () => {
             });
         });
     };
-    
+
     setInterval(checkUpcomingBookings, 15 * 60 * 1000);
     checkUpcomingBookings();
 };
@@ -413,11 +415,13 @@ const requestNotificationPermission = () => {
 
 // Modal functions
 const renderModalBase = (content, attachListenersCallback) => {
-    const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="modal-content bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            ${content}
+    const modalHtml = `
+        <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="modal-content bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                ${content}
+            </div>
         </div>
-    </div>`;
+    `;
     modalContainer.insertAdjacentHTML('beforeend', modalHtml);
     const modal = modalContainer.lastElementChild;
     if (modal) {
@@ -497,13 +501,18 @@ const render = () => {
                         </div>
                     </div>
                     <div class="flex items-center space-x-4">
-                        ${state.isLoggedIn ? `<button id="logout-btn" class="text-gray-500 hover:text-gray-700">ออกจากระบบ</button>` : '<button id="staff-login-btn" class="text-blue-600 hover:text-blue-800">พนักงาน</button>'}
+                        ${state.isLoggedIn ? 
+                            `<button id="logout-btn" class="text-gray-500 hover:text-gray-700">ออกจากระบบ</button>` : 
+                            '<button id="staff-login-btn" class="text-blue-600 hover:text-blue-800">พนักงาน</button>'
+                        }
                         <button id="quick-scan-btn" class="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
-                            ${icons.scanner} <span>สแกน QR</span>
+                            ${icons.scanner}
+                            <span>สแกน QR</span>
                         </button>
                         ${state.isLoggedIn ? `
                             <button id="notifications-btn" class="relative flex items-center space-x-1 text-gray-500 hover:text-gray-700">
-                                ${icons.notifications} <span>การแจ้งเตือน</span>
+                                ${icons.notifications}
+                                <span>การแจ้งเตือน</span>
                                 ${state.unreadNotifications > 0 ? `<span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">${state.unreadNotifications}</span>` : ''}
                             </button>
                         ` : ''}
@@ -512,18 +521,18 @@ const render = () => {
             </div>
         </header>
     `;
-    
+
     const manualSection = `
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    ${icons.manual} <span class="font-medium text-blue-800">คู่มือการใช้งานระบบจองคิว</span>
+                    ${icons.manual}
+                    <span class="font-medium text-blue-800">คู่มือการใช้งานระบบจองคิว</span>
                 </div>
                 <button id="toggle-manual-btn" class="text-blue-600 hover:text-blue-800">
                     <span id="manual-toggle-text">แสดง</span>
                 </button>
             </div>
-            
             <div id="manual-content" class="manual-content mt-4 space-y-6">
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
@@ -534,7 +543,6 @@ const render = () => {
                         </div>
                     </div>
                 </div>
-                
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">2</div>
@@ -547,7 +555,6 @@ const render = () => {
                         </div>
                     </div>
                 </div>
-                
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">3</div>
@@ -561,7 +568,6 @@ const render = () => {
                         </div>
                     </div>
                 </div>
-                
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">4</div>
@@ -577,7 +583,6 @@ const render = () => {
                         </div>
                     </div>
                 </div>
-                
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">5</div>
@@ -589,7 +594,6 @@ const render = () => {
                         </div>
                     </div>
                 </div>
-                
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">6</div>
@@ -606,7 +610,6 @@ const render = () => {
                         </div>
                     </div>
                 </div>
-                
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">7</div>
@@ -621,7 +624,6 @@ const render = () => {
                         </div>
                     </div>
                 </div>
-                
                 <div class="bg-white rounded-lg p-4 shadow-sm">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">8</div>
@@ -638,7 +640,7 @@ const render = () => {
             </div>
         </div>
     `;
-    
+
     let viewContent = '';
     switch(state.currentView) {
         case 'dashboard': viewContent = renderStaffNav() + renderDashboard(); break;
@@ -651,7 +653,7 @@ const render = () => {
         case 'users': viewContent = renderStaffNav() + renderUsersView(); break;
         case 'notifications': viewContent = renderStaffNav() + renderNotificationsView(); break;
     }
-    
+
     appContainer.innerHTML = header + `<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">${viewContent}</main>`;
     attachAllListeners();
 };
@@ -660,28 +662,36 @@ const renderStaffNav = () => `
     <nav class="bg-white rounded-lg shadow-sm border mb-6">
         <div class="flex space-x-1 p-1">
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'dashboard' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="dashboard">
-                ${icons.dashboard} <span>Dashboard</span>
+                ${icons.dashboard}
+                <span>Dashboard</span>
             </button>
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'calendar' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="calendar">
-                ${icons.calendar} <span>ปฏิทิน</span>
+                ${icons.calendar}
+                <span>ปฏิทิน</span>
             </button>
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'holidays' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="holidays">
-                ${icons.booking} <span>วันหยุด</span>
+                ${icons.booking}
+                <span>วันหยุด</span>
             </button>
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'kpi' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="kpi">
-                ${icons.kpi} <span>KPI</span>
+                ${icons.kpi}
+                <span>KPI</span>
             </button>
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'bookingDetails' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="bookingDetails">
-                ${icons.booking} <span>รายละเอียด</span>
+                ${icons.booking}
+                <span>รายละเอียด</span>
             </button>
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'users' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="users">
-                ${icons.users} <span>ผู้ใช้</span>
+                ${icons.users}
+                <span>ผู้ใช้</span>
             </button>
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'notifications' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="notifications">
-                ${icons.notifications} <span>การแจ้งเตือน</span>
+                ${icons.notifications}
+                <span>การแจ้งเตือน</span>
             </button>
             <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'scanner' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="scanner">
-                ${icons.scanner} <span>สแกน QR</span>
+                ${icons.scanner}
+                <span>สแกน QR</span>
             </button>
         </div>
     </nav>
@@ -696,7 +706,7 @@ const renderDashboard = () => {
         date.setDate(date.getDate() + i);
         next7daysBookings += (state.data.bookings[formatDate(date)] || []).length;
     }
-    
+
     const queueItemsHtml = todayBookings.length > 0
         ? todayBookings.map(b => `
             <div class="dashboard-item bg-white p-4 rounded-lg border hover:shadow-md transition-shadow cursor-pointer" data-booking-id="${b.id}">
@@ -745,7 +755,6 @@ const renderDashboard = () => {
                     </div>
                     <button class="mt-4 text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
                 </div>
-
                 <div class="dashboard-item bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer" data-type="next7days">
                     <div class="flex items-center space-x-3">
                         <div class="p-3 bg-green-100 rounded-lg">${icons.calendar}</div>
@@ -756,7 +765,6 @@ const renderDashboard = () => {
                     </div>
                     <button class="mt-4 text-green-600 hover:text-green-800 text-sm">ดูทั้งหมด</button>
                 </div>
-
                 <div class="dashboard-item bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer" data-type="companies">
                     <div class="flex items-center space-x-3">
                         <div class="p-3 bg-purple-100 rounded-lg">${icons.company}</div>
@@ -792,7 +800,7 @@ const renderCalendar = () => {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const monthName = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set time to midnight for accurate date comparison
 
@@ -816,15 +824,17 @@ const renderCalendar = () => {
             });
         });
         allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || b.eta.localeCompare(b.eta));
-        
+
         if(allMyBookings.length > 0) {
-            myBookingsHtml = `<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h3 class="font-semibold text-green-800 mb-2">สรุปคิวของฉัน</h3>` +
-                allMyBookings.map(b => `<div class="text-sm text-green-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</div>`).join('') + `
-            </div>`;
+            myBookingsHtml = `
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <h3 class="font-semibold text-green-800 mb-2">สรุปคิวของฉัน</h3>
+                    ${allMyBookings.map(b => `<div class="text-sm text-green-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</div>`).join('')}
+                </div>
+            `;
         }
     }
-    
+
     let daysHtml = Array(firstDay).fill('<div class="calendar-day-empty"></div>').join('');
     for (let day = 1; day <= daysInMonth; day++) {
         const currentDateObj = new Date(year, month, day);
@@ -835,16 +845,15 @@ const renderCalendar = () => {
         const isFull = checkDailyQueueLimit(dateStr);
         const holiday = isHoliday(currentDateObj);
         const dayOfWeek = currentDateObj.getDay();
-        
+
         let dayClass = 'calendar-day p-2 border border-violet-100 flex flex-col rounded-md min-h-[80px]';
         let dayContent = `<div class="font-semibold">${day}</div>`;
-
         if (isPast) {
             dayClass += ' disabled bg-gray-50 text-gray-400';
         } else {
             dayClass += ' cursor-pointer hover:bg-blue-50';
         }
-        
+
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             dayClass += ' weekend-day bg-red-50 border-red-200';
             dayContent += `<div class="text-xs text-red-600 mt-1">วันหยุด</div>`;
@@ -857,14 +866,14 @@ const renderCalendar = () => {
         } else if (isFull) {
             dayClass += ' bg-red-50';
         }
-        
+
         if (hasBookings && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
             dayClass += ' has-bookings';
-            
+
             if (state.userRole === 'guest') {
                 const bookings = state.data.bookings[dateStr];
                 const myBookings = bookings.filter(b => state.guestBookingIds.includes(b.id));
-                
+
                 if (myBookings.length > 0) {
                     dayContent += `<div class="text-xs text-green-600 mt-1">คิวของคุณ: ${myBookings.map(b => formatTime24h(b.eta)).join(', ')}</div>`;
                 } else {
@@ -874,11 +883,11 @@ const renderCalendar = () => {
                 dayContent += `<div class="text-xs text-blue-600 mt-1">${state.data.bookings[dateStr].length} คิว</div>`;
             }
         }
-        
+
         if (isFull && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
             dayContent += '<div class="text-xs text-red-600 mt-1">เต็ม</div>';
         }
-        
+
         daysHtml += `<div class="${dayClass}" data-date="${dateStr}">${dayContent}</div>`;
     }
 
@@ -905,16 +914,16 @@ const renderCalendar = () => {
                     ${daysHtml}
                 </div>
                 ${state.userRole === 'staff' ? `
-                <div class="mt-6 pt-6 border-t">
-                    <div class="flex items-center justify-between text-sm text-gray-600">
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center space-x-1">
-                                <div class="w-4 h-4 bg-red-50 border border-red-200 rounded"></div>
-                                <span>วันหยุด: ${(state.data.holidays || []).length} วัน</span>
+                    <div class="mt-6 pt-6 border-t">
+                        <div class="flex items-center justify-between text-sm text-gray-600">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-4 h-4 bg-red-50 border border-red-200 rounded"></div>
+                                    <span>วันหยุด: ${(state.data.holidays || []).length} วัน</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 ` : ''}
             </div>
         </div>
@@ -925,12 +934,12 @@ const renderDailyQueue = () => {
     const dateStr = state.selectedDate;
     const bookings = state.data.bookings[dateStr] || [];
     const isFull = checkDailyQueueLimit(dateStr);
-    
+
     const queueItemsHtml = bookings.length > 0
         ? bookings.map((booking, index) => {
             const isGuestBooking = state.guestBookingIds.includes(booking.id);
             if(state.userRole === 'guest' && !isGuestBooking) return `<div class="bg-gray-50 p-4 rounded-lg border">คิวที่ ${index + 1}: จองแล้ว</div>`;
-            
+
             let statusBadge = '';
             if (booking.checkInTime) {
                 if (booking.status === 'completed') {
@@ -943,40 +952,40 @@ const renderDailyQueue = () => {
             } else {
                 statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
             }
-            
+
             return `
-            <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <div class="flex items-center space-x-2 mb-2">
-                            <h3 class="font-semibold">${booking.companyName} ${isGuestBooking ? '(คิวของคุณ)' : ''}</h3>
-                            <div class="text-sm text-gray-500">${booking.driverName} - ${booking.licensePlate}</div>
-                            ${booking.referenceNumber ? `<div class="text-xs text-gray-400">เลขกำกับ: ${booking.referenceNumber}</div>` : ''}
-                            ${statusBadge}
-                        </div>
-                        <div class="text-sm text-gray-600">
-                            <div class="font-medium text-lg">${formatTime24h(booking.eta)}</div>
-                            <div>${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
-                            ${booking.checkInTime ? `<div class="text-xs text-gray-500">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
-                        </div>
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
-                        ${state.userRole === 'staff' ? `
-                            <div class="flex flex-col space-y-1">
-                                ${!booking.checkInTime ? `<button class="check-in-btn bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600" data-booking-id="${booking.id}">เช็คอิน</button>` : ''}
-                                ${booking.checkInTime && booking.status !== 'completed' ? `<button class="complete-btn bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600" data-booking-id="${booking.id}">ยืนยันรับคิว</button>` : ''}
-                                <button class="evaluate-btn bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>
-                                <button class="delete-booking-btn bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600" data-booking-id="${booking.id}">ลบ</button>
+                <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <h3 class="font-semibold">${booking.companyName}${isGuestBooking ? ' (คิวของคุณ)' : ''}</h3>
+                                <div class="text-sm text-gray-500">${booking.driverName} - ${booking.licensePlate}</div>
+                                ${booking.referenceNumber ? `<div class="text-xs text-gray-400">เลขกำกับ: ${booking.referenceNumber}</div>` : ''}
+                                ${statusBadge}
                             </div>
-                        ` : ''}
+                            <div class="text-sm text-gray-600">
+                                <div class="font-medium text-lg">${formatTime24h(booking.eta)}</div>
+                                <div>${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
+                                ${booking.checkInTime ? `<div class="text-xs text-gray-500">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-col space-y-2">
+                            <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
+                            ${state.userRole === 'staff' ? `
+                                <div class="flex flex-col space-y-1">
+                                    ${!booking.checkInTime ? `<button class="check-in-btn bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600" data-booking-id="${booking.id}">เช็คอิน</button>` : ''}
+                                    ${booking.checkInTime && booking.status !== 'completed' ? `<button class="complete-btn bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600" data-booking-id="${booking.id}">ยืนยันรับคิว</button>` : ''}
+                                    <button class="evaluate-btn bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>
+                                    <button class="delete-booking-btn bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600" data-booking-id="${booking.id}">ลบ</button>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
-            </div>
             `;
         }).join('')
         : `<div class="text-center py-8 text-gray-500">ยังไม่มีการจองคิวในวันนี้</div>`;
-    
+
     return `
         <div class="space-y-6">
             <div class="flex items-center justify-between">
@@ -987,7 +996,7 @@ const renderDailyQueue = () => {
                     ${isFull ? '<span class="bg-red-100 text-red-800 px-3 py-1 rounded">คิวเต็ม (20 คิว/วัน)</span>' : ''}
                 </div>
             </div>
-            
+
             <div class="space-y-4">
                 ${queueItemsHtml}
             </div>
@@ -1002,9 +1011,8 @@ const renderBookingDetails = () => {
             allBookings.push({ ...booking, date });
         });
     });
-    
     allBookings.sort((a, b) => new Date(b.date) - new Date(a.date) || b.eta.localeCompare(a.eta));
-    
+
     const bookingsHtml = allBookings.length > 0
         ? allBookings.map(booking => {
             let statusBadge = '';
@@ -1019,37 +1027,38 @@ const renderBookingDetails = () => {
             } else {
                 statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
             }
-            
+
             return `
-            <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <div class="flex items-center space-x-2 mb-2">
-                            <h3 class="font-semibold">${booking.companyName}</h3>
-                            <div class="text-sm text-gray-500">${booking.driverName} - ${booking.licensePlate}</div>
-                            <div class="text-sm text-gray-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</div>
-                            ${booking.referenceNumber ? `<div class="text-xs text-gray-400">เลขกำกับ: ${booking.referenceNumber}</div>` : ''}
-                            ${statusBadge}
+                <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <h3 class="font-semibold">${booking.companyName}</h3>
+                                <div class="text-sm text-gray-500">${booking.driverName} - ${booking.licensePlate}</div>
+                                <div class="text-sm text-gray-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</div>
+                                ${booking.referenceNumber ? `<div class="text-xs text-gray-400">เลขกำกับ: ${booking.referenceNumber}</div>` : ''}
+                                ${statusBadge}
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                <div>${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
+                                ${booking.checkInTime ? `<div class="text-xs text-gray-500">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
+                            </div>
                         </div>
-                        <div class="text-sm text-gray-600">
-                            <div>${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
-                            ${booking.checkInTime ? `<div class="text-xs text-gray-500">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
+                        <div class="flex space-x-2">
+                            <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
                         </div>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
                     </div>
                 </div>
-            </div>
-        `}).join('')
+            `;
+        }).join('')
         : `<div class="text-center py-8 text-gray-500">ยังไม่มีการจองคิว</div>`;
-    
+
     return `
         <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-sm border">
                 <div class="p-6 border-b">
                     <h2 class="text-lg font-semibold">รายละเอียดการจองคิวทั้งหมด</h2>
@@ -1072,16 +1081,16 @@ const renderScannerView = () => {
             <div class="flex items-center justify-between">
                 <button id="back-from-scanner-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยังหน้าก่อนหน้า</button>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-sm border p-6">
                 <h2 class="text-xl font-semibold mb-6 text-center">สแกน QR Code</h2>
-                
+
                 <div class="max-w-md mx-auto">
                     <div class="relative bg-black rounded-lg overflow-hidden mb-4" style="aspect-ratio: 1;">
                         <video id="video" class="w-full h-full object-cover" autoplay muted playsinline></video>
                         <div class="absolute inset-0 border-2 border-white opacity-50 m-8"></div>
                     </div>
-                    
+
                     <div class="text-center space-y-4">
                         <p class="text-gray-600">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
                         <div class="flex justify-center space-x-2">
@@ -1098,11 +1107,8 @@ const renderScannerView = () => {
 
 const renderUsersView = () => {
     const users = state.data.users || [];
-    
     const usersHtml = users.map(user => {
-        const roleClass = user.role === 'admin' ? 'role-admin' :
-                          user.role === 'staff' ? 'role-staff' : 'role-viewer';
-        
+        const roleClass = user.role === 'admin' ? 'role-admin' : user.role === 'staff' ? 'role-staff' : 'role-viewer';
         return `
             <tr class="border-b">
                 <td class="py-3 px-4">${user.name}</td>
@@ -1118,13 +1124,13 @@ const renderUsersView = () => {
             </tr>
         `;
     }).join('');
-    
+
     return `
         <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-sm border">
                 <div class="p-6 border-b">
                     <div class="flex justify-between items-center">
@@ -1157,9 +1163,7 @@ const renderNotificationsView = () => {
     const notifications = state.data.notifications || [];
     
     // จัดเรียงการแจ้งเตือนตามเวลา (ล่าสุดขึ้นก่อน)
-    const sortedNotifications = [...notifications].sort((a, b) => 
-        new Date(b.timestamp) - new Date(a.timestamp)
-    );
+    const sortedNotifications = [...notifications].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     // แบ่งหน้า
     const startIndex = (state.notificationPage - 1) * state.notificationsPerPage;
@@ -1168,37 +1172,35 @@ const renderNotificationsView = () => {
     
     // คำนวณจำนวนหน้า
     const totalPages = Math.ceil(sortedNotifications.length / state.notificationsPerPage);
-    
+
     const notificationsHtml = paginatedNotifications.map(notification => {
-        const typeClass = notification.type === 'reminder' ? 'notification-reminder' :
-                          notification.type === 'arrival' ? 'notification-arrival' :
-                          notification.type === 'booking' ? 'notification-booking' :
-                         'notification-message';
-        const typeLabel = notification.type === 'reminder' ? 'การแจ้งเตือน' :
-                          notification.type === 'arrival' ? 'การมาถึง' :
-                          notification.type === 'booking' ? 'การจองคิว' :
-                         'ข้อความ';
-        
+        const typeClass = notification.type === 'reminder' ? 'notification-reminder' : 
+                         notification.type === 'arrival' ? 'notification-arrival' : 
+                         notification.type === 'booking' ? 'notification-booking' : 'notification-message';
+        const typeLabel = notification.type === 'reminder' ? 'การแจ้งเตือน' : 
+                         notification.type === 'arrival' ? 'การมาถึง' : 
+                         notification.type === 'booking' ? 'การจองคิว' : 'ข้อความ';
+
         return `
-        <div class="bg-white p-4 rounded-lg border ${!notification.read ? 'border-blue-200 bg-blue-50' : ''}">
-            <div class="flex justify-between items-start mb-2">
-                <div class="flex items-center space-x-2">
-                    <span class="${typeClass} px-2 py-1 rounded text-xs">${typeLabel}</span>
-                    <h3 class="font-semibold">${notification.title}</h3>
+            <div class="bg-white p-4 rounded-lg border ${!notification.read ? 'border-blue-200 bg-blue-50' : ''}">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="${typeClass} px-2 py-1 rounded text-xs">${typeLabel}</span>
+                        <h3 class="font-semibold">${notification.title}</h3>
+                    </div>
+                    <div class="text-sm text-gray-500">${formatDateTime(notification.timestamp)}</div>
                 </div>
-                <div class="text-sm text-gray-500">${formatDateTime(notification.timestamp)}</div>
+                <p class="text-gray-600 mb-2">${notification.content}</p>
+                <div class="flex justify-between items-center" data-notification-id="${notification.id}">
+                    ${!notification.read ? '<button class="mark-read-btn text-blue-600 hover:text-blue-800 text-sm">ทำเครื่องหมายว่าอ่านแล้ว</button>' : ''}
+                    <button class="delete-notification-btn text-red-600 hover:text-red-800 text-sm" data-notification-id="${notification.id}">
+                        ${icons.trash} ลบ
+                    </button>
+                </div>
             </div>
-            <p class="text-gray-600 mb-2">${notification.content}</p>
-            <div class="flex justify-between items-center" data-notification-id="${notification.id}">
-                ${!notification.read ? '<button class="mark-read-btn text-blue-600 hover:text-blue-800 text-sm">ทำเครื่องหมายว่าอ่านแล้ว</button>' : ''}
-                <button class="delete-notification-btn text-red-600 hover:text-red-800 text-sm" data-notification-id="${notification.id}">
-                    ${icons.trash} ลบ
-                </button>
-            </div>
-        </div>
         `;
     }).join('');
-    
+
     // สร้างปุ่มสำหรับการแบ่งหน้า
     const paginationHtml = totalPages > 1 ? `
         <div class="flex justify-center items-center space-x-4 mt-6">
@@ -1207,13 +1209,13 @@ const renderNotificationsView = () => {
             <button id="next-page-btn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 ${state.notificationPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${state.notificationPage === totalPages ? 'disabled' : ''}>ถัดไป</button>
         </div>
     ` : '';
-    
+
     return `
         <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-sm border">
                 <div class="p-6 border-b">
                     <div class="flex justify-between items-center">
@@ -1239,18 +1241,13 @@ const getKpiData = () => {
     Object.values(state.data.bookings).flat().forEach(b => {
         if (!b.evaluation || !b.evaluation.scores) return;
         if (!companyData[b.companyName]) {
-            companyData[b.companyName] = { 
-                scores: [], 
-                count: 0,
-                bookings: []
-            };
+            companyData[b.companyName] = { scores: [], count: 0, bookings: [] };
         }
         const evaluationScores = Object.values(b.evaluation.scores).filter(v => v > 0);
         if (evaluationScores.length === 0) return;
         const avgScore = evaluationScores.reduce((a, b) => a + b, 0) / evaluationScores.length;
         companyData[b.companyName].scores.push(avgScore);
         companyData[b.companyName].count++;
-        
         companyData[b.companyName].bookings.push({
             date: b.date,
             eta: b.eta,
@@ -1261,11 +1258,11 @@ const getKpiData = () => {
             status: b.status
         });
     });
-    
+
     Object.keys(companyData).forEach(company => {
         companyData[company].bookings.sort((a, b) => new Date(b.date) - new Date(a.date));
     });
-    
+
     return Object.entries(companyData).map(([name, data]) => ({
         name,
         averageScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
@@ -1276,27 +1273,30 @@ const getKpiData = () => {
 const renderKpiView = () => {
     const kpiData = getKpiData();
     const filteredData = kpiData.filter(c => c.name.toLowerCase().includes(state.kpiSearchTerm.toLowerCase()));
-    const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `
-        <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-4">
-                    <div class="text-2xl font-bold text-gray-400">#${index + 1}</div>
-                    <div>
-                        <h3 class="font-semibold">${company.name}</h3>
-                        <div class="text-2xl font-bold text-blue-600">${company.averageScore.toFixed(2)}</div>
+
+    const supplierListHtml = filteredData.length > 0
+        ? filteredData.map((company, index) => `
+            <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="text-2xl font-bold text-gray-400">#${index + 1}</div>
+                        <div>
+                            <h3 class="font-semibold">${company.name}</h3>
+                            <div class="text-2xl font-bold text-blue-600">${company.averageScore.toFixed(2)}</div>
+                        </div>
                     </div>
+                    <button class="view-company-details-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" data-company="${company.name}">ดูประวัติการจัดส่ง</button>
                 </div>
-                <button class="view-company-details-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" data-company="${company.name}">ดูประวัติการจัดส่ง</button>
             </div>
-        </div>
-    `).join('') : `<div class="text-center py-8 text-gray-500">ไม่พบข้อมูลซัพพลายเอร์</div>`;
+        `).join('')
+        : `<div class="text-center py-8 text-gray-500">ไม่พบข้อมูลซัพพลายเอร์</div>`;
 
     return `
         <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-sm border">
                 <div class="p-6 border-b">
                     <h2 class="text-lg font-semibold">ผลการประเมิน KPI ซัพพลายเอร์</h2>
@@ -1315,7 +1315,7 @@ const renderKpiView = () => {
                         </div>
                         ${supplierListHtml}
                     </div>
-                    
+
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h3 class="font-semibold mb-4">5 อันดับคะแนนสูงสุด</h3>
                         <canvas id="kpi-chart" width="400" height="200"></canvas>
@@ -1329,7 +1329,7 @@ const renderKpiView = () => {
 const renderHolidayManagement = () => {
     const currentYear = new Date().getFullYear();
     const holidays = state.data.holidays || [];
-    
+
     const holidayListHtml = holidays.map((holiday, index) => `
         <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
             <div class="flex justify-between items-start">
@@ -1340,11 +1340,15 @@ const renderHolidayManagement = () => {
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <span class="px-2 py-1 rounded text-xs ${holiday.type === 'company' ? 'bg-blue-100 text-blue-800' :
-                       holiday.type === 'public' ? 'bg-green-100 text-green-800' :
-                       'bg-purple-100 text-purple-800'}">${holiday.type === 'company' ? 'วันหยุดบริษัท' :
-                       holiday.type === 'public' ? 'วันหยุดราชการ' :
-                       'วันหยุดพิเศษ'}</span>
+                    <span class="px-2 py-1 rounded text-xs ${
+                        holiday.type === 'company' ? 'bg-blue-100 text-blue-800' :
+                        holiday.type === 'public' ? 'bg-green-100 text-green-800' :
+                        'bg-purple-100 text-purple-800'
+                    }">${
+                        holiday.type === 'company' ? 'วันหยุดบริษัท' :
+                        holiday.type === 'public' ? 'วันหยุดราชการ' :
+                        'วันหยุดพิเศษ'
+                    }</span>
                     <button onclick="deleteHoliday(${index})" class="text-red-600 hover:text-red-800 text-sm">${icons.trash}</button>
                 </div>
             </div>
@@ -1356,7 +1360,7 @@ const renderHolidayManagement = () => {
             <div class="flex items-center justify-between">
                 <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
             </div>
-            
+
             <div class="bg-white rounded-lg shadow-sm border">
                 <div class="p-6 border-b">
                     <div class="flex justify-between items-center">
@@ -1367,7 +1371,7 @@ const renderHolidayManagement = () => {
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="p-6">
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="lg:col-span-2">
@@ -1378,7 +1382,7 @@ const renderHolidayManagement = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="space-y-6">
                             <div class="bg-gray-50 p-4 rounded-lg">
                                 <h3 class="font-semibold mb-4">สถิติวันหยุด</h3>
@@ -1397,7 +1401,7 @@ const renderHolidayManagement = () => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="bg-blue-50 p-4 rounded-lg">
                                 <h3 class="font-semibold mb-2">ข้อมูลเพิ่มเติม</h3>
                                 <div class="text-sm text-blue-800 space-y-1">
@@ -1428,33 +1432,31 @@ const attachAllListeners = () => {
         state.currentView = 'notifications';
         render();
     });
+
     document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => {
         state.currentView = e.currentTarget.dataset.view;
         render();
     }));
-    
+
     document.getElementById('back-to-calendar-btn')?.addEventListener('click', () => {
         state.currentView = 'calendar';
         render();
     });
-    
     document.getElementById('back-to-dashboard-btn')?.addEventListener('click', () => {
         state.currentView = 'dashboard';
         render();
     });
-    
     document.getElementById('back-from-scanner-btn')?.addEventListener('click', () => {
         state.currentView = state.userRole === 'staff' ? 'dashboard' : 'calendar';
         render();
     });
-    
+
     document.getElementById('add-holiday-btn')?.addEventListener('click', () => renderAddHolidayModal());
     document.getElementById('import-public-holidays-btn')?.addEventListener('click', () => renderImportPublicHolidaysModal());
-    
+
     document.getElementById('toggle-manual-btn')?.addEventListener('click', () => {
         const manualContent = document.getElementById('manual-content');
         const toggleText = document.getElementById('manual-toggle-text');
-        
         if (manualContent.classList.contains('expanded')) {
             manualContent.classList.remove('expanded');
             toggleText.textContent = 'แสดง';
@@ -1463,24 +1465,22 @@ const attachAllListeners = () => {
             toggleText.textContent = 'ซ่อน';
         }
     });
-    
+
     document.querySelectorAll('.view-company-details-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const companyName = e.currentTarget.dataset.company;
             renderCompanyKpiDetails(companyName);
         });
     });
-    
+
     if (state.currentView === 'users') {
         document.getElementById('add-user-btn')?.addEventListener('click', () => renderAddUserModal());
-        
         document.querySelectorAll('.edit-user-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const userId = e.currentTarget.dataset.userId;
                 renderEditUserModal(userId);
             });
         });
-        
         document.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const userId = e.currentTarget.dataset.userId;
@@ -1490,17 +1490,15 @@ const attachAllListeners = () => {
             });
         });
     }
-    
+
     if (state.currentView === 'notifications') {
         document.getElementById('mark-all-read-btn')?.addEventListener('click', async () => {
             try {
                 const notificationsSnapshot = await getDocs(collection(db, "notifications"));
                 const updatePromises = [];
-                
                 notificationsSnapshot.forEach((doc) => {
                     updatePromises.push(updateDoc(doc.ref, { read: true }));
                 });
-                
                 await Promise.all(updatePromises);
                 state.unreadNotifications = 0;
                 render();
@@ -1509,19 +1507,17 @@ const attachAllListeners = () => {
                 showAlert('เกิดข้อผิดพลาดในการอัปเดตการแจ้งเตือน');
             }
         });
-        
+
         document.getElementById('delete-read-btn')?.addEventListener('click', () => {
             showConfirm('คุณต้องการลบการแจ้งเตือนที่อ่านแล้วทั้งหมดใช่หรือไม่?', async () => {
                 try {
                     const notificationsSnapshot = await getDocs(collection(db, "notifications"));
                     const deletePromises = [];
-                    
                     notificationsSnapshot.forEach((doc) => {
                         if (doc.data().read) {
                             deletePromises.push(deleteDoc(doc.ref));
                         }
                     });
-                    
                     await Promise.all(deletePromises);
                     showAlert('ลบการแจ้งเตือนที่อ่านแล้วสำเร็จแล้ว');
                     render();
@@ -1531,17 +1527,15 @@ const attachAllListeners = () => {
                 }
             });
         });
-        
+
         document.getElementById('delete-all-btn')?.addEventListener('click', () => {
             showConfirm('คุณต้องการลบการแจ้งเตือนทั้งหมดใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้', async () => {
                 try {
                     const notificationsSnapshot = await getDocs(collection(db, "notifications"));
                     const deletePromises = [];
-                    
                     notificationsSnapshot.forEach((doc) => {
                         deletePromises.push(deleteDoc(doc.ref));
                     });
-                    
                     await Promise.all(deletePromises);
                     state.unreadNotifications = 0;
                     showAlert('ลบการแจ้งเตือนทั้งหมดสำเร็จแล้ว');
@@ -1552,7 +1546,7 @@ const attachAllListeners = () => {
                 }
             });
         });
-        
+
         document.querySelectorAll('.mark-read-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const notificationId = parseInt(e.currentTarget.parentElement.dataset.notificationId);
@@ -1571,7 +1565,7 @@ const attachAllListeners = () => {
                 }
             });
         });
-        
+
         document.querySelectorAll('.delete-notification-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const notificationId = parseInt(e.currentTarget.dataset.notificationId);
@@ -1593,7 +1587,7 @@ const attachAllListeners = () => {
                 });
             });
         });
-        
+
         // Pagination
         document.getElementById('prev-page-btn')?.addEventListener('click', () => {
             if (state.notificationPage > 1) {
@@ -1601,7 +1595,7 @@ const attachAllListeners = () => {
                 render();
             }
         });
-        
+
         document.getElementById('next-page-btn')?.addEventListener('click', () => {
             const notifications = state.data.notifications || [];
             const totalPages = Math.ceil(notifications.length / state.notificationsPerPage);
@@ -1611,12 +1605,11 @@ const attachAllListeners = () => {
             }
         });
     }
-    
+
     if (state.currentView === 'dashboard') {
         document.querySelectorAll('.dashboard-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const type = e.currentTarget.dataset.type;
-                
                 if (type === 'today') {
                     state.selectedDate = formatDate(new Date());
                     state.currentView = 'dailyQueue';
@@ -1630,13 +1623,13 @@ const attachAllListeners = () => {
                 }
             });
         });
-        
+
         document.getElementById('view-all-today-btn')?.addEventListener('click', () => {
             state.selectedDate = formatDate(new Date());
             state.currentView = 'dailyQueue';
             render();
         });
-        
+
         document.querySelectorAll('.dashboard-item[data-booking-id]').forEach(item => {
             item.addEventListener('click', (e) => {
                 const bookingId = e.currentTarget.dataset.bookingId;
@@ -1645,7 +1638,7 @@ const attachAllListeners = () => {
             });
         });
     }
-    
+
     if (state.currentView === 'calendar') attachCalendarListeners();
     else if (state.currentView === 'dailyQueue') attachDailyQueueListeners();
     else if (state.currentView === 'kpi') attachKpiListeners();
@@ -1670,35 +1663,35 @@ const attachCalendarListeners = () => {
         state.currentDate = newDate;
         render();
     });
-    
+
     document.getElementById('next-month-btn')?.addEventListener('click', () => {
         const newDate = new Date(state.currentDate);
         newDate.setMonth(newDate.getMonth() + 1);
         state.currentDate = newDate;
         render();
     });
-    
+
     document.querySelectorAll('.calendar-day').forEach(day => {
         day.addEventListener('click', (e) => {
             if (e.currentTarget.classList.contains('disabled')) {
                 return; // Do nothing if the day is disabled (in the past)
             }
-            
+
             const clickedDate = e.currentTarget.dataset.date;
             const dateObj = new Date(clickedDate);
             const dayOfWeek = dateObj.getDay();
-            
+
             if (dayOfWeek === 0 || dayOfWeek === 6) {
                 showAlert(`วันที่ ${formatThaiDate(clickedDate)} เป็นวันหยุดสุดสัปดาห์\nไม่สามารถจองคิวได้`);
                 return;
             }
-            
+
             const holiday = isHoliday(dateObj);
             if (holiday && holiday.type !== 'weekend') {
                 renderHolidayDetailsModal(holiday, clickedDate);
                 return;
             }
-            
+
             state.selectedDate = clickedDate;
             state.currentView = 'dailyQueue';
             render();
@@ -1711,6 +1704,7 @@ const attachKpiListeners = () => {
         state.kpiSearchTerm = e.target.value;
         render();
     });
+
     const kpiData = getKpiData().slice(0, 5);
     const ctx = document.getElementById('kpi-chart')?.getContext('2d');
     if (ctx) {
@@ -1740,6 +1734,7 @@ const attachBookingDetailsListeners = () => {
     document.getElementById('reference-search')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleSearchByReference();
     });
+
     document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => {
         state.selectedBookingId = e.currentTarget.dataset.bookingId;
         renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId });
@@ -1763,7 +1758,7 @@ const startCamera = async () => {
             showAlert('เบราว์เซอร์ของคุณไม่รองรับการใช้งานกล้อง');
             return;
         }
-        
+
         const video = document.getElementById('video');
         const startBtn = document.getElementById('start-camera-btn');
         const stopBtn = document.getElementById('stop-camera-btn');
@@ -1771,8 +1766,8 @@ const startCamera = async () => {
         videoStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
         });
-        video.srcObject = videoStream;
 
+        video.srcObject = videoStream;
         startBtn.classList.add('hidden');
         stopBtn.classList.remove('hidden');
 
@@ -1788,7 +1783,6 @@ const stopCamera = () => {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
-
     if (scanInterval) {
         clearInterval(scanInterval);
         scanInterval = null;
@@ -1830,7 +1824,7 @@ const handleQRCodeScanned = (qrData) => {
     try {
         const data = JSON.parse(qrData);
         const booking = findBookingByReferenceNumber(data.referenceNumber);
-        
+
         if (booking) {
             renderModal('bookingCard', { booking });
         } else {
@@ -1847,26 +1841,29 @@ const attachDailyQueueListeners = () => {
         state.selectedDate = null;
         render();
     });
+
     document.getElementById('book-slot-btn')?.addEventListener('click', () => renderModal('booking'));
+
     document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => {
         state.selectedBookingId = e.currentTarget.dataset.bookingId;
         renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId });
     }));
-    
+
     document.querySelectorAll('.check-in-btn').forEach(btn => btn.addEventListener('click', (e) => {
         const bookingId = e.currentTarget.dataset.bookingId;
         handleCheckIn(bookingId);
     }));
-    
+
     document.querySelectorAll('.complete-btn').forEach(btn => btn.addEventListener('click', (e) => {
         const bookingId = e.currentTarget.dataset.bookingId;
         handleCompleteBooking(bookingId);
     }));
-    
+
     document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => {
         state.selectedBookingId = e.currentTarget.dataset.bookingId;
         renderModal('evaluate');
     }));
+
     document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => {
         const bookingId = e.currentTarget.dataset.bookingId;
         showConfirm('คุณต้องการลบคิวนี้ใช่หรือไม่?', () => handleDeleteBooking(bookingId));
@@ -1876,10 +1873,10 @@ const attachDailyQueueListeners = () => {
 const handleCheckIn = async (bookingId) => {
     try {
         const bookingRef = doc(db, "bookings", bookingId);
-        await updateDoc(bookingRef, { 
-            checkInTime: new Date().toISOString() 
+        await updateDoc(bookingRef, {
+            checkInTime: new Date().toISOString()
         });
-        
+
         // Find booking in local state for notification
         const booking = allBookingsById[bookingId];
         if (booking) {
@@ -1891,10 +1888,10 @@ const handleCheckIn = async (bookingId) => {
                 bookingId
             );
         }
-        
+
         showSuccessAnimation('เช็คอินสำเร็จแล้ว');
         render();
-        
+
     } catch (error) {
         console.error('Error checking in:', error);
         showAlert('เกิดข้อผิดพลาดในการเช็คอิน กรุณาลองใหม่');
@@ -1904,14 +1901,14 @@ const handleCheckIn = async (bookingId) => {
 const handleCompleteBooking = async (bookingId) => {
     try {
         const bookingRef = doc(db, "bookings", bookingId);
-        await updateDoc(bookingRef, { 
+        await updateDoc(bookingRef, {
             status: 'completed',
             completedTime: new Date().toISOString()
         });
-        
+
         showSuccessAnimation('ยืนยันการรับคิวสำเร็จแล้ว');
         render();
-        
+
     } catch (error) {
         console.error('Error completing booking:', error);
         showAlert('เกิดข้อผิดพลาดในการยืนยันการรับคิว กรุณาลองใหม่');
@@ -1929,36 +1926,36 @@ const renderTimePickerModal = (bookingModal) => {
                     <span id="minute-preview" class="cursor-pointer">--</span>
                 </div>
             </div>
-            
+
             <div id="clock-container" class="relative w-64 h-64 mx-auto mb-6"></div>
-            
+
             <div class="flex justify-center space-x-2">
                 <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
                 <button id="confirm-time-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" disabled>ยืนยัน</button>
             </div>
         </div>
     `;
-    
+
     renderModalBase(modalContent, modal => {
         let selectedHour = null;
         let selectedMinute = null;
         let currentPickerView = 'hours';
-        
+
         const hourPreview = modal.querySelector('#hour-preview');
         const minutePreview = modal.querySelector('#minute-preview');
         const confirmBtn = modal.querySelector('#confirm-time-btn');
         const clockContainer = modal.querySelector('#clock-container');
-        
+
         const updatePreview = () => {
             hourPreview.textContent = selectedHour !== null ? selectedHour.toString().padStart(2, '0') : '--';
             minutePreview.textContent = selectedMinute !== null ? selectedMinute.toString().padStart(2, '0') : '--';
             confirmBtn.disabled = selectedHour === null || selectedMinute === null;
-            
+
             if (selectedHour !== null && selectedMinute !== null) {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
                 const lunchStart = 11 * 60 + 30;
                 const lunchEnd = 12 * 60 + 30;
-                
+
                 if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
                     confirmBtn.disabled = true;
                     confirmBtn.textContent = 'เวลาพักพนักงาน';
@@ -1969,7 +1966,7 @@ const renderTimePickerModal = (bookingModal) => {
                 }
             }
         };
-        
+
         const attachClockListeners = () => {
             if (currentPickerView === 'hours') {
                 clockContainer.querySelectorAll('.clock-number:not(.disabled)').forEach(btn => {
@@ -1992,12 +1989,12 @@ const renderTimePickerModal = (bookingModal) => {
                 });
             }
         };
-        
+
         const renderClock = () => {
             clockContainer.innerHTML = '';
-
             const clockFace = document.createElement('div');
             clockFace.className = 'clock-face relative w-full h-full border-2 border-gray-300 rounded-full';
+
             const clockCenter = document.createElement('div');
             clockCenter.className = 'clock-center absolute top-1/2 left-1/2 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2';
             clockFace.appendChild(clockCenter);
@@ -2007,6 +2004,7 @@ const renderTimePickerModal = (bookingModal) => {
                     const angle = (i / 12) * 360 - 90;
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
+
                     const numberEl = document.createElement('div');
                     numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full cursor-pointer hover:bg-blue-200 transform -translate-x-1/2 -translate-y-1/2';
                     numberEl.textContent = i;
@@ -2022,6 +2020,7 @@ const renderTimePickerModal = (bookingModal) => {
                     const angle = ((i-12) / 12) * 360 - 90;
                     const x = 112 + 60 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 60 * Math.sin(angle * Math.PI / 180);
+
                     const numberEl = document.createElement('div');
                     numberEl.className = `clock-number absolute w-8 h-8 flex items-center justify-center rounded-full cursor-pointer transform -translate-x-1/2 -translate-y-1/2 ${dataHour > 14 ? 'bg-gray-200 text-gray-400 cursor-not-allowed disabled' : 'bg-blue-100 hover:bg-blue-200'}`;
                     numberEl.textContent = displayHour;
@@ -2035,9 +2034,10 @@ const renderTimePickerModal = (bookingModal) => {
                     const angle = ((index * 2) / 12) * 360 - 90;
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
+
                     const numberEl = document.createElement('div');
                     numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full cursor-pointer hover:bg-blue-200 transform -translate-x-1/2 -translate-y-1/2';
-                    
+
                     if (selectedHour === 11 && minute === '30') {
                         numberEl.classList.add('disabled', 'bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
@@ -2045,7 +2045,7 @@ const renderTimePickerModal = (bookingModal) => {
                         numberEl.classList.add('disabled', 'bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
                     }
-                    
+
                     numberEl.textContent = minute;
                     numberEl.style.left = `${x}px`;
                     numberEl.style.top = `${y}px`;
@@ -2053,6 +2053,7 @@ const renderTimePickerModal = (bookingModal) => {
                     clockFace.appendChild(numberEl);
                 });
             }
+
             clockContainer.appendChild(clockFace);
             updatePreview();
             attachClockListeners();
@@ -2080,13 +2081,13 @@ const renderTimePickerModal = (bookingModal) => {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
                 const lunchStart = 11 * 60 + 30;
                 const lunchEnd = 12 * 60 + 30;
-                
+
                 if (timeInMinutes >= lunchStart && timeInMinutes <= lunchEnd) {
                     showAlert('ไม่สามารถเลือกเวลาในช่วงพักพนักงาน (11:30-12:30) ได้');
                     return;
                 }
-                
-                const finalTime = `${selectedHour.toString().padStart(2,'0')}:${selectedMinute.toString().padStart(2,'0')}`;
+
+                const finalTime = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
                 bookingModal.querySelector('#eta').value = finalTime;
                 bookingModal.querySelector('#eta-display').textContent = finalTime;
                 bookingModal.querySelector('#eta-display').classList.remove('text-slate-500');
@@ -2134,7 +2135,6 @@ const renderAddHolidayModal = () => {
             </form>
         </div>
     `;
-    
     renderModalBase(modalContent, modal => {
         modal.querySelector('#holiday-form').addEventListener('submit', handleAddHoliday);
     });
@@ -2143,7 +2143,7 @@ const renderAddHolidayModal = () => {
 const renderImportPublicHolidaysModal = () => {
     const currentYear = new Date().getFullYear();
     const years = [currentYear, currentYear + 1, currentYear + 2];
-    
+
     const modalContent = `
         <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">นำเข้าวันหยุดราชการ</h3>
@@ -2176,7 +2176,7 @@ const renderImportPublicHolidaysModal = () => {
             </form>
         </div>
     `;
-    
+
     renderModalBase(modalContent, modal => {
         modal.querySelector('#import-holidays-form').addEventListener('submit', handleImportPublicHolidays);
     });
@@ -2214,7 +2214,7 @@ const renderAddUserModal = () => {
             </form>
         </div>
     `;
-    
+
     renderModalBase(modalContent, modal => {
         modal.querySelector('#user-form').addEventListener('submit', handleAddUser);
     });
@@ -2222,12 +2222,12 @@ const renderAddUserModal = () => {
 
 const renderEditUserModal = (userId) => {
     const user = state.data.users.find(u => u.id === userId);
-    
+
     if (!user) {
         showAlert('ไม่พบข้อมูลผู้ใช้');
         return;
     }
-    
+
     const modalContent = `
         <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">แก้ไขผู้ใช้</h3>
@@ -2260,7 +2260,7 @@ const renderEditUserModal = (userId) => {
             </form>
         </div>
     `;
-    
+
     renderModalBase(modalContent, modal => {
         modal.querySelector('#user-form').addEventListener('submit', handleEditUser);
     });
@@ -2269,7 +2269,7 @@ const renderEditUserModal = (userId) => {
 const handleAddUser = async (e) => {
     e.preventDefault();
     const form = e.target;
-    
+
     const newUser = {
         name: form.querySelector('#user-name').value,
         email: form.querySelector('#user-email').value,
@@ -2278,7 +2278,7 @@ const handleAddUser = async (e) => {
         createdAt: new Date().toISOString(),
         lastLogin: null
     };
-    
+
     try {
         await addDoc(collection(db, "users"), newUser);
         closeModal(form.closest('.modal-backdrop'));
@@ -2294,18 +2294,18 @@ const handleEditUser = async (e) => {
     e.preventDefault();
     const form = e.target;
     const userId = form.querySelector('#user-id').value;
-    
+
     const updatedUser = {
         name: form.querySelector('#user-name').value,
         email: form.querySelector('#user-email').value,
         role: form.querySelector('#user-role').value
     };
-    
+
     const newPassword = form.querySelector('#user-password').value;
     if (newPassword) {
         updatedUser.password = newPassword;
     }
-    
+
     try {
         const userRef = doc(db, "users", userId);
         await updateDoc(userRef, updatedUser);
@@ -2330,7 +2330,7 @@ const handleDeleteUser = async (userId) => {
 };
 
 const updateUnreadNotifications = () => {
-    state.unreadNotifications = state.data.notifications.filter(n => 
+    state.unreadNotifications = state.data.notifications.filter(n =>
         !n.read && (!n.userId || n.userId === state.currentUser?.id)
     ).length;
 };
@@ -2338,7 +2338,7 @@ const updateUnreadNotifications = () => {
 const handleAddHoliday = async (e) => {
     e.preventDefault();
     const form = e.target;
-    
+
     const holiday = {
         name: form.querySelector('#holiday-name').value,
         date: form.querySelector('#holiday-date').value,
@@ -2346,14 +2346,14 @@ const handleAddHoliday = async (e) => {
         recurring: form.querySelector('#holiday-recurring').checked,
         description: form.querySelector('#holiday-description').value
     };
-    
+
     // Check if holiday already exists
     const existingHoliday = state.data.holidays.find(h => h.date === holiday.date);
     if (existingHoliday) {
         showAlert('มีวันหยุดในวันที่เลือกแล้ว');
         return;
     }
-    
+
     try {
         await addDoc(collection(db, "holidays"), holiday);
         closeModal(form.closest('.modal-backdrop'));
@@ -2382,7 +2382,7 @@ const handleImportPublicHolidays = async (e) => {
     e.preventDefault();
     const form = e.target;
     const year = parseInt(form.querySelector('#holiday-year').value);
-    
+
     const publicHolidays = [
         { name: 'วันขึ้นปีใหม่', date: `${year}-01-01`, type: 'public', recurring: true },
         { name: 'วันมาฆบูชา', date: `${year}-02-26`, type: 'public', recurring: true },
@@ -2399,21 +2399,21 @@ const handleImportPublicHolidays = async (e) => {
         { name: 'วันรัฐธรรมนูญ', date: `${year}-12-10`, type: 'public', recurring: true },
         { name: 'วันคริสต์มาสต์', date: `${year}-12-25`, type: 'public', recurring: true }
     ];
-    
+
     let addedCount = 0;
     const addPromises = [];
-    
+
     for (const holiday of publicHolidays) {
-        const exists = state.data.holidays.some(h => 
+        const exists = state.data.holidays.some(h =>
             h.date === holiday.date && h.type === 'public'
         );
-        
+
         if (!exists) {
             addPromises.push(addDoc(collection(db, "holidays"), holiday));
             addedCount++;
         }
     }
-    
+
     try {
         await Promise.all(addPromises);
         closeModal(form.closest('.modal-backdrop'));
@@ -2427,23 +2427,23 @@ const handleImportPublicHolidays = async (e) => {
 
 const renderModal = (type, data = {}) => {
     let modalContent = '';
+
     if(type === 'login') {
         modalContent = `
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-4">เข้าสู่ระบบพนักงาน</h3>
                 <form id="login-form" class="space-y-4">
-                    <input type="text" id="username" placeholder="ชื่อผู้ใช้" required class="w-full px-3 py-2 border rounded-md">
+                    <input type="email" id="email" placeholder="อีเมล" required class="w-full px-3 py-2 border rounded-md">
+                    <input type="password" id="password" placeholder="รหัสผ่าน" required class="w-full px-3 py-2 border rounded-md">
                     <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">เข้าสู่ระบบ</button>
                 </form>
             </div>
         `;
         renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
     }
-    
     else if(type === 'booking') {
         if (isHoliday(new Date(state.selectedDate))) {
             const holiday = isHoliday(new Date(state.selectedDate));
-            
             modalContent = `
                 <div class="p-6 text-center">
                     <div class="text-red-600 text-6xl mb-4">🚫</div>
@@ -2476,6 +2476,7 @@ const renderModal = (type, data = {}) => {
         }
 
         const companyOptions = state.data.companies.map(c => `<option value="${c}">${c}</option>`).join('');
+
         modalContent = `
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-4">จองคิววันที่ ${formatThaiDate(state.selectedDate)}</h3>
@@ -2489,7 +2490,7 @@ const renderModal = (type, data = {}) => {
                         </select>
                         <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full px-3 py-2 border rounded-md mt-2 hidden">
                     </div>
-                    
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium mb-1">ชื่อ-นามสกุล คนขับ</label>
@@ -2503,7 +2504,7 @@ const renderModal = (type, data = {}) => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-medium mb-1">จำนวนบิล</label>
@@ -2518,18 +2519,18 @@ const renderModal = (type, data = {}) => {
                             <input type="number" id="item-count" min="1" required class="w-full px-3 py-2 border rounded-md">
                         </div>
                     </div>
-                    
+
                     <div>
                         <label class="block text-sm font-medium mb-1">เวลาที่คาดว่าจะมาถึง</label>
                         <input type="hidden" id="eta" required>
                         <div id="eta-display" class="w-full px-3 py-2 border rounded-md cursor-pointer bg-gray-50 text-slate-500">-- เลือกเวลา --</div>
                     </div>
-                    
+
                     <div>
                         <label class="block text-sm font-medium mb-1">เอกสารเพิ่มเติม</label>
                         <textarea id="notes" placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)" class="w-full px-3 py-2 border rounded-md" rows="3"></textarea>
                     </div>
-                    
+
                     <div>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                             <input type="file" id="document-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
@@ -2545,7 +2546,7 @@ const renderModal = (type, data = {}) => {
                         </div>
                         <div id="file-list" class="mt-4 space-y-2"></div>
                     </div>
-                    
+
                     <div class="flex justify-end space-x-2">
                         <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
                         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ยืนยันการจอง</button>
@@ -2553,15 +2554,17 @@ const renderModal = (type, data = {}) => {
                 </form>
             </div>
         `;
+
         renderModalBase(modalContent, modal => {
             modal.querySelector('#eta-display').addEventListener('click', () => renderTimePickerModal(modal));
+
             const companySelect = modal.querySelector('#company-name'), newCompanyInput = modal.querySelector('#new-company-name');
             companySelect.addEventListener('change', () => newCompanyInput.classList.toggle('hidden', companySelect.value !== 'add_new'));
-            
+
             const fileInput = modal.querySelector('#document-files');
             const fileList = modal.querySelector('#file-list');
             let uploadedFiles = [];
-            
+
             const displayFiles = () => {
                 fileList.innerHTML = uploadedFiles.map((file, index) => `
                     <div class="flex items-center justify-between bg-gray-50 p-3 rounded border">
@@ -2576,12 +2579,12 @@ const renderModal = (type, data = {}) => {
                     </div>
                 `).join('');
             };
-            
+
             window.removeFile = (index) => {
                 uploadedFiles.splice(index, 1);
                 displayFiles();
             };
-            
+
             fileInput.addEventListener('change', async (e) => {
                 try {
                     const newFiles = await handleFileUpload({ files: e.target.files });
@@ -2591,23 +2594,21 @@ const renderModal = (type, data = {}) => {
                     console.error('Error handling files:', error);
                 }
             });
-            
+
             const dropZone = modal.querySelector('.border-dashed').parentElement;
-            
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 dropZone.classList.add('border-blue-500', 'bg-blue-50');
             });
-            
+
             dropZone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
                 dropZone.classList.remove('border-blue-500', 'bg-blue-50');
             });
-            
+
             dropZone.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-                
                 try {
                     const newFiles = await handleFileUpload({ files: e.dataTransfer.files });
                     uploadedFiles = [...uploadedFiles, ...newFiles];
@@ -2616,18 +2617,19 @@ const renderModal = (type, data = {}) => {
                     console.error('Error handling dropped files:', error);
                 }
             });
-            
+
             modal.querySelector('#booking-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const form = e.target;
+
                 const companySelect = form.querySelector('#company-name');
                 let companyName = companySelect.value === 'add_new' ? form.querySelector('#new-company-name').value.trim() : companySelect.value;
-                
+
                 if (!companyName) {
                     showAlert('กรุณาระบุชื่อบริษัท');
                     return;
                 }
-                
+
                 const licensePlate = `${form.querySelector('#license-plate-prefix').value.trim()} ${form.querySelector('#license-plate-suffix').value.trim()}`.trim();
                 if (!licensePlate) {
                     showAlert('กรุณากรอกทะเบียนรถ');
@@ -2643,23 +2645,23 @@ const renderModal = (type, data = {}) => {
                 let originalTime = eta;
                 let attempts = 0;
                 const maxAttempts = 10;
-                
+
                 while (checkTimeConflict(state.selectedDate, eta) >= 2 && attempts < maxAttempts) {
                     eta = calculateNewTime(eta, 10);
                     attempts++;
                 }
-                
+
                 if (checkTimeConflict(state.selectedDate, eta) >= 2 && attempts < maxAttempts) {
                     eta = calculateNewTime(eta, 5);
                     attempts++;
                 }
-                
+
                 const [hour, minute] = eta.split(':').map(Number);
                 if (hour === 14 && minute > 15) {
                     showAlert(`ไม่สามารถจองคิวได้ เนื่องจากเวลา ${eta} เกินเวลารับสินค้า (14:15)`);
                     return;
                 }
-                
+
                 if (checkTimeConflict(state.selectedDate, eta) >= 2) {
                     showAlert(`ไม่สามารถจองคิวได้ เนื่องจากมีคิวในช่วงเวลานั้นแล้ว`);
                     return;
@@ -2684,25 +2686,25 @@ const renderModal = (type, data = {}) => {
                     evaluation: null,
                     date: state.selectedDate // Add date field for Firestore
                 };
-                
+
                 try {
                     // Add booking to Firestore
                     const docRef = await addDoc(collection(db, "bookings"), newBooking);
                     const bookingId = docRef.id;
-                    
+
                     // Add to guest session
                     state.guestBookingIds.push(bookingId);
-                    
+
                     // Save to localStorage (Layer 1)
                     localStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
-                    
+
                     // Save to Firebase (Layer 2)
                     const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
                     await setDoc(guestDocRef, {
                         bookingIds: state.guestBookingIds,
                         lastActivity: serverTimestamp()
                     }, { merge: true });
-                    
+
                     createNotification(
                         'booking',
                         'มีการจองคิวใหม่',
@@ -2710,7 +2712,7 @@ const renderModal = (type, data = {}) => {
                         null,
                         bookingId
                     );
-                    
+
                     closeModal(form.closest('.modal-backdrop'));
                     renderModal('qrCode', { booking: { ...newBooking, id: bookingId } });
                 } catch (error) {
@@ -2730,7 +2732,7 @@ const renderModal = (type, data = {}) => {
 
         const isGuestBooking = state.guestBookingIds.includes(booking.id);
         const isEditable = state.userRole === 'staff' || (state.userRole === 'guest' && isGuestBooking);
-        
+
         const documentsHtml = booking.documents && booking.documents.length > 0
             ? `<div class="mt-4">
                 <h4 class="font-semibold mb-2">เอกสารที่แนบ:</h4>
@@ -2750,7 +2752,7 @@ const renderModal = (type, data = {}) => {
                 </div>
             </div>`
             : '';
-        
+
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
@@ -2763,7 +2765,7 @@ const renderModal = (type, data = {}) => {
         } else {
             statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
         }
-        
+
         modalContent = `
             <div class="p-6">
                 <div class="flex justify-between items-start mb-4">
@@ -2810,16 +2812,16 @@ const renderModal = (type, data = {}) => {
                             ${statusBadge}
                         </div>
                         ${booking.checkInTime ? `
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">เวลาเช็คอิน:</span>
-                            <span class="font-medium">${formatDateTime(booking.checkInTime)}</span>
-                        </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">เวลาเช็คอิน:</span>
+                                <span class="font-medium">${formatDateTime(booking.checkInTime)}</span>
+                            </div>
                         ` : ''}
                         ${booking.notes ? `
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">เอกสารเพิ่มเติม:</span>
-                            <span class="font-medium">${booking.notes}</span>
-                        </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">เอกสารเพิ่มเติม:</span>
+                                <span class="font-medium">${booking.notes}</span>
+                            </div>
                         ` : ''}
                     </div>
                 </div>
@@ -2829,26 +2831,25 @@ const renderModal = (type, data = {}) => {
                 </div>
             </div>
         `;
-        
+
         window.downloadDocument = (filename, dataUrl) => {
             const link = document.createElement('a');
             link.href = dataUrl;
             link.download = filename;
             link.click();
         };
-        
+
         renderModalBase(modalContent);
     }
     else if(type === 'bookingCard') {
         const booking = data.booking;
-        
+
         const documentsInfo = booking.documents && booking.documents.length > 0
             ? `<div class="text-sm text-gray-600 mt-2">
-                เอกสารที่แนบ:
-                <span class="font-medium">${booking.documents.length} ไฟล์</span>
+                เอกสารที่แนบ: <span class="font-medium">${booking.documents.length} ไฟล์</span>
             </div>`
             : '';
-        
+
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
@@ -2861,7 +2862,7 @@ const renderModal = (type, data = {}) => {
         } else {
             statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
         }
-        
+
         let checkInSection = '';
         if (state.userRole === 'staff' && !booking.checkInTime) {
             checkInSection = `
@@ -2890,7 +2891,7 @@ const renderModal = (type, data = {}) => {
                 </div>
             `;
         }
-        
+
         modalContent = `
             <div class="p-6">
                 <div class="bg-white rounded-lg">
@@ -2935,23 +2936,23 @@ const renderModal = (type, data = {}) => {
                             ${documentsInfo}
                         </div>
                         ${booking.notes ? `
-                        <div class="mt-4 p-3 bg-gray-50 rounded">
-                            <span class="text-gray-600 text-sm">เอกสารเพิ่มเติม</span>
-                            <div class="text-sm mt-1">${booking.notes}</div>
-                        </div>
+                            <div class="mt-4 p-3 bg-gray-50 rounded">
+                                <span class="text-gray-600 text-sm">เอกสารเพิ่มเติม</span>
+                                <div class="text-sm mt-1">${booking.notes}</div>
+                            </div>
                         ` : ''}
                         ${booking.documents && booking.documents.length > 0 ? `
-                        <div class="mt-4">
-                            <span class="text-gray-600 text-sm">เอกสารที่แนบ</span>
-                            <div class="mt-2 space-y-2">
-                                ${booking.documents.map(doc => `
-                                    <div class="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
-                                        <span>${doc.name}</span>
-                                        <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800">ดาวน์โหลด</button>
-                                    </div>
-                                `).join('')}
+                            <div class="mt-4">
+                                <span class="text-gray-600 text-sm">เอกสารที่แนบ</span>
+                                <div class="mt-2 space-y-2">
+                                    ${booking.documents.map(doc => `
+                                        <div class="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
+                                            <span>${doc.name}</span>
+                                            <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800">ดาวน์โหลด</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
-                        </div>
                         ` : ''}
                         ${checkInSection}
                         <div class="mt-4 p-3 bg-gray-50 rounded text-center">
@@ -2967,6 +2968,7 @@ const renderModal = (type, data = {}) => {
                 </div>
             </div>
         `;
+
         renderModalBase(modalContent, modal => {
             if (state.userRole === 'staff') {
                 modal.querySelector('.evaluate-from-qr-btn')?.addEventListener('click', () => {
@@ -2975,12 +2977,12 @@ const renderModal = (type, data = {}) => {
                     state.selectedBookingId = booking.id;
                     renderModal('evaluate');
                 });
-                
+
                 modal.querySelector('.check-in-from-qr-btn')?.addEventListener('click', () => {
                     handleCheckIn(booking.id);
                     closeModal(modal);
                 });
-                
+
                 modal.querySelector('.complete-from-qr-btn')?.addEventListener('click', () => {
                     handleCompleteBooking(booking.id);
                     closeModal(modal);
@@ -2990,6 +2992,7 @@ const renderModal = (type, data = {}) => {
     }
     else if(type === 'evaluate') {
         const booking = allBookingsById[state.selectedBookingId];
+
         let kpiInputs = kpiDefinitions.map(kpi => `
             <div>
                 <label class="block text-sm font-medium mb-1">${kpi.label}</label>
@@ -3003,7 +3006,7 @@ const renderModal = (type, data = {}) => {
                 </select>
             </div>
         `).join('');
-        
+
         modalContent = `
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-2">ประเมิน KPI</h3>
@@ -3026,21 +3029,23 @@ const renderModal = (type, data = {}) => {
                 </form>
             </div>
         `;
+
         renderModalBase(modalContent, modal => {
             modal.querySelector('#evaluation-form').addEventListener('submit', handleEvaluationSubmit);
             modal.querySelector('#generate-summary-btn').addEventListener('click', handleGenerateSummary);
         });
-    } else if(type === 'qrCode') {
+    }
+    else if(type === 'qrCode') {
         const booking = data.booking;
         const referenceNumber = booking.referenceNumber || generateReferenceNumber();
-        
+
         if (!booking.referenceNumber) {
             booking.referenceNumber = referenceNumber;
             // Update in Firestore
             const bookingRef = doc(db, "bookings", booking.id);
             updateDoc(bookingRef, { referenceNumber: referenceNumber });
         }
-        
+
         const qrData = JSON.stringify({
             id: booking.id,
             referenceNumber: referenceNumber,
@@ -3087,14 +3092,14 @@ const renderModal = (type, data = {}) => {
 
         renderModalBase(modalContent, modal => {
             generateQRCode(qrData, modal.querySelector('#qrcode-container'));
-            
             modal.querySelector('#qr-close-btn').addEventListener('click', () => {
                 closeModal(modal);
                 state.currentView = 'dailyQueue';
                 render();
             });
         });
-    } else if(type === 'manualReferenceInput') {
+    }
+    else if(type === 'manualReferenceInput') {
         modalContent = `
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-4">ป้อนเลขกำกับ</h3>
@@ -3107,6 +3112,7 @@ const renderModal = (type, data = {}) => {
                 </form>
             </div>
         `;
+
         renderModalBase(modalContent, modal => {
             modal.querySelector('#manual-reference-form').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -3140,17 +3146,25 @@ const handleSearchByReferenceNumber = (referenceNumber) => {
 
 async function callGemini(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
-    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+    const payload = {
+        contents: [{
+            parts: [{ text: prompt }]
+        }]
+    };
 
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(payload)
         });
+
         if (!response.ok) {
             throw new Error(`API error: ${response.statusText}`);
         }
+
         const result = await response.json();
         return result.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถสร้างสรุปได้";
     } catch (error) {
@@ -3195,67 +3209,118 @@ const handleGenerateSummary = async (e) => {
     loadingIndicator.style.display = 'none';
 };
 
-const handleLogin = (e) => {
+// แก้ไขฟังก์ชัน handleLogin ให้ใช้ Firebase Authentication
+const handleLogin = async (e) => {
     e.preventDefault();
-    const username = document.getElementById('username').value.trim();
-    
-    const user = state.data.users?.find(u => u.email === username || u.name === username);
-    
-    if (user) {
-        // Update last login in Firestore
-        const userRef = doc(db, "users", user.id);
-        updateDoc(userRef, { lastLogin: new Date().toISOString() });
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    try {
+        // ล็อกอินด้วย Firebase Authentication
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // ดึงข้อมูลผู้ใช้จาก Firestore
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            
+            // ตรวจสอบ Role
+            if (userData.role === 'staff' || userData.role === 'admin') {
+                // อัปเดต lastLogin
+                await updateDoc(userDocRef, {
+                    lastLogin: new Date().toISOString()
+                });
+
+                // ตั้งค่า state
+                state.isLoggedIn = true;
+                state.userRole = userData.role;
+                state.currentUser = { id: user.uid, ...userData };
+                state.currentView = 'dashboard';
+
+                closeModal();
+                render();
+            } else {
+                // Role ไม่ใช่ Staff/Admin
+                showAlert('คุณไม่มีสิทธิ์เข้าใช้งานส่วนนี้');
+                await signOut(auth);
+            }
+        } else {
+            // ไม่พบเอกสารใน Firestore
+            showAlert('ไม่พบข้อมูลผู้ใช้ในระบบ หรือยังไม่ได้กำหนดสิทธิ์');
+            await signOut(auth);
+        }
+    } catch (error) {
+        console.error('Login error:', error);
         
-        state.isLoggedIn = true;
-        state.userRole = user.role;
-        state.currentUser = user;
-        state.currentView = 'dashboard';
-        closeModal();
-        render();
-    } else if (username === 'inboundlaksi') {
-        state.isLoggedIn = true;
-        state.userRole = 'staff';
-        state.currentUser = {
-            id: 'default',
-            name: 'พนักงาน',
-            email: 'inboundlaksi',
-            role: 'staff'
-        };
-        state.currentView = 'dashboard';
-        closeModal();
-        render();
-    } else {
-        showAlert('ชื่อผู้ใช้ไม่ถูกต้อง');
+        // จัดการ Error ตาม error.code
+        let errorMessage = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+        
+        switch (error.code) {
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+            case 'auth/invalid-credential':
+                errorMessage = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+                break;
+            case 'auth/invalid-email':
+                errorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                break;
+            case 'auth/user-disabled':
+                errorMessage = 'บัญชีผู้ใช้ถูกปิดใช้งาน';
+                break;
+            case 'auth/too-many-requests':
+                errorMessage = 'มีการพยายามเข้าสู่ระบบมากเกินไป กรุณาลองใหม่ภายหลัง';
+                break;
+            default:
+                errorMessage = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่';
+        }
+        
+        showAlert(errorMessage);
     }
 };
 
-const handleLogout = () => {
-    state.isLoggedIn = false;
-    state.userRole = 'guest';
-    state.currentUser = null;
-    state.currentView = 'calendar';
-    render();
+// แก้ไขฟังก์ชัน handleLogout ให้ออกจาก Firebase Authentication ด้วย
+const handleLogout = async () => {
+    try {
+        // ออกจาก Firebase Authentication
+        await signOut(auth);
+        
+        // ตั้งค่า state
+        state.isLoggedIn = false;
+        state.userRole = 'guest';
+        state.currentUser = null;
+        state.currentView = 'calendar';
+        
+        render();
+    } catch (error) {
+        console.error('Logout error:', error);
+        showAlert('เกิดข้อผิดพลาดในการออกจากระบบ');
+    }
 };
 
 const handleEvaluationSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
     const bookingId = state.selectedBookingId;
-    
+
     const evaluation = {
         scores: {},
         staffComments: form.querySelector('#staff-comments').value,
         geminiSummary: form.querySelector('#gemini-summary').value
     };
-    
+
     form.querySelectorAll('.kpi-select').forEach(sel => {
         evaluation.scores[sel.dataset.kpiId] = parseInt(sel.value, 10);
     });
-    
+
     try {
         const bookingRef = doc(db, "bookings", bookingId);
-        await updateDoc(bookingRef, { evaluation: evaluation });
-        
+        await updateDoc(bookingRef, {
+            evaluation: evaluation
+        });
+
         closeModal(form.closest('.modal-backdrop'));
         showSuccessAnimation("บันทึกผลสำเร็จ!");
     } catch (error) {
@@ -3293,19 +3358,18 @@ const renderHolidayDetailsModal = (holiday, date) => {
             </div>
         </div>
     `;
-    
     renderModalBase(modalContent);
 };
 
 const renderCompanyKpiDetails = (companyName) => {
     const kpiData = getKpiData();
     const company = kpiData.find(c => c.name === companyName);
-    
+
     if (!company) {
         showAlert('ไม่พบข้อมูลบริษัท');
         return;
     }
-    
+
     const bookingHistoryHtml = company.bookings.map(booking => `
         <div class="bg-white p-4 rounded-lg border">
             <div class="flex justify-between items-start mb-2">
@@ -3317,7 +3381,7 @@ const renderCompanyKpiDetails = (companyName) => {
             </div>
         </div>
     `).join('');
-    
+
     const modalContent = `
         <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">ประวัติการจัดส่ง - ${companyName}</h3>
@@ -3335,7 +3399,7 @@ const renderCompanyKpiDetails = (companyName) => {
             </div>
         </div>
     `;
-    
+
     renderModalBase(modalContent);
 };
 
@@ -3343,7 +3407,7 @@ const renderCompanyKpiDetails = (companyName) => {
 const init = async () => {
     try {
         await signInAnonymously(auth);
-        
+
         // 1. Get or create a persistent Guest Session ID from localStorage
         let sessionId = localStorage.getItem('guestSessionId');
         if (!sessionId) {
@@ -3351,7 +3415,7 @@ const init = async () => {
             localStorage.setItem('guestSessionId', sessionId);
         }
         state.guestSessionId = sessionId;
-        
+
         // 2. Setup config collection listener
         const configRef = doc(db, "config", "main");
         onSnapshot(configRef, async (configSnap) => {
@@ -3367,7 +3431,7 @@ const init = async () => {
                 state.data.companies = initialCompanies;
             }
         });
-        
+
         // 3. Setup holidays collection listener
         onSnapshot(collection(db, "holidays"), (holidaysSnapshot) => {
             state.data.holidays = [];
@@ -3377,7 +3441,7 @@ const init = async () => {
             state.data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
             render();
         });
-        
+
         // 4. Setup users collection listener
         onSnapshot(collection(db, "users"), (usersSnapshot) => {
             state.data.users = [];
@@ -3386,7 +3450,7 @@ const init = async () => {
             });
             render();
         });
-        
+
         // 5. Setup notifications collection listener
         onSnapshot(collection(db, "notifications"), (notificationsSnapshot) => {
             state.data.notifications = [];
@@ -3396,41 +3460,41 @@ const init = async () => {
             updateUnreadNotifications();
             render();
         });
-        
+
         // 6. Setup bookings collection listener (most complex)
         onSnapshot(collection(db, "bookings"), (bookingsSnapshot) => {
             // Clear existing data
             state.data.bookings = {};
             allBookingsById = {};
-            
+
             // Process each booking document
             bookingsSnapshot.forEach((doc) => {
                 const booking = { id: doc.id, ...doc.data() };
                 const date = booking.date;
-                
+
                 // Add to allBookingsById for quick lookup
                 allBookingsById[doc.id] = booking;
-                
+
                 // Group by date for calendar display
                 if (!state.data.bookings[date]) {
                     state.data.bookings[date] = [];
                 }
                 state.data.bookings[date].push(booking);
             });
-            
+
             // Sort bookings by time within each date
             Object.keys(state.data.bookings).forEach(date => {
                 state.data.bookings[date].sort((a, b) => a.eta.localeCompare(b.eta));
             });
-            
+
             render();
         });
-        
+
         // 7. Fetch guest's booking history from Firebase using the session ID
         if (state.guestSessionId && state.userRole === 'guest') {
             const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
             const guestDocSnap = await getDoc(guestDocRef);
-            
+
             if (guestDocSnap.exists()) {
                 const guestData = guestDocSnap.data();
                 state.guestBookingIds = guestData.bookingIds || [];
@@ -3441,10 +3505,10 @@ const init = async () => {
                 state.guestBookingIds = JSON.parse(localStorage.getItem('guestBookingIds')) || [];
             }
         }
-        
+
         setupAutomaticNotifications();
         requestNotificationPermission();
-        
+
         state.userRole = 'guest';
         state.isLoggedIn = false;
         state.currentView = 'calendar';
