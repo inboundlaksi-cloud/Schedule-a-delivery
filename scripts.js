@@ -3,32 +3,34 @@ import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, order
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBezNic5rqHg2xh9_9dHo5DUDoHZx1Z_v8",
-  authDomain: "schedule-a-delivery.firebaseapp.com",
-  projectId: "schedule-a-delivery",
-  storageBucket: "schedule-a-delivery.appspot.com",
-  messagingSenderId: "222743116863",
-  appId: "1:222743116863:web:12df3ee05d2894f23ccc8a",
-  measurementId: "G-EDV364EREE"
+    apiKey: "AIzaSyBezNic5rqHg2xh9_9dHo5DUDoHZx1Z_v8",
+    authDomain: "schedule-a-delivery.firebaseapp.com",
+    projectId: "schedule-a-delivery",
+    storageBucket: "schedule-a-delivery.appspot.com",
+    messagingSenderId: "222743116863",
+    appId: "1:222743116863:web:12df3ee05d2894f23ccc8a",
+    measurementId: "G-EDV364EREE"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const docRef = doc(db, "schedules", "main");
 const GEMINI_API_KEY = "AIzaSyD_d2g0XgVxkClULTmh6dfl_eKIkRuVo7E";
 
+// Global mapping for quick booking lookup by ID
+let allBookingsById = {};
+
 let state = {
-    isLoggedIn: false, 
-    userRole: 'guest', 
+    isLoggedIn: false,
+    userRole: 'guest',
     currentView: 'calendar',
-    currentDate: new Date(), 
-    selectedDate: null, 
+    currentDate: new Date(),
+    selectedDate: null,
     selectedBookingId: null,
-    guestSessionId: null, // ID สำหรับผู้ใช้ทั่วไป (Guest)
-    guestBookingIds: [], 
+    guestSessionId: null,
+    guestBookingIds: [],
     data: { bookings: {}, companies: [], holidays: [], users: [], notifications: [] },
-    kpiSearchTerm: '', 
+    kpiSearchTerm: '',
     selectedKpiCompany: null,
     currentUser: null,
     unreadNotifications: 0,
@@ -37,14 +39,14 @@ let state = {
 };
 
 const icons = {
-    dashboard: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z"></path></svg>`,
-    calendar: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`,
+    dashboard: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path></svg>`,
+    calendar: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z"></path></svg>`,
     kpi: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
     queue: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
     company: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`,
     booking: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`,
     scanner: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>`,
-    manual: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`,
+    manual: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`,
     check: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`,
     clock: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
     users: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`,
@@ -53,9 +55,9 @@ const icons = {
 };
 
 const kpiDefinitions = [
-    { id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, 
-    { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, 
-    { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, 
+    { id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' },
+    { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' },
+    { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' },
     { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }
 ];
 
@@ -63,17 +65,18 @@ const appContainer = document.getElementById('app-container');
 const modalContainer = document.getElementById('modal-container');
 
 const initialCompanies = [
-    "Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", 
-    "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", 
-    "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", 
-    "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", 
-    "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบอร์ซีฟ จำกัด", 
-    "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอ๊บเบรชีฟ โปรดักส์ จำกัด", 
-    "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", 
-    "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", 
+    "Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น",
+    "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น",
+    "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์",
+    "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด",
+    "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบอร์ซีฟ จำกัด",
+    "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอ๊บเบรชีฟ โปรดักส์ จำกัด",
+    "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)",
+    "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน",
     "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"
 ];
 
+// Utility functions
 const formatDate = (date) => {
     if (!(date instanceof Date)) {
         date = new Date(date);
@@ -86,14 +89,19 @@ const formatDate = (date) => {
 
 const formatThaiDate = (dateStr) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+    return new Date(dateStr).toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
 };
 
 const formatTime24h = (timeStr) => {
     if (!timeStr) return '-';
     const [hour, minute] = timeStr.split(':');
     return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
-}
+};
 
 const formatDateTime = (date) => {
     if (!date) return '-';
@@ -209,7 +217,7 @@ const downloadQRCodeForSafari = () => {
         
         if (navigator.userAgent.includes('Safari')) {
             const newWindow = window.open();
-            newWindow.document.write(`<img src="${img.src}" alt="QR Code" style="max-width:100%;height:auto;"/>`);
+            newWindow.document.write(`<img src="${img.src}" />`);
         } else {
             document.body.appendChild(link);
             link.click();
@@ -223,22 +231,16 @@ const downloadQRCodeForSafari = () => {
 const showQRCodeError = (container, data) => {
     const parsedData = JSON.parse(data);
     container.innerHTML = `
-        <div class="text-center p-6 bg-red-50 border border-red-200 rounded-lg">
-            <div class="mb-4">
-                <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                </svg>
-            </div>
+        <div class="text-center p-6 bg-red-50 rounded-lg border border-red-200">
+            <div class="text-red-600 text-6xl mb-4">⚠️</div>
             <h3 class="text-lg font-semibold text-red-800 mb-2">ไม่สามารถสร้าง QR Code ได้</h3>
             <p class="text-red-600 mb-4">กรุณาบันทึกข้อมูลการจองคิว</p>
             <div class="bg-white p-4 rounded border text-left">
-                <div class="space-y-2 text-sm">
-                    <div><strong>รหัสจอง:</strong> ${parsedData.id}</div>
-                    <div><strong>เลขกำกับ:</strong> ${parsedData.referenceNumber}</div>
-                    <div><strong>บริษัท:</strong> ${parsedData.company}</div>
-                    <div><strong>วันที่:</strong> ${parsedData.date}</div>
-                    <div><strong>เวลา:</strong> ${parsedData.time}</div>
-                </div>
+                <p><strong>รหัสจอง:</strong> ${parsedData.id}</p>
+                <p><strong>เลขกำกับ:</strong> ${parsedData.referenceNumber}</p>
+                <p><strong>บริษัท:</strong> ${parsedData.company}</p>
+                <p><strong>วันที่:</strong> ${parsedData.date}</p>
+                <p><strong>เวลา:</strong> ${parsedData.time}</p>
             </div>
         </div>
     `;
@@ -334,9 +336,8 @@ const getAttendanceStats = () => {
     return { onTime, late, total };
 };
 
-const createNotification = (type, title, content, userId = null, bookingId = null) => {
+const createNotification = async (type, title, content, userId = null, bookingId = null) => {
     const notification = {
-        id: Date.now(),
         type,
         title,
         content,
@@ -346,26 +347,24 @@ const createNotification = (type, title, content, userId = null, bookingId = nul
         read: false
     };
     
-    if (!state.data.notifications) {
-        state.data.notifications = [];
+    try {
+        await addDoc(collection(db, "notifications"), notification);
+        
+        if (!userId || userId === state.currentUser?.id) {
+            state.unreadNotifications++;
+        }
+        
+        if (Notification.permission === 'granted' && (!userId || userId === state.currentUser?.id)) {
+            new Notification(title, {
+                body: content,
+                icon: '/favicon.ico'
+            });
+        }
+        
+        return notification;
+    } catch (error) {
+        console.error('Error creating notification:', error);
     }
-    
-    state.data.notifications.push(notification);
-    
-    if (!userId || userId === state.currentUser?.id) {
-        state.unreadNotifications++;
-    }
-    
-    setDoc(docRef, state.data);
-    
-    if (Notification.permission === 'granted' && (!userId || userId === state.currentUser?.id)) {
-        new Notification(title, {
-            body: content,
-            icon: '/favicon.ico'
-        });
-    }
-    
-    return notification;
 };
 
 const setupAutomaticNotifications = () => {
@@ -379,8 +378,8 @@ const setupAutomaticNotifications = () => {
                 
                 if (bookingDateTime > now && bookingDateTime <= oneHourLater && !booking.checkInTime) {
                     const existingNotification = state.data.notifications?.find(n => 
-                        n.type === 'reminder' && 
-                        n.bookingId === booking.id && 
+                        n.type === 'reminder' &&
+                        n.bookingId === booking.id &&
                         n.timestamp > new Date(now.getTime() - 60 * 60 * 1000).toISOString()
                     );
                     
@@ -412,8 +411,13 @@ const requestNotificationPermission = () => {
     }
 };
 
+// Modal functions
 const renderModalBase = (content, attachListenersCallback) => {
-    const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">${content}</div>`;
+    const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="modal-content bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            ${content}
+        </div>
+    </div>`;
     modalContainer.insertAdjacentHTML('beforeend', modalHtml);
     const modal = modalContainer.lastElementChild;
     if (modal) {
@@ -437,9 +441,9 @@ const closeModal = (modalElement) => {
 
 const showAlert = (message) => {
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
-            <p class="text-gray-800 mb-4">${message}</p>
-            <button class="close-modal-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">ตกลง</button>
+        <div class="p-6 text-center">
+            <h3 class="text-lg font-semibold mb-4">${message}</h3>
+            <button class="close-modal-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ตกลง</button>
         </div>
     `;
     renderModalBase(modalContent);
@@ -447,11 +451,11 @@ const showAlert = (message) => {
 
 const showConfirm = (message, onConfirm) => {
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
-            <p class="text-gray-800 mb-4">${message}</p>
-            <div class="flex space-x-3">
-                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                <button id="confirm-ok" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 flex-1">ยืนยัน</button>
+        <div class="p-6 text-center">
+            <h3 class="text-lg font-semibold mb-4">${message}</h3>
+            <div class="flex gap-2 justify-center">
+                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                <button id="confirm-ok" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">ยืนยัน</button>
             </div>
         </div>
     `;
@@ -465,13 +469,12 @@ const showConfirm = (message, onConfirm) => {
 
 const showSuccessAnimation = (message, onComplete) => {
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
-            <div class="mb-4">
-                <svg class="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            <p class="text-gray-800 text-lg font-semibold">${message}</p>
+        <div class="p-6 text-center">
+            <svg class="checkmark w-16 h-16 mx-auto mb-4 text-green-500" viewBox="0 0 52 52">
+                <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="checkmark__check" fill="none" d="m14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-green-600">${message}</h3>
         </div>
     `;
     renderModalBase(modalContent);
@@ -481,6 +484,7 @@ const showSuccessAnimation = (message, onComplete) => {
     }, 1800);
 };
 
+// Render functions
 const render = () => {
     const header = `
         <header class="bg-white shadow-sm border-b">
@@ -493,15 +497,15 @@ const render = () => {
                         </div>
                     </div>
                     <div class="flex items-center space-x-4">
-                        ${state.isLoggedIn ? `<button id="logout-btn" class="text-gray-600 hover:text-gray-900">ออกจากระบบ</button>` : '<button id="staff-login-btn" class="text-blue-600 hover:text-blue-800">พนักงาน</button>'}
-                        <button id="quick-scan-btn" class="flex items-center space-x-1 bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600">
+                        ${state.isLoggedIn ? `<button id="logout-btn" class="text-gray-500 hover:text-gray-700">ออกจากระบบ</button>` : '<button id="staff-login-btn" class="text-blue-600 hover:text-blue-800">พนักงาน</button>'}
+                        <button id="quick-scan-btn" class="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
                             ${icons.scanner} <span>สแกน QR</span>
                         </button>
                         ${state.isLoggedIn ? `
-                        <button id="notifications-btn" class="relative flex items-center space-x-1 text-gray-600 hover:text-gray-900">
-                            ${icons.notifications} <span>การแจ้งเตือน</span>
-                            ${state.unreadNotifications > 0 ? `<span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">${state.unreadNotifications}</span>` : ''}
-                        </button>
+                            <button id="notifications-btn" class="relative flex items-center space-x-1 text-gray-500 hover:text-gray-700">
+                                ${icons.notifications} <span>การแจ้งเตือน</span>
+                                ${state.unreadNotifications > 0 ? `<span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">${state.unreadNotifications}</span>` : ''}
+                            </button>
                         ` : ''}
                     </div>
                 </div>
@@ -513,75 +517,122 @@ const render = () => {
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <div class="text-blue-600">${icons.manual}</div>
-                    <h3 class="text-lg font-semibold text-blue-800">คู่มือการใช้งานระบบจองคิว</h3>
+                    ${icons.manual} <span class="font-medium text-blue-800">คู่มือการใช้งานระบบจองคิว</span>
                 </div>
-                <button id="toggle-manual-btn" class="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded">
+                <button id="toggle-manual-btn" class="text-blue-600 hover:text-blue-800">
                     <span id="manual-toggle-text">แสดง</span>
                 </button>
             </div>
-            <div id="manual-content" class="mt-4 space-y-4 hidden">
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">การเข้าสู่ระบบจัดการคิว</h4>
-                    <p class="text-gray-600 text-sm">เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
-                </div>
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">การเลือกวันจัดส่งสินค้า</h4>
-                    <p class="text-gray-600 text-sm">เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
-                    <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                        <p class="text-yellow-800 text-xs">หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
+            
+            <div id="manual-content" class="manual-content mt-4 space-y-6">
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">1</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">การเข้าสู่ระบบจัดการคิว</h4>
+                            <p class="text-gray-600 mb-2">เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
+                        </div>
                     </div>
                 </div>
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">การกรอกข้อมูลการจอง</h4>
-                    <p class="text-gray-600 text-sm">หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
-                    <p class="text-gray-600 text-sm">ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
-                    <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                        <p class="text-yellow-800 text-xs">หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
+                
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">2</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">การเลือกวันจัดส่งสินค้า</h4>
+                            <p class="text-gray-600 mb-2">เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
+                                <p class="text-sm text-yellow-800"><strong>หมายเหตุ:</strong> หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">การกรอกรายละเอียด</h4>
-                    <p class="text-gray-600 text-sm">กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
-                    <ul class="mt-2 text-xs text-gray-600 space-y-1">
-                        <li>• ชื่อ-นามสกุล คนขับ: กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
-                        <li>• ทะเบียนรถ: ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
-                        <li>• จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น: กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
-                        <li>• เวลาที่คาดว่าจะมาถึง: กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
-                    </ul>
-                </div>
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
-                    <p class="text-gray-600 text-sm">สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
-                    <p class="text-gray-600 text-sm">คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
-                    <p class="text-gray-600 text-sm">ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
-                </div>
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">การยืนยันการจองและรับรหัสคิว</h4>
-                    <p class="text-gray-600 text-sm">เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
-                    <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                        <p class="text-yellow-800 text-xs">หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
-                    </div>
-                    <p class="text-gray-600 text-sm">เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
-                    <div class="mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                        <p class="text-green-800 text-xs">คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
+                
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">3</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">การกรอกข้อมูลการจอง</h4>
+                            <p class="text-gray-600 mb-2">หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
+                            <p class="text-gray-600 mb-2">ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
+                                <p class="text-sm text-yellow-800"><strong>หมายเหตุ:</strong> หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">ข้อควรทราบ</h4>
-                    <ul class="text-gray-600 text-sm space-y-1">
-                        <li>• สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
-                        <li>• หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
-                        <li>• กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
-                        <li>• หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
-                    </ul>
+                
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">4</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">การกรอกรายละเอียด</h4>
+                            <p class="text-gray-600 mb-2">กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
+                            <ul class="list-disc list-inside text-gray-600 space-y-1 ml-4">
+                                <li><strong>ชื่อ-นามสกุล คนขับ:</strong> กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
+                                <li><strong>ทะเบียนรถ:</strong> ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
+                                <li><strong>จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น:</strong> กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
+                                <li><strong>เวลาที่คาดว่าจะมาถึง:</strong> กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white p-4 rounded border">
-                    <h4 class="font-semibold text-gray-800 mb-2">การเช็คอินเมื่อถึงคลังสินค้า</h4>
-                    <p class="text-gray-600 text-sm">เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
-                    <p class="text-gray-600 text-sm">พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
-                    <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                        <p class="text-blue-800 text-xs">คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
+                
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">5</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
+                            <p class="text-gray-600 mb-2">สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
+                            <p class="text-gray-600 mb-2">คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
+                            <p class="text-gray-600">ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">6</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">การยืนยันการจองและรับรหัสคิว</h4>
+                            <p class="text-gray-600 mb-2">เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
+                                <p class="text-sm text-yellow-800"><strong>หมายเหตุ:</strong> หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
+                            </div>
+                            <p class="text-gray-600 mt-2">เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
+                            <div class="bg-red-50 border border-red-200 rounded p-2 mt-2">
+                                <p class="text-sm text-red-800"><strong>คำแนะนำสำคัญ:</strong> กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">7</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">ข้อควรทราบ</h4>
+                            <ul class="list-disc list-inside text-gray-600 space-y-1 ml-4">
+                                <li>สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
+                                <li>หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
+                                <li>กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
+                                <li>หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">8</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">การเช็คอินเมื่อถึงคลังสินค้า</h4>
+                            <p class="text-gray-600 mb-2">เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
+                            <p class="text-gray-600 mb-2">พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
+                            <div class="bg-blue-50 border border-blue-200 rounded p-2 mt-2">
+                                <p class="text-sm text-blue-800"><strong>คำแนะนำ:</strong> หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -601,21 +652,37 @@ const render = () => {
         case 'notifications': viewContent = renderStaffNav() + renderNotificationsView(); break;
     }
     
-    appContainer.innerHTML = header + `<main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">${viewContent}</main>`;
+    appContainer.innerHTML = header + `<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">${viewContent}</main>`;
     attachAllListeners();
 };
 
 const renderStaffNav = () => `
-    <nav class="bg-gray-50 border-b mb-6">
-        <div class="flex space-x-1 overflow-x-auto">
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="dashboard">${icons.dashboard} Dashboard</button>
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="calendar">${icons.calendar} ปฏิทิน</button>
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="holidays">${icons.booking} วันหยุด</button>
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="kpi">${icons.kpi} KPI</button>
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="bookingDetails">${icons.booking} รายละเอียด</button>
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="users">${icons.users} ผู้ใช้</button>
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="notifications">${icons.notifications} การแจ้งเตือน</button>
-            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="scanner">${icons.scanner} สแกน QR</button>
+    <nav class="bg-white rounded-lg shadow-sm border mb-6">
+        <div class="flex space-x-1 p-1">
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'dashboard' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="dashboard">
+                ${icons.dashboard} <span>Dashboard</span>
+            </button>
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'calendar' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="calendar">
+                ${icons.calendar} <span>ปฏิทิน</span>
+            </button>
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'holidays' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="holidays">
+                ${icons.booking} <span>วันหยุด</span>
+            </button>
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'kpi' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="kpi">
+                ${icons.kpi} <span>KPI</span>
+            </button>
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'bookingDetails' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="bookingDetails">
+                ${icons.booking} <span>รายละเอียด</span>
+            </button>
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'users' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="users">
+                ${icons.users} <span>ผู้ใช้</span>
+            </button>
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'notifications' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="notifications">
+                ${icons.notifications} <span>การแจ้งเตือน</span>
+            </button>
+            <button class="staff-nav-btn flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium ${state.currentView === 'scanner' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}" data-view="scanner">
+                ${icons.scanner} <span>สแกน QR</span>
+            </button>
         </div>
     </nav>
 `;
@@ -624,86 +691,97 @@ const renderDashboard = () => {
     const todayStr = formatDate(new Date());
     const todayBookings = state.data.bookings[todayStr] || [];
     let next7daysBookings = 0;
-    for(let i=1; i<=7; i++) { 
-        const date = new Date(); 
-        date.setDate(date.getDate() + i); 
-        next7daysBookings += (state.data.bookings[formatDate(date)] || []).length; 
+    for(let i=1; i<=7; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        next7daysBookings += (state.data.bookings[formatDate(date)] || []).length;
     }
     
     const queueItemsHtml = todayBookings.length > 0
         ? todayBookings.map(b => `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded border">
-                <div class="flex-1">
-                    <div class="font-medium text-gray-900">${formatTime24h(b.eta)} - ${b.companyName}</div>
-                    <div class="text-sm text-gray-500">${b.licensePlate}</div>
+            <div class="dashboard-item bg-white p-4 rounded-lg border hover:shadow-md transition-shadow cursor-pointer" data-booking-id="${b.id}">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-medium">${formatTime24h(b.eta)} - ${b.companyName}</p>
+                        <p class="text-sm text-gray-500">${b.licensePlate}</p>
+                    </div>
+                    <button class="text-blue-600 hover:text-blue-800 text-sm">ดูรายละเอียด</button>
                 </div>
-                <button class="text-blue-600 hover:text-blue-800 text-sm">ดูรายละเอียด</button>
             </div>
         `).join('')
         : `<div class="text-center py-8 text-gray-500">ไม่มีคิวสำหรับวันนี้</div>`;
-    
+
     const stats = getAttendanceStats();
-    
+
     return `
-    <div class="mb-6">
-        ${state.userRole === 'guest' ? '<button id="back-to-calendar-btn" class="mb-4 text-blue-600 hover:text-blue-800">← กลับไปยังปฏิทิน</button>' : ''}
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-            <div class="text-3xl font-bold text-green-600">${stats.onTime}</div>
-            <div class="text-green-800">มาตรงเวลา</div>
-        </div>
-        <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <div class="text-3xl font-bold text-red-600">${stats.late}</div>
-            <div class="text-red-800">มาสาย</div>
-        </div>
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-            <div class="text-3xl font-bold text-blue-600">${stats.total}</div>
-            <div class="text-blue-800">รับสินค้าแล้ว</div>
-        </div>
-    </div>
-    
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div class="dashboard-item bg-white border rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow" data-type="today">
-            <div class="flex items-center mb-4">
-                <div class="text-blue-600 mr-3">${icons.queue}</div>
-                <div>
-                    <h3 class="font-semibold text-gray-900">คิวสำหรับวันนี้</h3>
-                    <p class="text-gray-600">${todayBookings.length}คิว</p>
+        <div class="space-y-6">
+            ${state.userRole === 'guest' ? '<button id="back-to-calendar-btn" class="mb-4 text-blue-600 hover:text-blue-800">← กลับไปยังปฏิทิน</button>' : ''}
+            
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <div class="text-2xl font-bold text-green-600">${stats.onTime}</div>
+                    <div class="text-sm text-gray-500">มาตรงเวลา</div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <div class="text-2xl font-bold text-red-600">${stats.late}</div>
+                    <div class="text-sm text-gray-500">มาสาย</div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <div class="text-2xl font-bold text-blue-600">${stats.total}</div>
+                    <div class="text-sm text-gray-500">รับสินค้าแล้ว</div>
                 </div>
             </div>
-            <button class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
-        </div>
-        <div class="dashboard-item bg-white border rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow" data-type="next7days">
-            <div class="flex items-center mb-4">
-                <div class="text-green-600 mr-3">${icons.calendar}</div>
-                <div>
-                    <h3 class="font-semibold text-gray-900">คิวใน 7 วันข้างหน้า</h3>
-                    <p class="text-gray-600">${next7daysBookings}คิว</p>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="dashboard-item bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer" data-type="today">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-3 bg-blue-100 rounded-lg">${icons.queue}</div>
+                        <div>
+                            <h3 class="font-semibold">คิวสำหรับวันนี้</h3>
+                            <p class="text-2xl font-bold text-blue-600">${todayBookings.length}<span class="text-sm font-normal">คิว</span></p>
+                        </div>
+                    </div>
+                    <button class="mt-4 text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
+                </div>
+
+                <div class="dashboard-item bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer" data-type="next7days">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-3 bg-green-100 rounded-lg">${icons.calendar}</div>
+                        <div>
+                            <h3 class="font-semibold">คิวใน 7 วันข้างหน้า</h3>
+                            <p class="text-2xl font-bold text-green-600">${next7daysBookings}<span class="text-sm font-normal">คิว</span></p>
+                        </div>
+                    </div>
+                    <button class="mt-4 text-green-600 hover:text-green-800 text-sm">ดูทั้งหมด</button>
+                </div>
+
+                <div class="dashboard-item bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer" data-type="companies">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-3 bg-purple-100 rounded-lg">${icons.company}</div>
+                        <div>
+                            <h3 class="font-semibold">บริษัทซัพพลายเออร์</h3>
+                            <p class="text-2xl font-bold text-purple-600">${state.data.companies.length}<span class="text-sm font-normal">บริษัท</span></p>
+                        </div>
+                    </div>
+                    <button class="mt-4 text-purple-600 hover:text-purple-800 text-sm">ดูทั้งหมด</button>
                 </div>
             </div>
-            <button class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
-        </div>
-        <div class="dashboard-item bg-white border rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow" data-type="companies">
-            <div class="flex items-center mb-4">
-                <div class="text-purple-600 mr-3">${icons.company}</div>
-                <div>
-                    <h3 class="font-semibold text-gray-900">บริษัทซัพพลายเออร์</h3>
-                    <p class="text-gray-600">${state.data.companies.length}บริษัท</p>
+
+            <!-- Today's Queue -->
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-6 border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h2>
+                        <button id="view-all-today-btn" class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    ${queueItemsHtml}
                 </div>
             </div>
-            <button class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
         </div>
-    </div>
-    
-    <div class="bg-white border rounded-lg">
-        <div class="flex items-center justify-between p-6 border-b">
-            <h3 class="text-lg font-semibold text-gray-900">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3>
-            <button id="view-all-today-btn" class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
-        </div>
-        <div class="p-6 space-y-3">${queueItemsHtml}</div>
-    </div>
     `;
 };
 
@@ -717,35 +795,34 @@ const renderCalendar = () => {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set time to midnight for accurate date comparison
-    
+
     let guestNoticeHtml = '';
     if (state.userRole === 'guest') {
         guestNoticeHtml = `
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p class="text-blue-800 text-sm">ข้อมูลการจองของคุณจะถูกบันทึกไว้ในเบราว์เซอร์นี้สำหรับการใช้งานครั้งถัดไป</p>
+                <p class="text-blue-800">ข้อมูลการจองของคุณจะถูกบันทึกไว้ในเบราว์เซอร์นี้สำหรับการใช้งานครั้งถัดไป</p>
             </div>
         `;
     }
-    
+
     let myBookingsHtml = '';
     if (state.userRole === 'guest' && state.guestBookingIds.length > 0) {
-         const allMyBookings = [];
-         Object.entries(state.data.bookings).forEach(([date, bookings]) => {
-             bookings.forEach(b => {
-                 if(state.guestBookingIds.includes(b.id)) {
-                     allMyBookings.push({ ...b, date });
-                 }
-             });
-         });
-         allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || b.eta.localeCompare(b.eta));
-         if(allMyBookings.length > 0) {
-              myBookingsHtml = `<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h3 class="font-semibold text-green-800 mb-3">สรุปคิวของฉัน</h3>
-                <div class="space-y-2">` +
-              allMyBookings.map(b => `<div class="text-sm text-green-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</div>`).join('') + `
-                </div>
-              </div>`;
-         }
+        const allMyBookings = [];
+        Object.entries(state.data.bookings).forEach(([date, bookings]) => {
+            bookings.forEach(b => {
+                if(state.guestBookingIds.includes(b.id)) {
+                    allMyBookings.push({ ...b, date });
+                }
+            });
+        });
+        allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || b.eta.localeCompare(b.eta));
+        
+        if(allMyBookings.length > 0) {
+            myBookingsHtml = `<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-green-800 mb-2">สรุปคิวของฉัน</h3>` +
+                allMyBookings.map(b => `<div class="text-sm text-green-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</div>`).join('') + `
+            </div>`;
+        }
     }
     
     let daysHtml = Array(firstDay).fill('<div class="calendar-day-empty"></div>').join('');
@@ -759,22 +836,22 @@ const renderCalendar = () => {
         const holiday = isHoliday(currentDateObj);
         const dayOfWeek = currentDateObj.getDay();
         
-        let dayClass = 'calendar-day p-2 border border-violet-100 flex flex-col rounded-md';
+        let dayClass = 'calendar-day p-2 border border-violet-100 flex flex-col rounded-md min-h-[80px]';
         let dayContent = `<div class="font-semibold">${day}</div>`;
-        
+
         if (isPast) {
-            dayClass += ' disabled bg-gray-100 text-gray-400';
+            dayClass += ' disabled bg-gray-50 text-gray-400';
         } else {
             dayClass += ' cursor-pointer hover:bg-blue-50';
         }
         
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             dayClass += ' weekend-day bg-red-50 border-red-200';
-            dayContent += `<div class="text-xs text-red-600">วันหยุด</div>`;
+            dayContent += `<div class="text-xs text-red-600 mt-1">วันหยุด</div>`;
         } else if (holiday) {
             dayClass += ' bg-red-50 border-red-200';
             const holidayName = holiday.name.length > 12 ? holiday.name.substring(0, 12) + '...' : holiday.name;
-            dayContent += `<div class="text-xs text-red-600">${holidayName}</div>`;
+            dayContent += `<div class="text-xs text-red-600 mt-1">${holidayName}</div>`;
         } else if (isToday) {
             dayClass += ' today bg-blue-100 border-blue-300';
         } else if (isFull) {
@@ -789,49 +866,57 @@ const renderCalendar = () => {
                 const myBookings = bookings.filter(b => state.guestBookingIds.includes(b.id));
                 
                 if (myBookings.length > 0) {
-                    dayContent += `<div class="text-xs text-green-600">คิวของคุณ: ${myBookings.map(b => formatTime24h(b.eta)).join(', ')}</div>`;
+                    dayContent += `<div class="text-xs text-green-600 mt-1">คิวของคุณ: ${myBookings.map(b => formatTime24h(b.eta)).join(', ')}</div>`;
                 } else {
-                    dayContent += `<div class="text-xs text-gray-600">${bookings.length} คิว</div>`;
+                    dayContent += `<div class="text-xs text-gray-600 mt-1">${bookings.length} คิว</div>`;
                 }
             } else {
-                dayContent += `<div class="text-xs text-gray-600">${state.data.bookings[dateStr].length} คิว</div>`;
+                dayContent += `<div class="text-xs text-blue-600 mt-1">${state.data.bookings[dateStr].length} คิว</div>`;
             }
         }
         
         if (isFull && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
-            dayContent += '<div class="text-xs text-red-600">เต็ม</div>';
+            dayContent += '<div class="text-xs text-red-600 mt-1">เต็ม</div>';
         }
         
         daysHtml += `<div class="${dayClass}" data-date="${dateStr}">${dayContent}</div>`;
     }
-    
+
     return guestNoticeHtml + myBookingsHtml + `
-        <div class="bg-white border rounded-lg p-6">
-            <div class="flex items-center justify-between mb-6">
-                <button id="prev-month-btn" class="p-2 hover:bg-gray-100 rounded">&lt;</button>
-                <h2 class="text-xl font-semibold text-gray-900">${monthName}</h2>
-                <button id="next-month-btn" class="p-2 hover:bg-gray-100 rounded">&gt;</button>
-            </div>
-            <div class="grid grid-cols-7 gap-1 mb-2">
-                <div class="text-center font-medium text-gray-500 p-2">อา</div>
-                <div class="text-center font-medium text-gray-500 p-2">จ</div>
-                <div class="text-center font-medium text-gray-500 p-2">อ</div>
-                <div class="text-center font-medium text-gray-500 p-2">พ</div>
-                <div class="text-center font-medium text-gray-500 p-2">พฤ</div>
-                <div class="text-center font-medium text-gray-500 p-2">ศ</div>
-                <div class="text-center font-medium text-gray-500 p-2">ส</div>
-            </div>
-            <div class="grid grid-cols-7 gap-1">${daysHtml}</div>
-            ${state.userRole === 'staff' ? `
-            <div class="mt-6 pt-6 border-t">
+        <div class="bg-white rounded-lg shadow-sm border">
+            <div class="p-6 border-b">
                 <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <div class="w-4 h-4 bg-red-100 border border-red-200 rounded"></div>
-                        <span class="text-sm text-gray-600">วันหยุด: ${(state.data.holidays || []).length} วัน</span>
-                    </div>
+                    <button id="prev-month-btn" class="p-2 hover:bg-gray-100 rounded">&lt;</button>
+                    <h2 class="text-xl font-semibold">${monthName}</h2>
+                    <button id="next-month-btn" class="p-2 hover:bg-gray-100 rounded">&gt;</button>
                 </div>
             </div>
-            ` : ''}
+            <div class="p-6">
+                <div class="grid grid-cols-7 gap-1 mb-4">
+                    <div class="text-center font-semibold text-red-600 py-2">อา</div>
+                    <div class="text-center font-semibold py-2">จ</div>
+                    <div class="text-center font-semibold py-2">อ</div>
+                    <div class="text-center font-semibold py-2">พ</div>
+                    <div class="text-center font-semibold py-2">พฤ</div>
+                    <div class="text-center font-semibold py-2">ศ</div>
+                    <div class="text-center font-semibold text-red-600 py-2">ส</div>
+                </div>
+                <div class="grid grid-cols-7 gap-1">
+                    ${daysHtml}
+                </div>
+                ${state.userRole === 'staff' ? `
+                <div class="mt-6 pt-6 border-t">
+                    <div class="flex items-center justify-between text-sm text-gray-600">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-1">
+                                <div class="w-4 h-4 bg-red-50 border border-red-200 rounded"></div>
+                                <span>วันหยุด: ${(state.data.holidays || []).length} วัน</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
         </div>
     `;
 };
@@ -844,64 +929,69 @@ const renderDailyQueue = () => {
     const queueItemsHtml = bookings.length > 0
         ? bookings.map((booking, index) => {
             const isGuestBooking = state.guestBookingIds.includes(booking.id);
-            if(state.userRole === 'guest' && !isGuestBooking) return `<div class="p-4 bg-gray-50 rounded border text-center text-gray-500">คิวที่ ${index + 1}: จองแล้ว</div>`;
+            if(state.userRole === 'guest' && !isGuestBooking) return `<div class="bg-gray-50 p-4 rounded-lg border">คิวที่ ${index + 1}: จองแล้ว</div>`;
             
             let statusBadge = '';
             if (booking.checkInTime) {
                 if (booking.status === 'completed') {
-                    statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
+                    statusBadge = '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">เสร็จสิ้น</span>';
                 } else if (checkIfLate(booking)) {
-                    statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
+                    statusBadge = '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">มาสาย</span>';
                 } else {
-                    statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
+                    statusBadge = '<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">เช็คอินแล้ว</span>';
                 }
             } else {
-                statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
+                statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
             }
             
             return `
-            <div class="bg-white border rounded-lg p-4">
-                <div class="flex items-start justify-between mb-3">
+            <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
                     <div class="flex-1">
-                        <h3 class="font-semibold text-gray-900">${booking.companyName} ${isGuestBooking ? '(คิวของคุณ)' : ''}</h3>
-                        <p class="text-gray-600">${booking.driverName} - ${booking.licensePlate}</p>
-                        ${booking.referenceNumber ? `<p class="text-sm text-gray-500">เลขกำกับ: ${booking.referenceNumber}</p>` : ''}
-                        ${statusBadge}
+                        <div class="flex items-center space-x-2 mb-2">
+                            <h3 class="font-semibold">${booking.companyName} ${isGuestBooking ? '(คิวของคุณ)' : ''}</h3>
+                            <div class="text-sm text-gray-500">${booking.driverName} - ${booking.licensePlate}</div>
+                            ${booking.referenceNumber ? `<div class="text-xs text-gray-400">เลขกำกับ: ${booking.referenceNumber}</div>` : ''}
+                            ${statusBadge}
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <div class="font-medium text-lg">${formatTime24h(booking.eta)}</div>
+                            <div>${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
+                            ${booking.checkInTime ? `<div class="text-xs text-gray-500">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <div class="text-lg font-semibold text-blue-600">${formatTime24h(booking.eta)}</div>
-                        <div class="text-sm text-gray-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
-                        ${booking.checkInTime ? `<div class="text-xs text-gray-400">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
+                    <div class="flex flex-col space-y-2">
+                        <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
+                        ${state.userRole === 'staff' ? `
+                            <div class="flex flex-col space-y-1">
+                                ${!booking.checkInTime ? `<button class="check-in-btn bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600" data-booking-id="${booking.id}">เช็คอิน</button>` : ''}
+                                ${booking.checkInTime && booking.status !== 'completed' ? `<button class="complete-btn bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600" data-booking-id="${booking.id}">ยืนยันรับคิว</button>` : ''}
+                                <button class="evaluate-btn bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>
+                                <button class="delete-booking-btn bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600" data-booking-id="${booking.id}">ลบ</button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
-                <div class="flex items-center justify-between">
-                    <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
-                </div>
-                ${state.userRole === 'staff' ? `
-                    <div class="mt-3 pt-3 border-t flex space-x-2">
-                        ${!booking.checkInTime ? `<button class="check-in-btn bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600" data-booking-id="${booking.id}">เช็คอิน</button>` : ''}
-                        ${booking.checkInTime && booking.status !== 'completed' ? `<button class="complete-btn bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600" data-booking-id="${booking.id}">ยืนยันรับคิว</button>` : ''}
-                        <button class="evaluate-btn bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>
-                        <button class="delete-booking-btn bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600" data-booking-id="${booking.id}">ลบ</button>
-                    </div>
-                ` : ''}
             </div>
             `;
         }).join('')
         : `<div class="text-center py-8 text-gray-500">ยังไม่มีการจองคิวในวันนี้</div>`;
     
     return `
-        <div class="mb-6">
+        <div class="space-y-6">
             <div class="flex items-center justify-between">
-                <button id="back-to-calendar-btn" class="text-blue-600 hover:text-blue-800">< กลับไป</button>
-                <h1 class="text-2xl font-bold text-gray-900">${formatThaiDate(dateStr)}</h1>
-                <div>
+                <button id="back-to-calendar-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไป</button>
+                <h1 class="text-2xl font-bold">${formatThaiDate(dateStr)}</h1>
+                <div class="flex space-x-2">
                     ${state.userRole === 'guest' && !isFull ? '<button id="book-slot-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">จองคิวลงสินค้า</button>' : ''}
-                    ${isFull ? '<span class="text-red-600 font-medium">คิวเต็ม (20 คิว/วัน)</span>' : ''}
+                    ${isFull ? '<span class="bg-red-100 text-red-800 px-3 py-1 rounded">คิวเต็ม (20 คิว/วัน)</span>' : ''}
                 </div>
             </div>
+            
+            <div class="space-y-4">
+                ${queueItemsHtml}
+            </div>
         </div>
-        <div class="space-y-4">${queueItemsHtml}</div>
     `;
 };
 
@@ -920,89 +1010,89 @@ const renderBookingDetails = () => {
             let statusBadge = '';
             if (booking.checkInTime) {
                 if (booking.status === 'completed') {
-                    statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
+                    statusBadge = '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">เสร็จสิ้น</span>';
                 } else if (checkIfLate(booking)) {
-                    statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
+                    statusBadge = '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">มาสาย</span>';
                 } else {
-                    statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
+                    statusBadge = '<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">เช็คอินแล้ว</span>';
                 }
             } else {
-                statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
+                statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
             }
             
             return `
-            <div class="bg-white border rounded-lg p-4">
-                <div class="flex items-start justify-between mb-3">
+            <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
                     <div class="flex-1">
-                        <h3 class="font-semibold text-gray-900">${booking.companyName}</h3>
-                        <p class="text-gray-600">${booking.driverName} - ${booking.licensePlate}</p>
-                        <p class="text-sm text-gray-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</p>
-                        ${booking.referenceNumber ? `<p class="text-sm text-gray-500">เลขกำกับ: ${booking.referenceNumber}</p>` : ''}
-                        ${statusBadge}
+                        <div class="flex items-center space-x-2 mb-2">
+                            <h3 class="font-semibold">${booking.companyName}</h3>
+                            <div class="text-sm text-gray-500">${booking.driverName} - ${booking.licensePlate}</div>
+                            <div class="text-sm text-gray-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</div>
+                            ${booking.referenceNumber ? `<div class="text-xs text-gray-400">เลขกำกับ: ${booking.referenceNumber}</div>` : ''}
+                            ${statusBadge}
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <div>${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
+                            ${booking.checkInTime ? `<div class="text-xs text-gray-500">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <div class="text-sm text-gray-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
-                        ${booking.checkInTime ? `<div class="text-xs text-gray-400">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
+                    <div class="flex space-x-2">
+                        <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
                     </div>
-                </div>
-                <div class="flex items-center justify-between">
-                    <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
                 </div>
             </div>
         `}).join('')
         : `<div class="text-center py-8 text-gray-500">ยังไม่มีการจองคิว</div>`;
     
     return `
-    <div class="mb-6">
-        <div class="flex items-center space-x-4">
-            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                <span>กลับไปยัง Dashboard</span>
-            </button>
-        </div>
-    </div>
-    <div class="bg-white border rounded-lg">
-        <div class="flex items-center justify-between p-6 border-b">
-            <h1 class="text-xl font-bold text-gray-900">รายละเอียดการจองคิวทั้งหมด</h1>
-            <div class="flex items-center space-x-2">
-                <input type="text" id="reference-search" placeholder="ค้นหาเลขกำกับ" class="border rounded px-3 py-2 text-sm">
-                <button id="search-reference-btn" class="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600">ค้นหา</button>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-6 border-b">
+                    <h2 class="text-lg font-semibold">รายละเอียดการจองคิวทั้งหมด</h2>
+                    <div class="mt-4 flex space-x-2">
+                        <input type="text" id="reference-search" placeholder="ค้นหาด้วยเลขกำกับ" class="flex-1 px-3 py-2 border rounded-md">
+                        <button id="search-reference-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ค้นหา</button>
+                    </div>
+                </div>
+                <div class="p-6 space-y-4">
+                    ${bookingsHtml}
+                </div>
             </div>
         </div>
-        <div class="p-6 space-y-4">${bookingsHtml}</div>
-    </div>
     `;
 };
 
 const renderScannerView = () => {
     return `
-    <div class="mb-6">
-        <div class="flex items-center space-x-4">
-            <button id="back-from-scanner-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                <span>กลับไปยังหน้าก่อนหน้า</span>
-            </button>
-        </div>
-    </div>
-    <div class="bg-white border rounded-lg p-6">
-        <h1 class="text-2xl font-bold text-gray-900 mb-6">สแกน QR Code</h1>
-        <div class="max-w-md mx-auto">
-            <div class="relative mb-6">
-                <video id="video" class="w-full h-64 bg-gray-100 rounded border object-cover" autoplay muted playsinline></video>
-                <div class="absolute inset-0 border-2 border-blue-500 rounded pointer-events-none">
-                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white rounded"></div>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <button id="back-from-scanner-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยังหน้าก่อนหน้า</button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+                <h2 class="text-xl font-semibold mb-6 text-center">สแกน QR Code</h2>
+                
+                <div class="max-w-md mx-auto">
+                    <div class="relative bg-black rounded-lg overflow-hidden mb-4" style="aspect-ratio: 1;">
+                        <video id="video" class="w-full h-full object-cover" autoplay muted playsinline></video>
+                        <div class="absolute inset-0 border-2 border-white opacity-50 m-8"></div>
+                    </div>
+                    
+                    <div class="text-center space-y-4">
+                        <p class="text-gray-600">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
+                        <div class="flex justify-center space-x-2">
+                            <button id="start-camera-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">เปิดกล้อง</button>
+                            <button id="stop-camera-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 hidden">ปิดกล้อง</button>
+                            <button id="manual-input-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ป้อนเลขกำกับ</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="text-center mb-6">
-                <p class="text-gray-600 mb-4">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
-                <div class="space-x-3">
-                    <button id="start-camera-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">เปิดกล้อง</button>
-                    <button id="stop-camera-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 hidden">ปิดกล้อง</button>
-                    <button id="manual-input-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ป้อนเลขกำกับ</button>
-                </div>
-            </div>
         </div>
-    </div>
     `;
 };
 
@@ -1010,54 +1100,56 @@ const renderUsersView = () => {
     const users = state.data.users || [];
     
     const usersHtml = users.map(user => {
-        const roleClass = user.role === 'admin' ? 'role-admin' : 
-                         user.role === 'staff' ? 'role-staff' : 'role-viewer';
+        const roleClass = user.role === 'admin' ? 'role-admin' :
+                          user.role === 'staff' ? 'role-staff' : 'role-viewer';
         
         return `
-        <tr class="border-b">
-            <td class="px-4 py-3">${user.name}</td>
-            <td class="px-4 py-3">${user.email}</td>
-            <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs ${roleClass}">${user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'staff' ? 'พนักงาน' : 'ผู้ดู'}</span></td>
-            <td class="px-4 py-3 text-sm text-gray-500">${user.lastLogin ? formatDateTime(user.lastLogin) : 'ไม่เคยเข้าสู่ระบบ'}</td>
-            <td class="px-4 py-3">
-                <button class="edit-user-btn text-blue-600 hover:text-blue-800 text-sm mr-2" data-user-id="${user.id}">แก้ไข</button>
-                <button class="delete-user-btn text-red-600 hover:text-red-800 text-sm" data-user-id="${user.id}">ลบ</button>
-            </td>
-        </tr>
+            <tr class="border-b">
+                <td class="py-3 px-4">${user.name}</td>
+                <td class="py-3 px-4">${user.email}</td>
+                <td class="py-3 px-4"><span class="${roleClass} px-2 py-1 rounded text-xs">${user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'staff' ? 'พนักงาน' : 'ผู้ดู'}</span></td>
+                <td class="py-3 px-4">${user.lastLogin ? formatDateTime(user.lastLogin) : 'ไม่เคยเข้าสู่ระบบ'}</td>
+                <td class="py-3 px-4">
+                    <div class="flex space-x-2">
+                        <button class="edit-user-btn text-blue-600 hover:text-blue-800 text-sm" data-user-id="${user.id}">แก้ไข</button>
+                        <button class="delete-user-btn text-red-600 hover:text-red-800 text-sm" data-user-id="${user.id}">ลบ</button>
+                    </div>
+                </td>
+            </tr>
         `;
     }).join('');
     
     return `
-    <div class="mb-6">
-        <div class="flex items-center space-x-4">
-            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                <span>กลับไปยัง Dashboard</span>
-            </button>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-6 border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">จัดการผู้ใช้</h2>
+                        <button id="add-user-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">เพิ่มผู้ใช้</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="py-3 px-4 text-left">ชื่อ</th>
+                                <th class="py-3 px-4 text-left">อีเมล</th>
+                                <th class="py-3 px-4 text-left">บทบาท</th>
+                                <th class="py-3 px-4 text-left">เข้าสู่ระบบครั้งล่าสุด</th>
+                                <th class="py-3 px-4 text-left">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${usersHtml || '<tr><td colspan="5" class="py-8 text-center text-gray-500">ไม่มีผู้ใช้</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="bg-white border rounded-lg">
-        <div class="flex items-center justify-between p-6 border-b">
-            <h1 class="text-xl font-bold text-gray-900">จัดการผู้ใช้</h1>
-            <button id="add-user-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">เพิ่มผู้ใช้</button>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">ชื่อ</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">อีเมล</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">บทบาท</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">เข้าสู่ระบบครั้งล่าสุด</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">การจัดการ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${usersHtml || '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่มีผู้ใช้</td></tr>'}
-                </tbody>
-            </table>
-        </div>
-    </div>
     `;
 };
 
@@ -1078,31 +1170,29 @@ const renderNotificationsView = () => {
     const totalPages = Math.ceil(sortedNotifications.length / state.notificationsPerPage);
     
     const notificationsHtml = paginatedNotifications.map(notification => {
-        const typeClass = notification.type === 'reminder' ? 'notification-reminder' : 
-                         notification.type === 'arrival' ? 'notification-arrival' : 
-                         notification.type === 'booking' ? 'notification-booking' :
+        const typeClass = notification.type === 'reminder' ? 'notification-reminder' :
+                          notification.type === 'arrival' ? 'notification-arrival' :
+                          notification.type === 'booking' ? 'notification-booking' :
                          'notification-message';
-        const typeLabel = notification.type === 'reminder' ? 'การแจ้งเตือน' : 
-                         notification.type === 'arrival' ? 'การมาถึง' : 
-                         notification.type === 'booking' ? 'การจองคิว' :
+        const typeLabel = notification.type === 'reminder' ? 'การแจ้งเตือน' :
+                          notification.type === 'arrival' ? 'การมาถึง' :
+                          notification.type === 'booking' ? 'การจองคิว' :
                          'ข้อความ';
         
         return `
-        <div class="bg-white border rounded-lg p-4 ${!notification.read ? 'border-blue-200 bg-blue-50' : ''}">
-            <div class="flex items-start justify-between mb-2">
-                <div class="flex-1">
-                    <div class="flex items-center space-x-2 mb-1">
-                        <span class="px-2 py-1 rounded text-xs ${typeClass}">${typeLabel}</span>
-                        <h3 class="font-semibold text-gray-900">${notification.title}</h3>
-                    </div>
-                    <p class="text-sm text-gray-500">${formatDateTime(notification.timestamp)}</p>
+        <div class="bg-white p-4 rounded-lg border ${!notification.read ? 'border-blue-200 bg-blue-50' : ''}">
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center space-x-2">
+                    <span class="${typeClass} px-2 py-1 rounded text-xs">${typeLabel}</span>
+                    <h3 class="font-semibold">${notification.title}</h3>
                 </div>
+                <div class="text-sm text-gray-500">${formatDateTime(notification.timestamp)}</div>
             </div>
-            <p class="text-gray-700 mb-3">${notification.content}</p>
-            <div class="flex items-center justify-between">
-                ${!notification.read ? '<button class="mark-read-btn text-blue-600 hover:text-blue-800 text-sm">ทำเครื่องหมายว่าอ่านแล้ว</button>' : '<div></div>'}
-                <button class="delete-notification-btn text-red-600 hover:text-red-800 text-sm flex items-center space-x-1" data-notification-id="${notification.id}">
-                    ${icons.trash} <span>ลบ</span>
+            <p class="text-gray-600 mb-2">${notification.content}</p>
+            <div class="flex justify-between items-center" data-notification-id="${notification.id}">
+                ${!notification.read ? '<button class="mark-read-btn text-blue-600 hover:text-blue-800 text-sm">ทำเครื่องหมายว่าอ่านแล้ว</button>' : ''}
+                <button class="delete-notification-btn text-red-600 hover:text-red-800 text-sm" data-notification-id="${notification.id}">
+                    ${icons.trash} ลบ
                 </button>
             </div>
         </div>
@@ -1111,44 +1201,36 @@ const renderNotificationsView = () => {
     
     // สร้างปุ่มสำหรับการแบ่งหน้า
     const paginationHtml = totalPages > 1 ? `
-        <div class="flex items-center justify-center space-x-4 mt-6">
-            <button id="prev-page-btn" class="px-4 py-2 border rounded hover:bg-gray-50 ${state.notificationPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${state.notificationPage === 1 ? 'disabled' : ''}>
-                ก่อนหน้า
-            </button>
-            <span class="text-gray-600">
-                หน้า ${state.notificationPage} จาก ${totalPages}
-            </span>
-            <button id="next-page-btn" class="px-4 py-2 border rounded hover:bg-gray-50 ${state.notificationPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${state.notificationPage === totalPages ? 'disabled' : ''}>
-                ถัดไป
-            </button>
+        <div class="flex justify-center items-center space-x-4 mt-6">
+            <button id="prev-page-btn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 ${state.notificationPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${state.notificationPage === 1 ? 'disabled' : ''}>ก่อนหน้า</button>
+            <span class="text-gray-600">หน้า ${state.notificationPage} จาก ${totalPages}</span>
+            <button id="next-page-btn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 ${state.notificationPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${state.notificationPage === totalPages ? 'disabled' : ''}>ถัดไป</button>
         </div>
     ` : '';
     
     return `
-    <div class="mb-6">
-        <div class="flex items-center space-x-4">
-            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                <span>กลับไปยัง Dashboard</span>
-            </button>
-        </div>
-    </div>
-    <div class="bg-white border rounded-lg">
-        <div class="flex items-center justify-between p-6 border-b">
-            <h1 class="text-xl font-bold text-gray-900">การแจ้งเตือน</h1>
-            <div class="flex space-x-2">
-                <button id="mark-all-read-btn" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">ทำเครื่องหมายว่าอ่านทั้งหมด</button>
-                <button id="delete-read-btn" class="bg-yellow-500 text-white px-3 py-2 rounded text-sm hover:bg-yellow-600">ลบที่อ่านแล้ว</button>
-                <button id="delete-all-btn" class="bg-red-500 text-white px-3 py-2 rounded text-sm hover:bg-red-600">ลบทั้งหมด</button>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-6 border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">การแจ้งเตือน</h2>
+                        <div class="flex space-x-2">
+                            <button id="mark-all-read-btn" class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">ทำเครื่องหมายว่าอ่านทั้งหมด</button>
+                            <button id="delete-read-btn" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">ลบที่อ่านแล้ว</button>
+                            <button id="delete-all-btn" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">ลบทั้งหมด</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 space-y-4">
+                    ${notificationsHtml || '<div class="text-center py-8 text-gray-500">ไม่มีการแจ้งเตือน</div>'}
+                </div>
+                ${paginationHtml}
             </div>
         </div>
-        <div class="p-6">
-            <div class="space-y-4">
-                ${notificationsHtml || '<div class="text-center py-8 text-gray-500">ไม่มีการแจ้งเตือน</div>'}
-            </div>
-        </div>
-        ${paginationHtml}
-    </div>
     `;
 };
 
@@ -1184,8 +1266,8 @@ const getKpiData = () => {
         companyData[company].bookings.sort((a, b) => new Date(b.date) - new Date(a.date));
     });
     
-    return Object.entries(companyData).map(([name, data]) => ({ 
-        name, 
+    return Object.entries(companyData).map(([name, data]) => ({
+        name,
         averageScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
         bookings: data.bookings
     })).sort((a, b) => b.averageScore - a.averageScore);
@@ -1194,51 +1276,53 @@ const getKpiData = () => {
 const renderKpiView = () => {
     const kpiData = getKpiData();
     const filteredData = kpiData.filter(c => c.name.toLowerCase().includes(state.kpiSearchTerm.toLowerCase()));
-    
     const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `
-        <div class="bg-white border rounded-lg p-4">
-            <div class="flex items-center justify-between">
+        <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
+            <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-4">
                     <div class="text-2xl font-bold text-gray-400">#${index + 1}</div>
                     <div>
-                        <h3 class="font-semibold text-gray-900">${company.name}</h3>
-                        <div class="text-lg font-bold text-blue-600">${company.averageScore.toFixed(2)}</div>
+                        <h3 class="font-semibold">${company.name}</h3>
+                        <div class="text-2xl font-bold text-blue-600">${company.averageScore.toFixed(2)}</div>
                     </div>
                 </div>
-            </div>
-            <div class="mt-3">
-                <button class="view-company-details-btn text-blue-600 hover:text-blue-800 text-sm" data-company="${company.name}">ดูประวัติการจัดส่ง</button>
+                <button class="view-company-details-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" data-company="${company.name}">ดูประวัติการจัดส่ง</button>
             </div>
         </div>
     `).join('') : `<div class="text-center py-8 text-gray-500">ไม่พบข้อมูลซัพพลายเอร์</div>`;
-    
+
     return `
-    <div class="mb-6">
-        <div class="flex items-center space-x-4">
-            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                <span>กลับไปยัง Dashboard</span>
-            </button>
-        </div>
-    </div>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white border rounded-lg p-6">
-             <h2 class="text-xl font-bold text-gray-900 mb-4">ผลการประเมิน KPI ซัพพลายเอร์</h2>
-             <input type="text" id="kpi-search" placeholder="ค้นหาบริษัท..." class="w-full border rounded px-3 py-2 mb-4" value="${state.kpiSearchTerm}">
-             <div class="space-y-3">
-                <div class="grid grid-cols-3 gap-4 text-sm font-medium text-gray-500 border-b pb-2">
-                    <div>อันดับ</div>
-                    <div>ชื่อบริษัท</div>
-                    <div>คะแนนเฉลี่ย</div>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-6 border-b">
+                    <h2 class="text-lg font-semibold">ผลการประเมิน KPI ซัพพลายเอร์</h2>
+                    <div class="mt-4">
+                        <input type="text" id="kpi-search" placeholder="ค้นหาบริษัท..." value="${state.kpiSearchTerm}" class="w-full px-3 py-2 border rounded-md">
+                    </div>
                 </div>
-                ${supplierListHtml}
-             </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 gap-4 mb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="grid grid-cols-3 gap-4 text-center font-semibold text-gray-600 mb-4">
+                                <div>อันดับ</div>
+                                <div>ชื่อบริษัท</div>
+                                <div>คะแนนเฉลี่ย</div>
+                            </div>
+                        </div>
+                        ${supplierListHtml}
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold mb-4">5 อันดับคะแนนสูงสุด</h3>
+                        <canvas id="kpi-chart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white border rounded-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">5 อันดับคะแนนสูงสุด</h3>
-            <canvas id="kpi-chart" width="400" height="300"></canvas>
-        </div>
-    </div>
     `;
 };
 
@@ -1247,110 +1331,92 @@ const renderHolidayManagement = () => {
     const holidays = state.data.holidays || [];
     
     const holidayListHtml = holidays.map((holiday, index) => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded border">
-            <div class="flex-1">
-                <div class="flex items-center space-x-3">
-                    <div class="flex-1">
-                        <h4 class="font-medium text-gray-900">${holiday.name}</h4>
-                        <p class="text-sm text-gray-500">${formatThaiDate(holiday.date)} ${holiday.recurring ? '(ทุกปี)' : ''}</p>
+        <div class="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <h3 class="font-semibold">${holiday.name}</h3>
+                        <div class="text-sm text-gray-500">${formatThaiDate(holiday.date)} ${holiday.recurring ? '(ทุกปี)' : ''}</div>
                     </div>
                 </div>
-            </div>
-            <div class="flex items-center space-x-2">
-                <span class="px-2 py-1 rounded text-xs ${
-                    holiday.type === 'company' ? 'bg-blue-100 text-blue-800' : 
-                    holiday.type === 'public' ? 'bg-green-100 text-green-800' : 
-                    'bg-purple-100 text-purple-800'
-                }">
-                    ${holiday.type === 'company' ? 'วันหยุดบริษัท' : 
-                      holiday.type === 'public' ? 'วันหยุดราชการ' : 
-                      'วันหยุดพิเศษ'}
-                </span>
-                <button onclick="deleteHoliday(${index})" class="text-red-600 hover:text-red-800 p-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <span class="px-2 py-1 rounded text-xs ${holiday.type === 'company' ? 'bg-blue-100 text-blue-800' :
+                       holiday.type === 'public' ? 'bg-green-100 text-green-800' :
+                       'bg-purple-100 text-purple-800'}">${holiday.type === 'company' ? 'วันหยุดบริษัท' :
+                       holiday.type === 'public' ? 'วันหยุดราชการ' :
+                       'วันหยุดพิเศษ'}</span>
+                    <button onclick="deleteHoliday(${index})" class="text-red-600 hover:text-red-800 text-sm">${icons.trash}</button>
+                </div>
             </div>
         </div>
     `).join('');
-    
+
     return `
-    <div class="mb-6">
-        <div class="flex items-center space-x-4">
-            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                <span>กลับไปยัง Dashboard</span>
-            </button>
-        </div>
-    </div>
-    <div class="bg-white border rounded-lg">
-        <div class="flex items-center justify-between p-6 border-b">
-            <h1 class="text-xl font-bold text-gray-900">จัดการวันหยุดบริษัท</h1>
-            <div class="flex space-x-2">
-                <button id="add-holiday-btn" class="flex items-center space-x-1 bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    <span>เพิ่มวันหยุด</span>
-                </button>
-                <button id="import-public-holidays-btn" class="flex items-center space-x-1 bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-                    </svg>
-                    <span>นำเข้าวันหยุดราชการ</span>
-                </button>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <button id="back-to-dashboard-btn" class="text-blue-600 hover:text-blue-800">&lt; กลับไปยัง Dashboard</button>
             </div>
-        </div>
-        <div class="p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2">
-                <div class="bg-white border rounded-lg">
-                    <div class="p-4 border-b">
-                        <h3 class="font-semibold text-gray-900">รายการวันหยุด (${holidays.length} วัน)</h3>
-                    </div>
-                    <div class="p-4 space-y-3">
-                        ${holidays.length > 0 ? holidayListHtml : '<div class="text-center py-8 text-gray-500">ยังไม่มีวันหยุดที่กำหนด</div>'}
-                    </div>
-                </div>
-            </div>
-            <div class="space-y-6">
-                <div class="bg-white border rounded-lg">
-                    <div class="p-4 border-b">
-                        <h3 class="font-semibold text-gray-900">สถิติวันหยุด</h3>
-                    </div>
-                    <div class="p-4 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-gray-600">วันหยุดบริษัท</span>
-                            <span class="font-semibold">${holidays.filter(h => h.type === 'company').length}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-gray-600">วันหยุดราชการ</span>
-                            <span class="font-semibold">${holidays.filter(h => h.type === 'public').length}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-gray-600">วันหยุดพิเศษ</span>
-                            <span class="font-semibold">${holidays.filter(h => h.type === 'special').length}</span>
+            
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-6 border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">จัดการวันหยุดบริษัท</h2>
+                        <div class="flex space-x-2">
+                            <button id="add-holiday-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">เพิ่มวันหยุด</button>
+                            <button id="import-public-holidays-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">นำเข้าวันหยุดราชการ</button>
                         </div>
                     </div>
                 </div>
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 class="font-semibold text-blue-800 mb-2">ข้อมูลเพิ่มเติม</h4>
-                    <div class="text-sm text-blue-700 space-y-1">
-                        <p>• วันหยุดบริษัท: วันหยุดที่บริษัทกำหนดเอง</p>
-                        <p>• วันหยุดราชการ: วันหยุดตามประกาศราชการ</p>
-                        <p>• วันหยุดพิเศษ: วันหยุดกรณีพิเศษ</p>
-                        <p class="text-yellow-700">⚠️ ไม่สามารถจองคิวในวันหยุดได้</p>
-                        <p class="text-yellow-700">⚠️ วันเสาร์และวันอาทิตย์เป็นวันหยุดสุดสัปดาห์ ไม่สามารถจองคิวได้</p>
+                
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2">
+                            <div class="space-y-4">
+                                <h3 class="font-semibold">รายการวันหยุด (${holidays.length} วัน)</h3>
+                                <div class="space-y-3">
+                                    ${holidays.length > 0 ? holidayListHtml : '<div class="text-center py-8 text-gray-500">ยังไม่มีวันหยุดที่กำหนด</div>'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="font-semibold mb-4">สถิติวันหยุด</h3>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span>วันหยุดบริษัท</span>
+                                        <span class="font-semibold">${holidays.filter(h => h.type === 'company').length}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>วันหยุดราชการ</span>
+                                        <span class="font-semibold">${holidays.filter(h => h.type === 'public').length}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>วันหยุดพิเศษ</span>
+                                        <span class="font-semibold">${holidays.filter(h => h.type === 'special').length}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h3 class="font-semibold mb-2">ข้อมูลเพิ่มเติม</h3>
+                                <div class="text-sm text-blue-800 space-y-1">
+                                    <p>• วันหยุดบริษัท: วันหยุดที่บริษัทกำหนดเอง</p>
+                                    <p>• วันหยุดราชการ: วันหยุดตามประกาศราชการ</p>
+                                    <p>• วันหยุดพิเศษ: วันหยุดกรณีพิเศษ</p>
+                                    <p class="text-red-600">⚠️ ไม่สามารถจองคิวในวันหยุดได้</p>
+                                    <p class="text-red-600">⚠️ วันเสาร์และวันอาทิตย์เป็นวันหยุดสุดสัปดาห์ ไม่สามารถจองคิวได้</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        </div>
-    </div>
     `;
 };
 
+// Event listeners and handlers
 const attachAllListeners = () => {
     document.getElementById('staff-login-btn')?.addEventListener('click', () => renderModal('login'));
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
@@ -1362,9 +1428,9 @@ const attachAllListeners = () => {
         state.currentView = 'notifications';
         render();
     });
-    document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => { 
-        state.currentView = e.currentTarget.dataset.view; 
-        render(); 
+    document.querySelectorAll('.staff-nav-btn').forEach(btn => btn.addEventListener('click', e => {
+        state.currentView = e.currentTarget.dataset.view;
+        render();
     }));
     
     document.getElementById('back-to-calendar-btn')?.addEventListener('click', () => {
@@ -1426,21 +1492,37 @@ const attachAllListeners = () => {
     }
     
     if (state.currentView === 'notifications') {
-        document.getElementById('mark-all-read-btn')?.addEventListener('click', () => {
-            state.data.notifications.forEach(notification => {
-                notification.read = true;
-            });
-            
-            state.unreadNotifications = 0;
-            setDoc(docRef, state.data);
-            render();
+        document.getElementById('mark-all-read-btn')?.addEventListener('click', async () => {
+            try {
+                const notificationsSnapshot = await getDocs(collection(db, "notifications"));
+                const updatePromises = [];
+                
+                notificationsSnapshot.forEach((doc) => {
+                    updatePromises.push(updateDoc(doc.ref, { read: true }));
+                });
+                
+                await Promise.all(updatePromises);
+                state.unreadNotifications = 0;
+                render();
+            } catch (error) {
+                console.error('Error marking all notifications as read:', error);
+                showAlert('เกิดข้อผิดพลาดในการอัปเดตการแจ้งเตือน');
+            }
         });
         
         document.getElementById('delete-read-btn')?.addEventListener('click', () => {
             showConfirm('คุณต้องการลบการแจ้งเตือนที่อ่านแล้วทั้งหมดใช่หรือไม่?', async () => {
                 try {
-                    state.data.notifications = state.data.notifications.filter(n => !n.read);
-                    await setDoc(docRef, state.data);
+                    const notificationsSnapshot = await getDocs(collection(db, "notifications"));
+                    const deletePromises = [];
+                    
+                    notificationsSnapshot.forEach((doc) => {
+                        if (doc.data().read) {
+                            deletePromises.push(deleteDoc(doc.ref));
+                        }
+                    });
+                    
+                    await Promise.all(deletePromises);
                     showAlert('ลบการแจ้งเตือนที่อ่านแล้วสำเร็จแล้ว');
                     render();
                 } catch (error) {
@@ -1453,9 +1535,15 @@ const attachAllListeners = () => {
         document.getElementById('delete-all-btn')?.addEventListener('click', () => {
             showConfirm('คุณต้องการลบการแจ้งเตือนทั้งหมดใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้', async () => {
                 try {
-                    state.data.notifications = [];
+                    const notificationsSnapshot = await getDocs(collection(db, "notifications"));
+                    const deletePromises = [];
+                    
+                    notificationsSnapshot.forEach((doc) => {
+                        deletePromises.push(deleteDoc(doc.ref));
+                    });
+                    
+                    await Promise.all(deletePromises);
                     state.unreadNotifications = 0;
-                    await setDoc(docRef, state.data);
                     showAlert('ลบการแจ้งเตือนทั้งหมดสำเร็จแล้ว');
                     render();
                 } catch (error) {
@@ -1466,15 +1554,20 @@ const attachAllListeners = () => {
         });
         
         document.querySelectorAll('.mark-read-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 const notificationId = parseInt(e.currentTarget.parentElement.dataset.notificationId);
-                const notification = state.data.notifications.find(n => n.id === notificationId);
-                
-                if (notification) {
-                    notification.read = true;
+                try {
+                    const notificationsSnapshot = await getDocs(collection(db, "notifications"));
+                    notificationsSnapshot.forEach(async (doc) => {
+                        if (doc.id === notificationId.toString()) {
+                            await updateDoc(doc.ref, { read: true });
+                        }
+                    });
                     updateUnreadNotifications();
-                    setDoc(docRef, state.data);
                     render();
+                } catch (error) {
+                    console.error('Error marking notification as read:', error);
+                    showAlert('เกิดข้อผิดพลาดในการอัปเดตการแจ้งเตือน');
                 }
             });
         });
@@ -1484,9 +1577,13 @@ const attachAllListeners = () => {
                 const notificationId = parseInt(e.currentTarget.dataset.notificationId);
                 showConfirm('คุณต้องการลบการแจ้งเตือนนี้ใช่หรือไม่?', async () => {
                     try {
-                        state.data.notifications = state.data.notifications.filter(n => n.id !== notificationId);
+                        const notificationsSnapshot = await getDocs(collection(db, "notifications"));
+                        notificationsSnapshot.forEach(async (doc) => {
+                            if (doc.id === notificationId.toString()) {
+                                await deleteDoc(doc.ref);
+                            }
+                        });
                         updateUnreadNotifications();
-                        await setDoc(docRef, state.data);
                         showAlert('ลบการแจ้งเตือนสำเร็จแล้ว');
                         render();
                     } catch (error) {
@@ -1567,25 +1664,26 @@ const findBookingByReferenceNumber = (referenceNumber) => {
 };
 
 const attachCalendarListeners = () => {
-    document.getElementById('prev-month-btn')?.addEventListener('click', () => { 
+    document.getElementById('prev-month-btn')?.addEventListener('click', () => {
         const newDate = new Date(state.currentDate);
         newDate.setMonth(newDate.getMonth() - 1);
         state.currentDate = newDate;
-        render(); 
+        render();
     });
     
-    document.getElementById('next-month-btn')?.addEventListener('click', () => { 
+    document.getElementById('next-month-btn')?.addEventListener('click', () => {
         const newDate = new Date(state.currentDate);
         newDate.setMonth(newDate.getMonth() + 1);
         state.currentDate = newDate;
-        render(); 
+        render();
     });
     
     document.querySelectorAll('.calendar-day').forEach(day => {
-        day.addEventListener('click', (e) => { 
+        day.addEventListener('click', (e) => {
             if (e.currentTarget.classList.contains('disabled')) {
                 return; // Do nothing if the day is disabled (in the past)
             }
+            
             const clickedDate = e.currentTarget.dataset.date;
             const dateObj = new Date(clickedDate);
             const dayOfWeek = dateObj.getDay();
@@ -1602,38 +1700,37 @@ const attachCalendarListeners = () => {
             }
             
             state.selectedDate = clickedDate;
-            state.currentView = 'dailyQueue'; 
-            render(); 
+            state.currentView = 'dailyQueue';
+            render();
         });
     });
 };
 
 const attachKpiListeners = () => {
-    document.getElementById('kpi-search').addEventListener('input', e => { 
-        state.kpiSearchTerm = e.target.value; 
-        render(); 
+    document.getElementById('kpi-search').addEventListener('input', e => {
+        state.kpiSearchTerm = e.target.value;
+        render();
     });
-    
     const kpiData = getKpiData().slice(0, 5);
     const ctx = document.getElementById('kpi-chart')?.getContext('2d');
-    if (ctx && typeof Chart !== 'undefined') {
-        new Chart(ctx, { 
-            type: 'bar', 
-            data: { 
-                labels: kpiData.map(d => d.name), 
-                datasets: [{ 
-                    label: 'คะแนนเฉลี่ย', 
-                    data: kpiData.map(d => d.averageScore), 
-                    backgroundColor: ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fde047', '#f87171'] 
-                }] 
-            }, 
-            options: { 
-                indexAxis: 'y', 
-                responsive: true, 
-                plugins: { 
-                    legend: { display: false } 
-                } 
-            } 
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: kpiData.map(d => d.name),
+                datasets: [{
+                    label: 'คะแนนเฉลี่ย',
+                    data: kpiData.map(d => d.averageScore),
+                    backgroundColor: ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fde047', '#f87171']
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
         });
     }
 };
@@ -1643,9 +1740,9 @@ const attachBookingDetailsListeners = () => {
     document.getElementById('reference-search')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleSearchByReference();
     });
-    document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => { 
-        state.selectedBookingId = e.currentTarget.dataset.bookingId; 
-        renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId }); 
+    document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => {
+        state.selectedBookingId = e.currentTarget.dataset.bookingId;
+        renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId });
     }));
 };
 
@@ -1670,12 +1767,15 @@ const startCamera = async () => {
         const video = document.getElementById('video');
         const startBtn = document.getElementById('start-camera-btn');
         const stopBtn = document.getElementById('stop-camera-btn');
-        videoStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } 
+
+        videoStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
         });
         video.srcObject = videoStream;
+
         startBtn.classList.add('hidden');
         stopBtn.classList.remove('hidden');
+
         scanInterval = setInterval(scanQRCode, 300);
     } catch (error) {
         console.error('Error accessing camera:', error);
@@ -1688,13 +1788,16 @@ const stopCamera = () => {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
+
     if (scanInterval) {
         clearInterval(scanInterval);
         scanInterval = null;
     }
+
     const video = document.getElementById('video');
     const startBtn = document.getElementById('start-camera-btn');
     const stopBtn = document.getElementById('stop-camera-btn');
+
     video.srcObject = null;
     startBtn.classList.remove('hidden');
     stopBtn.classList.add('hidden');
@@ -1704,20 +1807,21 @@ const scanQRCode = () => {
     const video = document.getElementById('video');
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
+
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        if (typeof jsQR !== 'undefined') {
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
-            if (code) {
-                clearInterval(scanInterval);
-                handleQRCodeScanned(code.data);
-                setTimeout(() => {
-                    stopCamera();
-                }, 1000);
-            }
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (code) {
+            clearInterval(scanInterval);
+            handleQRCodeScanned(code.data);
+            setTimeout(() => {
+                stopCamera();
+            }, 1000);
         }
     }
 };
@@ -1738,15 +1842,15 @@ const handleQRCodeScanned = (qrData) => {
 };
 
 const attachDailyQueueListeners = () => {
-    document.getElementById('back-to-calendar-btn').addEventListener('click', () => { 
-        state.currentView = 'calendar'; 
-        state.selectedDate = null; 
-        render(); 
+    document.getElementById('back-to-calendar-btn').addEventListener('click', () => {
+        state.currentView = 'calendar';
+        state.selectedDate = null;
+        render();
     });
     document.getElementById('book-slot-btn')?.addEventListener('click', () => renderModal('booking'));
-    document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => { 
-        state.selectedBookingId = e.currentTarget.dataset.bookingId; 
-        renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId }); 
+    document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => {
+        state.selectedBookingId = e.currentTarget.dataset.bookingId;
+        renderModal('bookingDetails', { bookingId: e.currentTarget.dataset.bookingId });
     }));
     
     document.querySelectorAll('.check-in-btn').forEach(btn => btn.addEventListener('click', (e) => {
@@ -1759,9 +1863,9 @@ const attachDailyQueueListeners = () => {
         handleCompleteBooking(bookingId);
     }));
     
-    document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => { 
-        state.selectedBookingId = e.currentTarget.dataset.bookingId; 
-        renderModal('evaluate'); 
+    document.querySelectorAll('.evaluate-btn').forEach(btn => btn.addEventListener('click', (e) => {
+        state.selectedBookingId = e.currentTarget.dataset.bookingId;
+        renderModal('evaluate');
     }));
     document.querySelectorAll('.delete-booking-btn').forEach(btn => btn.addEventListener('click', (e) => {
         const bookingId = e.currentTarget.dataset.bookingId;
@@ -1771,31 +1875,22 @@ const attachDailyQueueListeners = () => {
 
 const handleCheckIn = async (bookingId) => {
     try {
-        let bookingToUpdate = null;
-        let bookingDate = null;
-        for (const date in state.data.bookings) {
-            const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
-            if (bookingIndex !== -1) {
-                bookingToUpdate = state.data.bookings[date][bookingIndex];
-                bookingDate = date;
-                break;
-            }
-        }
-        if (!bookingToUpdate) {
-            showAlert('ไม่พบข้อมูลการจองคิว');
-            return;
-        }
-        bookingToUpdate.checkInTime = new Date().toISOString();
+        const bookingRef = doc(db, "bookings", bookingId);
+        await updateDoc(bookingRef, { 
+            checkInTime: new Date().toISOString() 
+        });
         
-        createNotification(
-            'arrival',
-            'ซัพพลายเออร์มาถึงแล้ว',
-            `${bookingToUpdate.companyName} มาถึงคลังสินค้าแล้วเวลา ${formatDateTime(new Date())}`,
-            null,
-            bookingId
-        );
-        
-        await setDoc(docRef, state.data);
+        // Find booking in local state for notification
+        const booking = allBookingsById[bookingId];
+        if (booking) {
+            createNotification(
+                'arrival',
+                'ซัพพลายเออร์มาถึงแล้ว',
+                `${booking.companyName} มาถึงคลังสินค้าแล้วเวลา ${formatDateTime(new Date())}`,
+                null,
+                bookingId
+            );
+        }
         
         showSuccessAnimation('เช็คอินสำเร็จแล้ว');
         render();
@@ -1808,24 +1903,11 @@ const handleCheckIn = async (bookingId) => {
 
 const handleCompleteBooking = async (bookingId) => {
     try {
-        let bookingToUpdate = null;
-        let bookingDate = null;
-        for (const date in state.data.bookings) {
-            const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
-            if (bookingIndex !== -1) {
-                bookingToUpdate = state.data.bookings[date][bookingIndex];
-                bookingDate = date;
-                break;
-            }
-        }
-        if (!bookingToUpdate) {
-            showAlert('ไม่พบข้อมูลการจองคิว');
-            return;
-        }
-        bookingToUpdate.status = 'completed';
-        bookingToUpdate.completedTime = new Date().toISOString();
-        
-        await setDoc(docRef, state.data);
+        const bookingRef = doc(db, "bookings", bookingId);
+        await updateDoc(bookingRef, { 
+            status: 'completed',
+            completedTime: new Date().toISOString()
+        });
         
         showSuccessAnimation('ยืนยันการรับคิวสำเร็จแล้ว');
         render();
@@ -1838,19 +1920,21 @@ const handleCompleteBooking = async (bookingId) => {
 
 const renderTimePickerModal = (bookingModal) => {
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 class="text-lg font-semibold mb-4">เลือกเวลา</h3>
+        <div class="p-6">
+            <h3 class="text-lg font-semibold mb-4 text-center">เลือกเวลา</h3>
             <div class="text-center mb-4">
-                <div class="text-2xl font-mono">
+                <div class="inline-flex items-center space-x-2 text-2xl font-mono">
                     <span id="hour-preview" class="text-violet-500 cursor-pointer">--</span>
                     <span>:</span>
                     <span id="minute-preview" class="cursor-pointer">--</span>
                 </div>
             </div>
-            <div id="clock-container" class="mb-6"></div>
-            <div class="flex space-x-3">
-                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                <button id="confirm-time-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1" disabled>ยืนยัน</button>
+            
+            <div id="clock-container" class="relative w-64 h-64 mx-auto mb-6"></div>
+            
+            <div class="flex justify-center space-x-2">
+                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                <button id="confirm-time-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" disabled>ยืนยัน</button>
             </div>
         </div>
     `;
@@ -1859,6 +1943,7 @@ const renderTimePickerModal = (bookingModal) => {
         let selectedHour = null;
         let selectedMinute = null;
         let currentPickerView = 'hours';
+        
         const hourPreview = modal.querySelector('#hour-preview');
         const minutePreview = modal.querySelector('#minute-preview');
         const confirmBtn = modal.querySelector('#confirm-time-btn');
@@ -1909,34 +1994,36 @@ const renderTimePickerModal = (bookingModal) => {
         };
         
         const renderClock = () => {
-            clockContainer.innerHTML = ''; 
+            clockContainer.innerHTML = '';
+
             const clockFace = document.createElement('div');
-            clockFace.className = 'clock-face relative w-56 h-56 mx-auto border-2 border-gray-300 rounded-full';
+            clockFace.className = 'clock-face relative w-full h-full border-2 border-gray-300 rounded-full';
             const clockCenter = document.createElement('div');
-            clockCenter.className = 'clock-center absolute top-1/2 left-1/2 w-2 h-2 bg-gray-400 rounded-full transform -translate-x-1/2 -translate-y-1/2';
+            clockCenter.className = 'clock-center absolute top-1/2 left-1/2 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2';
             clockFace.appendChild(clockCenter);
-            
+
             if (currentPickerView === 'hours') {
                 for (let i = 1; i <= 12; i++) {
                     const angle = (i / 12) * 360 - 90;
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
                     const numberEl = document.createElement('div');
-                    numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 hover:bg-blue-200 rounded-full cursor-pointer text-sm font-medium transform -translate-x-1/2 -translate-y-1/2';
+                    numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full cursor-pointer hover:bg-blue-200 transform -translate-x-1/2 -translate-y-1/2';
                     numberEl.textContent = i;
                     numberEl.style.left = `${x}px`;
                     numberEl.style.top = `${y}px`;
                     numberEl.dataset.hour = i;
                     clockFace.appendChild(numberEl);
                 }
-                 for (let i = 13; i <= 24; i++) {
+
+                for (let i = 13; i <= 24; i++) {
                     const displayHour = i === 24 ? '00' : i;
                     const dataHour = i === 24 ? 0 : i;
                     const angle = ((i-12) / 12) * 360 - 90;
                     const x = 112 + 60 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 60 * Math.sin(angle * Math.PI / 180);
                     const numberEl = document.createElement('div');
-                    numberEl.className = `clock-number absolute w-8 h-8 flex items-center justify-center rounded-full text-xs font-medium transform -translate-x-1/2 -translate-y-1/2 ${dataHour > 14 ? 'bg-gray-200 text-gray-400 cursor-not-allowed disabled' : 'bg-blue-100 hover:bg-blue-200 cursor-pointer'}`;
+                    numberEl.className = `clock-number absolute w-8 h-8 flex items-center justify-center rounded-full cursor-pointer transform -translate-x-1/2 -translate-y-1/2 ${dataHour > 14 ? 'bg-gray-200 text-gray-400 cursor-not-allowed disabled' : 'bg-blue-100 hover:bg-blue-200'}`;
                     numberEl.textContent = displayHour;
                     numberEl.style.left = `${x}px`;
                     numberEl.style.top = `${y}px`;
@@ -1949,15 +2036,13 @@ const renderTimePickerModal = (bookingModal) => {
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
                     const numberEl = document.createElement('div');
-                    numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 hover:bg-blue-200 rounded-full cursor-pointer text-sm font-medium transform -translate-x-1/2 -translate-y-1/2';
+                    numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full cursor-pointer hover:bg-blue-200 transform -translate-x-1/2 -translate-y-1/2';
                     
                     if (selectedHour === 11 && minute === '30') {
                         numberEl.classList.add('disabled', 'bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
-                        numberEl.classList.remove('bg-blue-100', 'hover:bg-blue-200', 'cursor-pointer');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
                     } else if (selectedHour === 12 && (minute === '00' || minute === '10' || minute === '20' || minute === '30')) {
                         numberEl.classList.add('disabled', 'bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
-                        numberEl.classList.remove('bg-blue-100', 'hover:bg-blue-200', 'cursor-pointer');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
                     }
                     
@@ -1972,24 +2057,24 @@ const renderTimePickerModal = (bookingModal) => {
             updatePreview();
             attachClockListeners();
         };
-        
+
         renderClock();
-        
+
         hourPreview.addEventListener('click', () => {
             currentPickerView = 'hours';
             hourPreview.classList.add('text-violet-500');
             minutePreview.classList.remove('text-violet-500');
             renderClock();
         });
-        
-         minutePreview.addEventListener('click', () => {
+
+        minutePreview.addEventListener('click', () => {
             if (selectedHour === null) return;
             currentPickerView = 'minutes';
             hourPreview.classList.remove('text-violet-500');
             minutePreview.classList.add('text-violet-500');
             renderClock();
         });
-        
+
         confirmBtn.addEventListener('click', () => {
             if (selectedHour !== null && selectedMinute !== null) {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
@@ -2013,38 +2098,38 @@ const renderTimePickerModal = (bookingModal) => {
 
 const renderAddHolidayModal = () => {
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">เพิ่มวันหยุด</h3>
-            <form id="holiday-form">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อวันหยุด</label>
-                    <input type="text" id="holiday-name" required class="w-full border rounded px-3 py-2">
+            <form id="holiday-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">ชื่อวันหยุด</label>
+                    <input type="text" id="holiday-name" required class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">วันที่</label>
-                    <input type="date" id="holiday-date" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">วันที่</label>
+                    <input type="date" id="holiday-date" required class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">ประเภทวันหยุด</label>
-                    <select id="holiday-type" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">ประเภทวันหยุด</label>
+                    <select id="holiday-type" required class="w-full px-3 py-2 border rounded-md">
                         <option value="company">วันหยุดบริษัท</option>
                         <option value="public">วันหยุดราชการ</option>
                         <option value="special">วันหยุดพิเศษ</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label class="flex items-center">
-                        <input type="checkbox" id="holiday-recurring" class="mr-2">
-                        <span class="text-sm text-gray-700">วันหยุดทุกปี (ประจำปี)</span>
+                <div>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="holiday-recurring">
+                        <span class="text-sm">วันหยุดทุกปี (ประจำปี)</span>
                     </label>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label>
-                    <textarea id="holiday-description" class="w-full border rounded px-3 py-2 h-20"></textarea>
+                <div>
+                    <label class="block text-sm font-medium mb-1">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label>
+                    <textarea id="holiday-description" class="w-full px-3 py-2 border rounded-md" rows="3"></textarea>
                 </div>
-                <div class="flex space-x-3">
-                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึก</button>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">บันทึก</button>
                 </div>
             </form>
         </div>
@@ -2060,37 +2145,33 @@ const renderImportPublicHolidaysModal = () => {
     const years = [currentYear, currentYear + 1, currentYear + 2];
     
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">นำเข้าวันหยุดราชการ</h3>
-            <form id="import-holidays-form">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">เลือกปี</label>
-                    <select id="holiday-year" required class="w-full border rounded px-3 py-2">
+            <form id="import-holidays-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">เลือกปี</label>
+                    <select id="holiday-year" required class="w-full px-3 py-2 border rounded-md">
                         ${years.map(year => `<option value="${year}">ปี ${year + 543}</option>`).join('')}
                     </select>
                 </div>
-                <div class="mb-6">
-                    <div class="bg-blue-50 border border-blue-200 rounded p-4">
-                        <div class="flex items-start space-x-2">
-                            <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <div>
-                                <h4 class="font-medium text-blue-800">ข้อมูลวันหยุดราชการ</h4>
-                                <p class="text-sm text-blue-700 mt-1">ระบบจะนำเข้าวันหยุดราชการตามประกาศสำนักนายกรัฐมนตรี ประกอบด้วย:</p>
-                                <ul class="text-sm text-blue-700 mt-2 space-y-1">
-                                    <li>• วันหยุดประจำปี</li>
-                                    <li>• วันหยุดพระราชพิธี</li>
-                                    <li>• วันหยุดตามศาสนา</li>
-                                    <li>• วันหยุดชดเชย</li>
-                                </ul>
-                            </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="flex items-start space-x-2">
+                        <div class="text-blue-600 mt-1">ℹ️</div>
+                        <div>
+                            <h4 class="font-semibold text-blue-800">ข้อมูลวันหยุดราชการ</h4>
+                            <p class="text-sm text-blue-700 mt-1">ระบบจะนำเข้าวันหยุดราชการตามประกาศสำนักนายกรัฐมนตรี ประกอบด้วย:</p>
+                            <ul class="text-sm text-blue-700 mt-2 space-y-1">
+                                <li>• วันหยุดประจำปี</li>
+                                <li>• วันหยุดพระราชพิธี</li>
+                                <li>• วันหยุดตามศาสนา</li>
+                                <li>• วันหยุดชดเชย</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
-                <div class="flex space-x-3">
-                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">นำเข้าข้อมูล</button>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">นำเข้าข้อมูล</button>
                 </div>
             </form>
         </div>
@@ -2103,32 +2184,32 @@ const renderImportPublicHolidaysModal = () => {
 
 const renderAddUserModal = () => {
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">เพิ่มผู้ใช้</h3>
-            <form id="user-form">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ</label>
-                    <input type="text" id="user-name" required class="w-full border rounded px-3 py-2">
+            <form id="user-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">ชื่อ</label>
+                    <input type="text" id="user-name" required class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
-                    <input type="email" id="user-email" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">อีเมล</label>
+                    <input type="email" id="user-email" required class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน</label>
-                    <input type="password" id="user-password" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">รหัสผ่าน</label>
+                    <input type="password" id="user-password" required class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">บทบาท</label>
-                    <select id="user-role" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">บทบาท</label>
+                    <select id="user-role" required class="w-full px-3 py-2 border rounded-md">
                         <option value="viewer">ผู้ดู</option>
                         <option value="staff">พนักงาน</option>
                         <option value="admin">ผู้ดูแลระบบ</option>
                     </select>
                 </div>
-                <div class="flex space-x-3">
-                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึก</button>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">บันทึก</button>
                 </div>
             </form>
         </div>
@@ -2148,33 +2229,33 @@ const renderEditUserModal = (userId) => {
     }
     
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">แก้ไขผู้ใช้</h3>
-            <form id="user-form">
+            <form id="user-form" class="space-y-4">
                 <input type="hidden" id="user-id" value="${user.id}">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ</label>
-                    <input type="text" id="user-name" value="${user.name}" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">ชื่อ</label>
+                    <input type="text" id="user-name" value="${user.name}" required class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
-                    <input type="email" id="user-email" value="${user.email}" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">อีเมล</label>
+                    <input type="email" id="user-email" value="${user.email}" required class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน (ปล่อยว่างหากไม่ต้องการเปลี่ยน)</label>
-                    <input type="password" id="user-password" class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">รหัสผ่าน (ปล่อยว่างหากไม่ต้องการเปลี่ยน)</label>
+                    <input type="password" id="user-password" class="w-full px-3 py-2 border rounded-md">
                 </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">บทบาท</label>
-                    <select id="user-role" required class="w-full border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">บทบาท</label>
+                    <select id="user-role" required class="w-full px-3 py-2 border rounded-md">
                         <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>ผู้ดู</option>
                         <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>พนักงาน</option>
                         <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>ผู้ดูแลระบบ</option>
                     </select>
                 </div>
-                <div class="flex space-x-3">
-                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึก</button>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">บันทึก</button>
                 </div>
             </form>
         </div>
@@ -2190,7 +2271,6 @@ const handleAddUser = async (e) => {
     const form = e.target;
     
     const newUser = {
-        id: Date.now().toString(),
         name: form.querySelector('#user-name').value,
         email: form.querySelector('#user-email').value,
         password: form.querySelector('#user-password').value,
@@ -2199,14 +2279,8 @@ const handleAddUser = async (e) => {
         lastLogin: null
     };
     
-    if (!state.data.users) {
-        state.data.users = [];
-    }
-    
-    state.data.users.push(newUser);
-    
     try {
-        await setDoc(docRef, state.data);
+        await addDoc(collection(db, "users"), newUser);
         closeModal(form.closest('.modal-backdrop'));
         showSuccessAnimation('เพิ่มผู้ใช้สำเร็จแล้ว');
         render();
@@ -2221,15 +2295,7 @@ const handleEditUser = async (e) => {
     const form = e.target;
     const userId = form.querySelector('#user-id').value;
     
-    const userIndex = state.data.users.findIndex(u => u.id === userId);
-    
-    if (userIndex === -1) {
-        showAlert('ไม่พบข้อมูลผู้ใช้');
-        return;
-    }
-    
     const updatedUser = {
-        ...state.data.users[userIndex],
         name: form.querySelector('#user-name').value,
         email: form.querySelector('#user-email').value,
         role: form.querySelector('#user-role').value
@@ -2240,10 +2306,9 @@ const handleEditUser = async (e) => {
         updatedUser.password = newPassword;
     }
     
-    state.data.users[userIndex] = updatedUser;
-    
     try {
-        await setDoc(docRef, state.data);
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, updatedUser);
         closeModal(form.closest('.modal-backdrop'));
         showSuccessAnimation('แก้ไขผู้ใช้สำเร็จแล้ว');
         render();
@@ -2255,20 +2320,9 @@ const handleEditUser = async (e) => {
 
 const handleDeleteUser = async (userId) => {
     try {
-        const userIndex = state.data.users.findIndex(u => u.id === userId);
-        
-        if (userIndex === -1) {
-            showAlert('ไม่พบข้อมูลผู้ใช้');
-            return;
-        }
-        
-        state.data.users.splice(userIndex, 1);
-        
-        await setDoc(docRef, state.data);
-        
+        await deleteDoc(doc(db, "users", userId));
         showAlert('ลบผู้ใช้สำเร็จแล้ว');
         render();
-        
     } catch (error) {
         console.error('Error deleting user:', error);
         showAlert('เกิดข้อผิดพลาดในการลบผู้ใช้ กรุณาลองใหม่');
@@ -2286,7 +2340,6 @@ const handleAddHoliday = async (e) => {
     const form = e.target;
     
     const holiday = {
-        id: Date.now(),
         name: form.querySelector('#holiday-name').value,
         date: form.querySelector('#holiday-date').value,
         type: form.querySelector('#holiday-type').value,
@@ -2294,21 +2347,15 @@ const handleAddHoliday = async (e) => {
         description: form.querySelector('#holiday-description').value
     };
     
-    if (!state.data.holidays) {
-        state.data.holidays = [];
-    }
-    
+    // Check if holiday already exists
     const existingHoliday = state.data.holidays.find(h => h.date === holiday.date);
     if (existingHoliday) {
         showAlert('มีวันหยุดในวันที่เลือกแล้ว');
         return;
     }
     
-    state.data.holidays.push(holiday);
-    state.data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
     try {
-        await setDoc(docRef, state.data);
+        await addDoc(collection(db, "holidays"), holiday);
         closeModal(form.closest('.modal-backdrop'));
         showSuccessAnimation('เพิ่มวันหยุดสำเร็จแล้ว');
         render();
@@ -2318,11 +2365,10 @@ const handleAddHoliday = async (e) => {
     }
 };
 
-window.deleteHoliday = async (index) => {
+window.deleteHoliday = async (holidayId) => {
     showConfirm('คุณต้องการลบวันหยุดนี้ใช่หรือไม่?', async () => {
         try {
-            state.data.holidays.splice(index, 1);
-            await setDoc(docRef, state.data);
+            await deleteDoc(doc(db, "holidays", holidayId));
             showAlert('ลบวันหยุดสำเร็จแล้ว');
             render();
         } catch (error) {
@@ -2354,29 +2400,22 @@ const handleImportPublicHolidays = async (e) => {
         { name: 'วันคริสต์มาสต์', date: `${year}-12-25`, type: 'public', recurring: true }
     ];
     
-    if (!state.data.holidays) {
-        state.data.holidays = [];
-    }
-    
     let addedCount = 0;
-    publicHolidays.forEach(holiday => {
+    const addPromises = [];
+    
+    for (const holiday of publicHolidays) {
         const exists = state.data.holidays.some(h => 
             h.date === holiday.date && h.type === 'public'
         );
         
         if (!exists) {
-            state.data.holidays.push({
-                ...holiday,
-                id: Date.now() + Math.random()
-            });
+            addPromises.push(addDoc(collection(db, "holidays"), holiday));
             addedCount++;
         }
-    });
-    
-    state.data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
     
     try {
-        await setDoc(docRef, state.data);
+        await Promise.all(addPromises);
         closeModal(form.closest('.modal-backdrop'));
         showSuccessAnimation(`นำเข้าวันหยุดราชการสำเร็จ ${addedCount} วัน`);
         render();
@@ -2390,133 +2429,130 @@ const renderModal = (type, data = {}) => {
     let modalContent = '';
     if(type === 'login') {
         modalContent = `
-            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="p-6">
                 <h3 class="text-lg font-semibold mb-4">เข้าสู่ระบบพนักงาน</h3>
-                <form id="login-form">
-                    <div class="mb-4">
-                        <input type="text" id="username" placeholder="ชื่อผู้ใช้" required class="w-full border rounded px-3 py-2">
-                    </div>
+                <form id="login-form" class="space-y-4">
+                    <input type="text" id="username" placeholder="ชื่อผู้ใช้" required class="w-full px-3 py-2 border rounded-md">
                     <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">เข้าสู่ระบบ</button>
                 </form>
             </div>
         `;
         renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
-    } 
+    }
+    
     else if(type === 'booking') {
         if (isHoliday(new Date(state.selectedDate))) {
             const holiday = isHoliday(new Date(state.selectedDate));
             
             modalContent = `
-                <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
-                    <div class="mb-4">
-                        <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                        </svg>
-                    </div>
+                <div class="p-6 text-center">
+                    <div class="text-red-600 text-6xl mb-4">🚫</div>
                     <h3 class="text-lg font-semibold text-red-800 mb-2">ไม่สามารถจองคิวได้</h3>
                     <p class="text-red-600 mb-4">วันที่ ${formatThaiDate(state.selectedDate)} เป็นวันหยุด: ${holiday.name}</p>
-                    <p class="text-gray-600 mb-6">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
+                    <p class="text-gray-600 mb-4">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
                     <div class="flex justify-center">
-                        <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
+                        <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ปิด</button>
                     </div>
                 </div>
             `;
             renderModalBase(modalContent);
             return;
         }
-        
+
         if (checkDailyQueueLimit(state.selectedDate)) {
             modalContent = `
-                <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
-                    <div class="mb-4">
-                        <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                        </svg>
-                    </div>
+                <div class="p-6 text-center">
+                    <div class="text-red-600 text-6xl mb-4">⚠️</div>
                     <h3 class="text-lg font-semibold text-red-800 mb-2">คิวเต็ม</h3>
                     <p class="text-red-600 mb-4">วันที่ ${formatThaiDate(state.selectedDate)} มีการจองคิวครบ 20 คิวแล้ว</p>
-                    <p class="text-gray-600 mb-6">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
+                    <p class="text-gray-600 mb-4">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
                     <div class="flex justify-center">
-                        <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
+                        <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ปิด</button>
                     </div>
                 </div>
             `;
             renderModalBase(modalContent);
             return;
         }
-        
+
         const companyOptions = state.data.companies.map(c => `<option value="${c}">${c}</option>`).join('');
         modalContent = `
-            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
                 <h3 class="text-lg font-semibold mb-4">จองคิววันที่ ${formatThaiDate(state.selectedDate)}</h3>
-                <form id="booking-form">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">บริษัท</label>
-                            <select id="company-name" required class="w-full border rounded px-3 py-2">
-                                <option value="">-- เลือกบริษัท --</option>
-                                ${companyOptions}
-                                <option value="add_new">-- เพิ่มบริษัทใหม่ --</option>
-                            </select>
-                            <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full border rounded px-3 py-2 mt-2 hidden">
+                <form id="booking-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">บริษัท</label>
+                        <select id="company-name" required class="w-full px-3 py-2 border rounded-md">
+                            <option value="">-- เลือกบริษัท --</option>
+                            ${companyOptions}
+                            <option value="add_new">-- เพิ่มบริษัทใหม่ --</option>
+                        </select>
+                        <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full px-3 py-2 border rounded-md mt-2 hidden">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">ชื่อ-นามสกุล คนขับ</label>
+                            <input type="text" id="driver-name" required class="w-full px-3 py-2 border rounded-md">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ-นามสกุล คนขับ</label>
-                            <input type="text" id="driver-name" required class="w-full border rounded px-3 py-2">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">ทะเบียนรถ</label>
+                            <label class="block text-sm font-medium mb-1">ทะเบียนรถ</label>
                             <div class="flex space-x-2">
-                                <input type="text" id="license-plate-prefix" placeholder="กก" maxlength="3" class="w-20 border rounded px-3 py-2 text-center">
-                                <input type="text" id="license-plate-suffix" placeholder="1234" maxlength="4" class="flex-1 border rounded px-3 py-2">
+                                <input type="text" id="license-plate-prefix" placeholder="กข" class="w-1/3 px-3 py-2 border rounded-md">
+                                <input type="text" id="license-plate-suffix" placeholder="1234" class="w-2/3 px-3 py-2 border rounded-md">
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนบิล</label>
-                            <input type="number" id="invoice-count" min="1" required class="w-full border rounded px-3 py-2">
+                            <label class="block text-sm font-medium mb-1">จำนวนบิล</label>
+                            <input type="number" id="invoice-count" min="1" required class="w-full px-3 py-2 border rounded-md">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนกล่อง</label>
-                            <input type="number" id="box-count" min="1" required class="w-full border rounded px-3 py-2">
+                            <label class="block text-sm font-medium mb-1">จำนวนกล่อง</label>
+                            <input type="number" id="box-count" min="1" required class="w-full px-3 py-2 border rounded-md">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนชิ้น</label>
-                            <input type="number" id="item-count" min="1" required class="w-full border rounded px-3 py-2">
+                            <label class="block text-sm font-medium mb-1">จำนวนชิ้น</label>
+                            <input type="number" id="item-count" min="1" required class="w-full px-3 py-2 border rounded-md">
                         </div>
                     </div>
-                     <div class="mt-4">
-                         <label class="block text-sm font-medium text-gray-700 mb-2">เวลาที่คาดว่าจะมาถึง</label>
-                         <input type="hidden" id="eta" required>
-                         <button type="button" id="eta-display" class="w-full border rounded px-3 py-2 text-left text-slate-500 hover:bg-gray-50">-- เลือกเวลา --</button>
-                         <p class="text-xs text-gray-500 mt-1">เวลาทำการ: 08:00-14:15 (พักเที่ยง 11:30-12:30)</p>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">เวลาที่คาดว่าจะมาถึง</label>
+                        <input type="hidden" id="eta" required>
+                        <div id="eta-display" class="w-full px-3 py-2 border rounded-md cursor-pointer bg-gray-50 text-slate-500">-- เลือกเวลา --</div>
                     </div>
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ/เอกสารเพิ่มเติม</label>
-                        <textarea id="notes" class="w-full border rounded px-3 py-2 h-20" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">เอกสารเพิ่มเติม</label>
+                        <textarea id="notes" placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)" class="w-full px-3 py-2 border rounded-md" rows="3"></textarea>
                     </div>
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">เอกสารเพิ่มเติม</label>
-                        <input type="file" id="document-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
-                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer" onclick="document.getElementById('document-files').click()">
-                            <div class="flex flex-col items-center">
-                                <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                                </svg>
-                                <p class="text-sm text-gray-600">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
-                                <p class="text-xs text-gray-500 mt-1">รองรับไฟล์ PDF, JPG, PNG, DOC, DOCX (สูงสุด 5MB ต่อไฟล์)</p>
-                            </div>
+                    
+                    <div>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <input type="file" id="document-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
+                            <label for="document-files" class="cursor-pointer">
+                                <div class="text-gray-600 mb-2">📎 แนบเอกสาร (INVOICE และ PO)</div>
+                                <p class="text-sm text-gray-500 mb-2">*หากแนบเอกสารมาด้วยจะเพิ่มความรวดเร็วในการรับสินค้าของพนักงาน</p>
+                                <div class="bg-blue-50 border border-blue-200 rounded p-4">
+                                    <div class="text-blue-600 text-4xl mb-2">📁</div>
+                                    <p class="text-blue-800 font-medium">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
+                                    <p class="text-sm text-blue-600 mt-1">รองรับไฟล์ PDF, JPG, PNG, DOC, DOCX (สูงสุด 5MB ต่อไฟล์)</p>
+                                </div>
+                            </label>
                         </div>
-                        <p class="text-xs text-blue-600 mt-2">*หากแนบเอกสารมาด้วยจะเพิ่มความรวดเร็วในการรับสินค้าของพนักงาน</p>
-                        <div id="file-list" class="mt-3 space-y-2"></div>
+                        <div id="file-list" class="mt-4 space-y-2"></div>
                     </div>
-                    <div class="flex space-x-3 mt-6">
-                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">ยืนยันการจอง</button>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ยืนยันการจอง</button>
                     </div>
                 </form>
             </div>
         `;
-        
         renderModalBase(modalContent, modal => {
             modal.querySelector('#eta-display').addEventListener('click', () => renderTimePickerModal(modal));
             const companySelect = modal.querySelector('#company-name'), newCompanyInput = modal.querySelector('#new-company-name');
@@ -2528,21 +2564,15 @@ const renderModal = (type, data = {}) => {
             
             const displayFiles = () => {
                 fileList.innerHTML = uploadedFiles.map((file, index) => `
-                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                        <div class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
+                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded border">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-blue-600">📄</div>
                             <div>
-                                <p class="text-sm font-medium text-gray-900">${file.name}</p>
-                                <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
+                                <div class="font-medium">${file.name}</div>
+                                <div class="text-sm text-gray-500">${formatFileSize(file.size)}</div>
                             </div>
                         </div>
-                        <button type="button" onclick="removeFile(${index})" class="text-red-600 hover:text-red-800 p-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+                        <button type="button" onclick="removeFile(${index})" class="text-red-600 hover:text-red-800">🗑️</button>
                     </div>
                 `).join('');
             };
@@ -2593,23 +2623,23 @@ const renderModal = (type, data = {}) => {
                 const companySelect = form.querySelector('#company-name');
                 let companyName = companySelect.value === 'add_new' ? form.querySelector('#new-company-name').value.trim() : companySelect.value;
                 
-                if (!companyName) { 
-                    showAlert('กรุณาระบุชื่อบริษัท'); 
-                    return; 
+                if (!companyName) {
+                    showAlert('กรุณาระบุชื่อบริษัท');
+                    return;
                 }
                 
                 const licensePlate = `${form.querySelector('#license-plate-prefix').value.trim()} ${form.querySelector('#license-plate-suffix').value.trim()}`.trim();
-                if (!licensePlate) { 
-                    showAlert('กรุณากรอกทะเบียนรถ'); 
-                    return; 
+                if (!licensePlate) {
+                    showAlert('กรุณากรอกทะเบียนรถ');
+                    return;
                 }
-                
+
                 let eta = form.querySelector('#eta').value;
-                if (!eta) { 
-                    showAlert('กรุณาเลือกเวลา'); 
-                    return; 
+                if (!eta) {
+                    showAlert('กรุณาเลือกเวลา');
+                    return;
                 }
-                
+
                 let originalTime = eta;
                 let attempts = 0;
                 const maxAttempts = 10;
@@ -2634,57 +2664,55 @@ const renderModal = (type, data = {}) => {
                     showAlert(`ไม่สามารถจองคิวได้ เนื่องจากมีคิวในช่วงเวลานั้นแล้ว`);
                     return;
                 }
-                
+
                 if (eta !== originalTime) {
                     showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนมัติ`);
                 }
-                
+
                 const referenceNumber = generateReferenceNumber();
-                const newBooking = { 
-                    id: Date.now(), 
+                const newBooking = {
                     referenceNumber: referenceNumber,
-                    companyName, 
-                    driverName: form.querySelector('#driver-name').value, 
-                    licensePlate, 
-                    invoiceCount: form.querySelector('#invoice-count').value, 
-                    boxCount: form.querySelector('#box-count').value, 
-                    itemCount: form.querySelector('#item-count').value, 
-                    eta, 
+                    companyName,
+                    driverName: form.querySelector('#driver-name').value,
+                    licensePlate,
+                    invoiceCount: form.querySelector('#invoice-count').value,
+                    boxCount: form.querySelector('#box-count').value,
+                    itemCount: form.querySelector('#item-count').value,
+                    eta,
                     notes: form.querySelector('#notes').value,
                     documents: uploadedFiles,
-                    evaluation: null 
+                    evaluation: null,
+                    date: state.selectedDate // Add date field for Firestore
                 };
                 
-                const dateStr = state.selectedDate;
-                if (!state.data.bookings[dateStr]) {
-                    state.data.bookings[dateStr] = [];
-                }
-                state.data.bookings[dateStr].push(newBooking);
-                state.data.bookings[dateStr].sort((a,b) => a.eta.localeCompare(b.eta));
-                
-                createNotification(
-                    'booking',
-                    'มีการจองคิวใหม่',
-                    `${newBooking.companyName} ได้จองคิวสำหรับวันที่ ${formatThaiDate(dateStr)} เวลา ${formatTime24h(eta)}`,
-                    null,
-                    newBooking.id
-                );
-                
                 try {
-                    await setDoc(docRef, state.data);
-                    state.guestBookingIds.push(newBooking.id);
+                    // Add booking to Firestore
+                    const docRef = await addDoc(collection(db, "bookings"), newBooking);
+                    const bookingId = docRef.id;
+                    
+                    // Add to guest session
+                    state.guestBookingIds.push(bookingId);
                     
                     // Save to localStorage (Layer 1)
                     localStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+                    
                     // Save to Firebase (Layer 2)
                     const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
-                    await setDoc(guestDocRef, { 
+                    await setDoc(guestDocRef, {
                         bookingIds: state.guestBookingIds,
-                        lastActivity: serverTimestamp() 
+                        lastActivity: serverTimestamp()
                     }, { merge: true });
                     
-                    closeModal(form.closest('.modal-backdrop')); 
-                    renderModal('qrCode', { booking: newBooking });
+                    createNotification(
+                        'booking',
+                        'มีการจองคิวใหม่',
+                        `${newBooking.companyName} ได้จองคิวสำหรับวันที่ ${formatThaiDate(state.selectedDate)} เวลา ${formatTime24h(eta)}`,
+                        null,
+                        bookingId
+                    );
+                    
+                    closeModal(form.closest('.modal-backdrop'));
+                    renderModal('qrCode', { booking: { ...newBooking, id: bookingId } });
                 } catch (error) {
                     console.error('Error saving booking:', error);
                     showAlert('เกิดข้อผิดพลาดในการจองคิว กรุณาลองใหม่');
@@ -2695,118 +2723,109 @@ const renderModal = (type, data = {}) => {
     else if(type === 'bookingDetails') {
         const booking = findBookingById(data.bookingId);
         if (!booking) {
-            modalContent = `
-                <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
-                    <p class="text-gray-800 mb-4">ไม่พบข้อมูลการจองคิว</p>
-                    <button class="close-modal-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">ตกลง</button>
-                </div>
-            `;
+            modalContent = `<div class="p-6 text-center"><h3 class="text-lg font-semibold">ไม่พบข้อมูลการจองคิว</h3></div>`;
             renderModalBase(modalContent);
             return;
         }
-        
+
         const isGuestBooking = state.guestBookingIds.includes(booking.id);
         const isEditable = state.userRole === 'staff' || (state.userRole === 'guest' && isGuestBooking);
         
-        const documentsHtml = booking.documents && booking.documents.length > 0 
-            ? `
-            <div class="mt-4 p-4 bg-gray-50 rounded border">
-                <h4 class="font-medium text-gray-900 mb-2">เอกสารที่แนบ:</h4>
+        const documentsHtml = booking.documents && booking.documents.length > 0
+            ? `<div class="mt-4">
+                <h4 class="font-semibold mb-2">เอกสารที่แนบ:</h4>
                 <div class="space-y-2">
                     ${booking.documents.map((doc, index) => `
-                        <div class="flex items-center justify-between p-2 bg-white rounded border">
-                            <div class="flex items-center space-x-2">
-                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
+                        <div class="flex items-center justify-between bg-gray-50 p-3 rounded border">
+                            <div class="flex items-center space-x-3">
+                                <div class="text-blue-600">📄</div>
                                 <div>
-                                    <p class="text-sm font-medium text-gray-900">${doc.name}</p>
-                                    <p class="text-xs text-gray-500">${formatFileSize(doc.size)}</p>
+                                    <div class="font-medium">${doc.name}</div>
+                                    <div class="text-sm text-gray-500">${formatFileSize(doc.size)}</div>
                                 </div>
                             </div>
-                            <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800 text-sm">
-                                ดาวน์โหลด
-                            </button>
+                            <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800 text-sm">ดาวน์โหลด</button>
                         </div>
                     `).join('')}
                 </div>
-            </div>
-            `
+            </div>`
             : '';
         
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
-                statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
+                statusBadge = '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">เสร็จสิ้น</span>';
             } else if (checkIfLate(booking)) {
-                statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
+                statusBadge = '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">มาสาย</span>';
             } else {
-                statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
+                statusBadge = '<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">เช็คอินแล้ว</span>';
             }
         } else {
-            statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
+            statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
         }
         
         modalContent = `
-            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <h3 class="text-lg font-semibold mb-4">รายละเอียดการจองคิว</h3>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">เลขกำกับ:</span>
-                        <span class="font-medium">${booking.referenceNumber || '-'}</span>
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold">รายละเอียดการจองคิว</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">เลขกำกับ:</span>
+                            <span class="font-medium">${booking.referenceNumber || '-'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">บริษัท:</span>
+                            <span class="font-medium">${booking.companyName}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">วันที่:</span>
+                            <span class="font-medium">${formatThaiDate(booking.date)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">เวลา:</span>
+                            <span class="font-medium">${formatTime24h(booking.eta)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">ชื่อคนขับ:</span>
+                            <span class="font-medium">${booking.driverName}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">ทะเบียนรถ:</span>
+                            <span class="font-medium">${booking.licensePlate}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">จำนวนบิล:</span>
+                            <span class="font-medium">${booking.invoiceCount}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">จำนวนกล่อง:</span>
+                            <span class="font-medium">${booking.boxCount}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">จำนวนชิ้น:</span>
+                            <span class="font-medium">${booking.itemCount}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">สถานะ:</span>
+                            ${statusBadge}
+                        </div>
+                        ${booking.checkInTime ? `
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">เวลาเช็คอิน:</span>
+                            <span class="font-medium">${formatDateTime(booking.checkInTime)}</span>
+                        </div>
+                        ` : ''}
+                        ${booking.notes ? `
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">เอกสารเพิ่มเติม:</span>
+                            <span class="font-medium">${booking.notes}</span>
+                        </div>
+                        ` : ''}
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">บริษัท:</span>
-                        <span class="font-medium">${booking.companyName}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">วันที่:</span>
-                        <span class="font-medium">${formatThaiDate(booking.date)}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">เวลา:</span>
-                        <span class="font-medium">${formatTime24h(booking.eta)}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">ชื่อคนขับ:</span>
-                        <span class="font-medium">${booking.driverName}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">ทะเบียนรถ:</span>
-                        <span class="font-medium">${booking.licensePlate}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">จำนวนบิล:</span>
-                        <span class="font-medium">${booking.invoiceCount}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">จำนวนกล่อง:</span>
-                        <span class="font-medium">${booking.boxCount}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">จำนวนชิ้น:</span>
-                        <span class="font-medium">${booking.itemCount}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">สถานะ:</span>
-                        <span>${statusBadge}</span>
-                    </div>
-                    ${booking.checkInTime ? `
-                    <div class="flex justify-between col-span-2">
-                        <span class="text-gray-600">เวลาเช็คอิน:</span>
-                        <span class="font-medium">${formatDateTime(booking.checkInTime)}</span>
-                    </div>
-                    ` : ''}
-                    ${booking.notes ? `
-                    <div class="col-span-2">
-                        <span class="text-gray-600">เอกสารเพิ่มเติม:</span>
-                        <p class="mt-1 text-gray-900">${booking.notes}</p>
-                    </div>
-                    ` : ''}
                 </div>
                 ${documentsHtml}
                 <div class="flex justify-center mt-6">
-                    <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
+                    <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ปิด</button>
                 </div>
             </div>
         `;
@@ -2823,137 +2842,131 @@ const renderModal = (type, data = {}) => {
     else if(type === 'bookingCard') {
         const booking = data.booking;
         
-        const documentsInfo = booking.documents && booking.documents.length > 0 
-            ? `
-            <div class="mt-3 text-sm text-gray-600">
-                <span class="font-medium">เอกสารที่แนบ:</span>
-                <span>${booking.documents.length} ไฟล์</span>
-            </div>
-            `
+        const documentsInfo = booking.documents && booking.documents.length > 0
+            ? `<div class="text-sm text-gray-600 mt-2">
+                เอกสารที่แนบ:
+                <span class="font-medium">${booking.documents.length} ไฟล์</span>
+            </div>`
             : '';
         
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
-                statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
+                statusBadge = '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">เสร็จสิ้น</span>';
             } else if (checkIfLate(booking)) {
-                statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
+                statusBadge = '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">มาสาย</span>';
             } else {
-                statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
+                statusBadge = '<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">เช็คอินแล้ว</span>';
             }
         } else {
-            statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
+            statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">รอเช็คอิน</span>';
         }
         
         let checkInSection = '';
         if (state.userRole === 'staff' && !booking.checkInTime) {
             checkInSection = `
-                <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
-                    <h4 class="font-medium text-blue-800 mb-2">การเช็คอิน</h4>
-                    <div class="text-sm text-blue-700 mb-3">
-                        <span class="font-medium">เวลาปัจจุบัน:</span>
+                <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 class="font-semibold text-green-800 mb-2">การเช็คอิน</h4>
+                    <div class="flex justify-between text-sm text-green-700 mb-3">
+                        <span>เวลาปัจจุบัน:</span>
                         <span>${formatDateTime(new Date())}</span>
                     </div>
-                    <button class="check-in-from-qr-btn bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full flex items-center justify-center space-x-2" data-booking-id="${booking.id}">
-                        ${icons.check} <span>เช็คอิน</span>
+                    <button class="check-in-from-qr-btn w-full bg-green-500 text-white py-2 rounded hover:bg-green-600" data-booking-id="${booking.id}">
+                        ${icons.check} เช็คอิน
                     </button>
                 </div>
             `;
         } else if (state.userRole === 'staff' && booking.checkInTime && booking.status !== 'completed') {
             checkInSection = `
-                <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded">
-                    <h4 class="font-medium text-green-800 mb-2">การรับสินค้า</h4>
-                    <div class="text-sm text-green-700 mb-3">
-                        <span class="font-medium">เวลาเช็คอิน:</span>
+                <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 class="font-semibold text-blue-800 mb-2">การรับสินค้า</h4>
+                    <div class="flex justify-between text-sm text-blue-700 mb-3">
+                        <span>เวลาเช็คอิน:</span>
                         <span>${formatDateTime(booking.checkInTime)}</span>
                     </div>
-                    <button class="complete-from-qr-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full flex items-center justify-center space-x-2" data-booking-id="${booking.id}">
-                        ${icons.check} <span>ยืนยันรับคิว</span>
+                    <button class="complete-from-qr-btn w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600" data-booking-id="${booking.id}">
+                        ${icons.check} ยืนยันรับคิว
                     </button>
                 </div>
             `;
         }
         
         modalContent = `
-            <div class="bg-white rounded-lg p-6 max-w-md w-full">
-                <div class="text-center mb-6">
-                    <div class="mb-4">
-                        <h3 class="text-xl font-bold text-gray-900">${booking.companyName}</h3>
-                        <p class="text-gray-600">${booking.referenceNumber}</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 text-sm">
-                        <div class="text-center">
-                            <div class="text-gray-500">วันที่</div>
-                            <div class="font-medium">${formatThaiDate(booking.date)}</div>
+            <div class="p-6">
+                <div class="bg-white rounded-lg">
+                    <div class="border-b pb-4 mb-4">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-lg font-semibold">${booking.companyName}</h3>
+                            <span class="text-sm text-gray-500">${booking.referenceNumber}</span>
                         </div>
-                        <div class="text-center">
-                            <div class="text-gray-500">เวลา</div>
-                            <div class="font-medium">${formatTime24h(booking.eta)}</div>
+                        <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
+                            <div>
+                                <span class="text-gray-600">วันที่</span>
+                                <div class="font-medium">${formatThaiDate(booking.date)}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">เวลา</span>
+                                <div class="font-medium">${formatTime24h(booking.eta)}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">คนขับ</span>
+                                <div class="font-medium">${booking.driverName}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">ทะเบียนรถ</span>
+                                <div class="font-medium">${booking.licensePlate}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">จำนวนบิล</span>
+                                <div class="font-medium">${booking.invoiceCount}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">จำนวนกล่อง</span>
+                                <div class="font-medium">${booking.boxCount}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">จำนวนชิ้น</span>
+                                <div class="font-medium">${booking.itemCount}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">สถานะ</span>
+                                ${statusBadge}
+                            </div>
+                            ${documentsInfo}
                         </div>
-                        <div class="text-center">
-                            <div class="text-gray-500">คนขับ</div>
-                            <div class="font-medium">${booking.driverName}</div>
+                        ${booking.notes ? `
+                        <div class="mt-4 p-3 bg-gray-50 rounded">
+                            <span class="text-gray-600 text-sm">เอกสารเพิ่มเติม</span>
+                            <div class="text-sm mt-1">${booking.notes}</div>
                         </div>
-                        <div class="text-center">
-                            <div class="text-gray-500">ทะเบียนรถ</div>
-                            <div class="font-medium">${booking.licensePlate}</div>
+                        ` : ''}
+                        ${booking.documents && booking.documents.length > 0 ? `
+                        <div class="mt-4">
+                            <span class="text-gray-600 text-sm">เอกสารที่แนบ</span>
+                            <div class="mt-2 space-y-2">
+                                ${booking.documents.map(doc => `
+                                    <div class="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
+                                        <span>${doc.name}</span>
+                                        <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800">ดาวน์โหลด</button>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
-                        <div class="text-center">
-                            <div class="text-gray-500">จำนวนบิล</div>
-                            <div class="font-medium">${booking.invoiceCount}</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-gray-500">จำนวนกล่อง</div>
-                            <div class="font-medium">${booking.boxCount}</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-gray-500">จำนวนชิ้น</div>
-                            <div class="font-medium">${booking.itemCount}</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-gray-500">สถานะ</div>
-                            <div>${statusBadge}</div>
-                        </div>
-                        ${documentsInfo}
-                    </div>
-                    ${booking.notes ? `
-                    <div class="mt-4 p-3 bg-gray-50 rounded border text-left">
-                        <h4 class="font-medium text-gray-800 mb-1">เอกสารเพิ่มเติม</h4>
-                        <p class="text-sm text-gray-600">${booking.notes}</p>
-                    </div>
-                    ` : ''}
-                    ${booking.documents && booking.documents.length > 0 ? `
-                    <div class="mt-4 p-3 bg-gray-50 rounded border text-left">
-                        <h4 class="font-medium text-gray-800 mb-2">เอกสารที่แนบ</h4>
-                        <div class="space-y-2">
-                            ${booking.documents.map(doc => `
-                                <div class="flex items-center justify-between text-sm">
-                                    <span class="text-gray-600">${doc.name}</span>
-                                    <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800">
-                                        ดาวน์โหลด
-                                    </button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                    ${checkInSection}
-                    <div class="mt-6 p-4 bg-gray-50 rounded border">
-                        <div class="flex items-center justify-center space-x-2 text-sm text-gray-600 mb-3">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span>${booking.status === 'completed' ? 'ดำเนินการเสร็จสิ้น' : booking.checkInTime ? 'กำลังดำเนินการ' : 'รอการดำเนินการ'}</span>
-                        </div>
-                        <div class="flex space-x-3">
-                            ${state.userRole === 'staff' ? `<button class="evaluate-from-qr-btn bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 flex-1">ประเมิน KPI</button>` : ''}
-                            <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ปิด</button>
+                        ` : ''}
+                        ${checkInSection}
+                        <div class="mt-4 p-3 bg-gray-50 rounded text-center">
+                            <div class="text-sm text-gray-600 mb-2">
+                                ${booking.status === 'completed' ? 'ดำเนินการเสร็จสิ้น' : booking.checkInTime ? 'กำลังดำเนินการ' : 'รอการดำเนินการ'}
+                            </div>
+                            <div class="flex justify-center space-x-2">
+                                ${state.userRole === 'staff' ? `<button class="evaluate-from-qr-btn bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>` : ''}
+                                <button class="close-modal-btn bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">ปิด</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         `;
-        
         renderModalBase(modalContent, modal => {
             if (state.userRole === 'staff') {
                 modal.querySelector('.evaluate-from-qr-btn')?.addEventListener('click', () => {
@@ -2976,11 +2989,11 @@ const renderModal = (type, data = {}) => {
         });
     }
     else if(type === 'evaluate') {
-        const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
+        const booking = allBookingsById[state.selectedBookingId];
         let kpiInputs = kpiDefinitions.map(kpi => `
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">${kpi.label}</label>
-                <select class="kpi-select w-full border rounded px-3 py-2" data-kpi-id="${kpi.id}">
+            <div>
+                <label class="block text-sm font-medium mb-1">${kpi.label}</label>
+                <select class="kpi-select w-full px-3 py-2 border rounded-md" data-kpi-id="${kpi.id}">
                     <option value="0">-- เลือก --</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
@@ -2992,50 +3005,40 @@ const renderModal = (type, data = {}) => {
         `).join('');
         
         modalContent = `
-            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <h3 class="text-lg font-semibold mb-4">ประเมิน KPI</h3>
-                <p class="text-gray-600 mb-6">${booking.companyName}</p>
-                <form id="evaluation-form">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold mb-2">ประเมิน KPI</h3>
+                <p class="text-gray-600 mb-4">${booking?.companyName}</p>
+                <form id="evaluation-form" class="space-y-4">
                     ${kpiInputs}
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">ความคิดเห็นเพิ่มเติม</label>
-                        <textarea id="staff-comments" class="w-full border rounded px-3 py-2 h-20"></textarea>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">ความคิดเห็นเพิ่มเติม</label>
+                        <textarea id="staff-comments" class="w-full px-3 py-2 border rounded-md" rows="3"></textarea>
                     </div>
-                    <div class="mb-4">
-                        <button type="button" id="generate-summary-btn" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 flex items-center space-x-2">
-                            <span>✨</span> <span>สร้างสรุปผลด้วย AI</span>
-                        </button>
-                        <div id="gemini-loading" class="mt-2 text-blue-600 text-sm hidden">กำลังสร้างสรุป...</div>
+                    <div>
+                        <button type="button" id="generate-summary-btn" class="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 mb-2">✨ สร้างสรุปผลด้วย AI</button>
+                        <div id="gemini-loading" class="text-center text-gray-500 hidden">กำลังสร้างสรุป...</div>
+                        <textarea id="gemini-summary" class="w-full px-3 py-2 border rounded-md" rows="4" placeholder="สรุปผลการประเมินจะแสดงที่นี่"></textarea>
                     </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">สรุปผลการประเมิน</label>
-                        <textarea id="gemini-summary" class="w-full border rounded px-3 py-2 h-32" readonly></textarea>
-                    </div>
-                    <div class="flex space-x-3">
-                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึกผล</button>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">บันทึกผล</button>
                     </div>
                 </form>
             </div>
         `;
-        
         renderModalBase(modalContent, modal => {
             modal.querySelector('#evaluation-form').addEventListener('submit', handleEvaluationSubmit);
             modal.querySelector('#generate-summary-btn').addEventListener('click', handleGenerateSummary);
         });
-    } 
-    else if(type === 'qrCode') {
+    } else if(type === 'qrCode') {
         const booking = data.booking;
         const referenceNumber = booking.referenceNumber || generateReferenceNumber();
         
         if (!booking.referenceNumber) {
             booking.referenceNumber = referenceNumber;
-            const dateStr = state.selectedDate;
-            const bookingIndex = state.data.bookings[dateStr].findIndex(b => b.id === booking.id);
-            if (bookingIndex !== -1) {
-                state.data.bookings[dateStr][bookingIndex].referenceNumber = referenceNumber;
-                setDoc(docRef, state.data);
-            }
+            // Update in Firestore
+            const bookingRef = doc(db, "bookings", booking.id);
+            updateDoc(bookingRef, { referenceNumber: referenceNumber });
         }
         
         const qrData = JSON.stringify({
@@ -3051,20 +3054,13 @@ const renderModal = (type, data = {}) => {
             itemCount: booking.itemCount,
             notes: booking.notes || ''
         });
-        
+
         modalContent = `
-            <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
-                <div class="mb-6">
-                    <div class="mb-4">
-                        <svg class="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                </div>
-                <h3 class="text-xl font-bold text-gray-900 mb-2">การจองคิวสำเร็จ!</h3>
-                <p class="text-gray-600 mb-6">กรุณาแสดง QR Code นี้แก่เจ้าหน้าที่เมื่อมาถึง</p>
-                <div class="mb-6">
-                    <div id="qrcode-container" class="flex justify-center mb-4"></div>
+            <div class="p-6 text-center">
+                <div class="text-green-600 text-6xl mb-4">✅</div>
+                <h3 class="text-lg font-semibold text-green-800 mb-2">การจองคิวสำเร็จ!</h3>
+                <p class="text-gray-600 mb-4">กรุณาแสดง QR Code นี้แก่เจ้าหน้าที่เมื่อมาถึง</p>
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
                     <div class="text-sm text-gray-600 space-y-1">
                         <p><strong>เลขกำกับ:</strong> ${referenceNumber}</p>
                         <p><strong>บริษัท:</strong> ${booking.companyName}</p>
@@ -3072,22 +3068,23 @@ const renderModal = (type, data = {}) => {
                         <p><strong>เวลา:</strong> ${formatTime24h(booking.eta)}</p>
                     </div>
                 </div>
-                <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                    <p class="text-yellow-800 text-sm font-medium">สำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้ในอัลบั้ม</p>
+                <div id="qrcode-container" class="flex justify-center mb-4"></div>
+                <div class="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                    <p class="text-sm text-red-800"><strong>สำคัญ:</strong> กรุณาบันทึกภาพ QR Code นี้ไว้ในอัลบั้ม</p>
                 </div>
-                <div class="mb-6 text-xs text-gray-500 space-y-1">
-                    <div class="p-3 bg-blue-50 border border-blue-200 rounded">
-                        <p class="font-medium text-blue-800">หมายเหตุ: กรุณามาตามเวลาที่กำหนด</p> 
-                        <p class="text-blue-700">หากมาช้าต้องไปต่อคิวตามปกติ</p>
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+                    <div class="text-sm text-yellow-800 space-y-1">
+                        <p><strong>หมายเหตุ:</strong> กรุณามาตามเวลาที่กำหนด</p>
+                        <p>หากมาช้าต้องไปต่อคิวตามปกติ</p>
                     </div>
                 </div>
-                <div class="flex space-x-3">
-                    <button id="download-qr-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">ดาวน์โหลด QR Code</button>
-                    <button id="qr-close-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">ยืนยัน</button>
+                <div class="flex justify-center space-x-2">
+                    <button id="download-qr-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ดาวน์โหลด QR Code</button>
+                    <button id="qr-close-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">ยืนยัน</button>
                 </div>
             </div>
         `;
-        
+
         renderModalBase(modalContent, modal => {
             generateQRCode(qrData, modal.querySelector('#qrcode-container'));
             
@@ -3097,23 +3094,19 @@ const renderModal = (type, data = {}) => {
                 render();
             });
         });
-    } 
-    else if(type === 'manualReferenceInput') {
+    } else if(type === 'manualReferenceInput') {
         modalContent = `
-            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="p-6">
                 <h3 class="text-lg font-semibold mb-4">ป้อนเลขกำกับ</h3>
-                <form id="manual-reference-form">
-                    <div class="mb-4">
-                        <input type="text" id="manual-reference-input" placeholder="กรอกเลขกำกับ" required class="w-full border rounded px-3 py-2">
-                    </div>
-                    <div class="flex space-x-3">
-                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
-                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">ค้นหา</button>
+                <form id="manual-reference-form" class="space-y-4">
+                    <input type="text" id="manual-reference-input" placeholder="เลขกำกับ" required class="w-full px-3 py-2 border rounded-md">
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ค้นหา</button>
                     </div>
                 </form>
             </div>
         `;
-        
         renderModalBase(modalContent, modal => {
             modal.querySelector('#manual-reference-form').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -3126,13 +3119,7 @@ const renderModal = (type, data = {}) => {
 };
 
 const findBookingById = (bookingId) => {
-    for (const date in state.data.bookings) {
-        const booking = state.data.bookings[date].find(b => b.id == bookingId);
-        if (booking) {
-            return { ...booking, date };
-        }
-    }
-    return null;
+    return allBookingsById[bookingId] || null;
 };
 
 const handleSearchByReference = () => {
@@ -3152,8 +3139,9 @@ const handleSearchByReferenceNumber = (referenceNumber) => {
 };
 
 async function callGemini(prompt) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
     const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -3175,44 +3163,48 @@ const handleGenerateSummary = async (e) => {
     const modal = e.target.closest('.modal-backdrop');
     const loadingIndicator = modal.querySelector('#gemini-loading');
     const summaryTextarea = modal.querySelector('#gemini-summary');
-    const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
-    
+    const booking = allBookingsById[state.selectedBookingId];
+
     loadingIndicator.style.display = 'block';
     summaryTextarea.value = '';
-    
+
     let kpiScoresText = "";
     kpiDefinitions.forEach(kpi => {
         const score = modal.querySelector(`.kpi-select[data-kpi-id="${kpi.id}"]`).value;
         if(score > 0) {
-             kpiScoresText += `- ${kpi.label}: ${score}/5\n`;
+            kpiScoresText += `- ${kpi.label}: ${score}/5\n`;
         }
     });
-    
+
     const staffComments = modal.querySelector('#staff-comments').value;
+
     const prompt = `
-         กรุณาสร้างบทสรุปผลการประเมินการจัดส่งสินค้าสำหรับซัพพลายเออร์ในรูปแบบที่เป็นทางการและกระชับเป็นภาษาไทย โดยใช้ข้อมูลต่อไปนี้:
-         - ชื่อซัพพลายเออร์: ${booking.companyName}
-         - วันที่จัดส่ง: ${formatThaiDate(state.selectedDate)}
-         - ผลการประเมิน KPI:
-         ${kpiScoresText}
-         - ความคิดเห็นเพิ่มเติมจากพนักงาน: ${staffComments || 'ไม่มี'}
-         ให้สรุปภาพรวมของประสิทธิภาพ และอาจจะมีการกล่าวถึงข้อดีหรือสิ่งที่ควรปรับปรุงตามความเหมาะสมจากคะแนนและความคิดเห็น
+        กรุณาสร้างบทสรุปผลการประเมินการจัดส่งสินค้าสำหรับซัพพลายเออร์ในรูปแบบที่เป็นทางการและกระชับเป็นภาษาไทย โดยใช้ข้อมูลต่อไปนี้:
+
+        - ชื่อซัพพลายเออร์: ${booking?.companyName}
+        - วันที่จัดส่ง: ${formatThaiDate(state.selectedDate)}
+        - ผลการประเมิน KPI:
+        ${kpiScoresText}
+        - ความคิดเห็นเพิ่มเติมจากพนักงาน: ${staffComments || 'ไม่มี'}
+
+        ให้สรุปภาพรวมของประสิทธิภาพ และอาจจะมีการกล่าวถึงข้อดีหรือสิ่งที่ควรปรับปรุงตามความเหมาะสมจากคะแนนและความคิดเห็น
     `;
-    
+
     const summary = await callGemini(prompt);
     summaryTextarea.value = summary;
     loadingIndicator.style.display = 'none';
 };
 
-const handleLogin = (e) => { 
-    e.preventDefault(); 
+const handleLogin = (e) => {
+    e.preventDefault();
     const username = document.getElementById('username').value.trim();
     
     const user = state.data.users?.find(u => u.email === username || u.name === username);
     
     if (user) {
-        user.lastLogin = new Date().toISOString();
-        setDoc(docRef, state.data);
+        // Update last login in Firestore
+        const userRef = doc(db, "users", user.id);
+        updateDoc(userRef, { lastLogin: new Date().toISOString() });
         
         state.isLoggedIn = true;
         state.userRole = user.role;
@@ -3237,7 +3229,7 @@ const handleLogin = (e) => {
     }
 };
 
-const handleLogout = () => { 
+const handleLogout = () => {
     state.isLoggedIn = false;
     state.userRole = 'guest';
     state.currentUser = null;
@@ -3248,62 +3240,35 @@ const handleLogout = () => {
 const handleEvaluationSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
-    const booking = state.data.bookings[state.selectedDate].find(b => b.id == state.selectedBookingId);
+    const bookingId = state.selectedBookingId;
     
-    if(booking) {
-        booking.evaluation = {
-            scores: {},
-            staffComments: form.querySelector('#staff-comments').value,
-            geminiSummary: form.querySelector('#gemini-summary').value
-        };
+    const evaluation = {
+        scores: {},
+        staffComments: form.querySelector('#staff-comments').value,
+        geminiSummary: form.querySelector('#gemini-summary').value
+    };
+    
+    form.querySelectorAll('.kpi-select').forEach(sel => {
+        evaluation.scores[sel.dataset.kpiId] = parseInt(sel.value, 10);
+    });
+    
+    try {
+        const bookingRef = doc(db, "bookings", bookingId);
+        await updateDoc(bookingRef, { evaluation: evaluation });
         
-        form.querySelectorAll('.kpi-select').forEach(sel => {
-            booking.evaluation.scores[sel.dataset.kpiId] = parseInt(sel.value, 10);
-        });
-        
-        try {
-            await setDoc(docRef, state.data);
-            
-            closeModal(form.closest('.modal-backdrop')); 
-            showSuccessAnimation("บันทึกผลสำเร็จ!");
-        } catch (error) {
-            console.error('Error saving evaluation:', error);
-            showAlert('เกิดข้อผิดพลาดในการบันทึกผลการประเมิน กรุณาลองใหม่');
-        }
+        closeModal(form.closest('.modal-backdrop'));
+        showSuccessAnimation("บันทึกผลสำเร็จ!");
+    } catch (error) {
+        console.error('Error saving evaluation:', error);
+        showAlert('เกิดข้อผิดพลาดในการบันทึกผลการประเมิน กรุณาลองใหม่');
     }
 };
 
 const handleDeleteBooking = async (bookingId) => {
     try {
-        let bookingToDelete = null;
-        let bookingDate = null;
-        
-        for (const date in state.data.bookings) {
-            const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
-            if (bookingIndex !== -1) {
-                bookingToDelete = state.data.bookings[date][bookingIndex];
-                bookingDate = date;
-                break;
-            }
-        }
-        
-        if (!bookingToDelete) {
-            showAlert('ไม่พบข้อมูลการจองคิวที่ต้องการลบ');
-            return;
-        }
-        
-        state.data.bookings[bookingDate] = state.data.bookings[bookingDate].filter(b => b.id != bookingId);
-        
-        if (state.data.bookings[bookingDate].length === 0) {
-            delete state.data.bookings[bookingDate];
-        }
-        
-        await setDoc(docRef, state.data);
-        
+        await deleteDoc(doc(db, "bookings", bookingId));
         showAlert('ลบคิวสำเร็จแล้ว');
-        
         render();
-        
     } catch (error) {
         console.error('Error deleting booking:', error);
         showAlert('เกิดข้อผิดพลาดในการลบคิว กรุณาลองใหม่');
@@ -3312,23 +3277,19 @@ const handleDeleteBooking = async (bookingId) => {
 
 const renderHolidayDetailsModal = (holiday, date) => {
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
-            <div class="mb-4">
-                <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-            </div>
+        <div class="p-6 text-center">
+            <div class="text-red-600 text-6xl mb-4">🚫</div>
             <h3 class="text-lg font-semibold text-red-800 mb-2">วันหยุด</h3>
-            <h4 class="text-xl font-bold text-gray-900 mb-2">${holiday.name}</h4>
-            <p class="text-gray-600 mb-4">${formatThaiDate(date)}</p>
-            <p class="text-sm text-gray-500 mb-6">ประเภท: ${
-                holiday.type === 'company' ? 'วันหยุดบริษัท' : 
-                holiday.type === 'public' ? 'วันหยุดราชการ' : 
+            <p class="text-red-600 mb-2">${holiday.name}</p>
+            <p class="text-gray-600 mb-2">${formatThaiDate(date)}</p>
+            <p class="text-sm text-gray-500 mb-4">ประเภท: ${
+                holiday.type === 'company' ? 'วันหยุดบริษัท' :
+                holiday.type === 'public' ? 'วันหยุดราชการ' :
                 'วันหยุดพิเศษ'
             }</p>
-            ${holiday.description ? `<p class="text-sm text-gray-600 mb-6">${holiday.description}</p>` : ''}
+            ${holiday.description ? `<p class="text-sm text-gray-600 mb-4">${holiday.description}</p>` : ''}
             <div class="flex justify-center">
-                <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
+                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ปิด</button>
             </div>
         </div>
     `;
@@ -3346,12 +3307,10 @@ const renderCompanyKpiDetails = (companyName) => {
     }
     
     const bookingHistoryHtml = company.bookings.map(booking => `
-        <div class="bg-white border rounded p-3">
-            <div class="flex items-center justify-between mb-2">
-                <span class="font-medium">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</span>
-                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                    คะแนน: ${booking.score.toFixed(2)}
-                </span>
+        <div class="bg-white p-4 rounded-lg border">
+            <div class="flex justify-between items-start mb-2">
+                <div class="text-sm font-medium">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</div>
+                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">คะแนน: ${booking.score.toFixed(2)}</span>
             </div>
             <div class="text-sm text-gray-600">
                 คนขับ: ${booking.driverName} | ทะเบียน: ${booking.licensePlate}
@@ -3360,17 +3319,19 @@ const renderCompanyKpiDetails = (companyName) => {
     `).join('');
     
     const modalContent = `
-        <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
             <h3 class="text-lg font-semibold mb-4">ประวัติการจัดส่ง - ${companyName}</h3>
-            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
-                <h4 class="font-semibold text-blue-800">คะแนนเฉลี่ย: ${company.averageScore.toFixed(2)}</h4>
-                <p class="text-blue-700">จากการจัดส่งทั้งหมด ${company.bookings.length} ครั้ง</p>
+            <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">คะแนนเฉลี่ย: ${company.averageScore.toFixed(2)}</div>
+                    <div class="text-sm text-blue-700">จากการจัดส่งทั้งหมด ${company.bookings.length} ครั้ง</div>
+                </div>
             </div>
             <div class="space-y-3 max-h-96 overflow-y-auto">
                 ${bookingHistoryHtml}
             </div>
             <div class="flex justify-center mt-6">
-                <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
+                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ปิด</button>
             </div>
         </div>
     `;
@@ -3378,10 +3339,11 @@ const renderCompanyKpiDetails = (companyName) => {
     renderModalBase(modalContent);
 };
 
-// ฟังก์ชัน init ที่แก้ไขแล้ว - ส่วนที่สำคัญที่สุด
+// REFACTORED INITIALIZATION FUNCTION
 const init = async () => {
     try {
         await signInAnonymously(auth);
+        
         // 1. Get or create a persistent Guest Session ID from localStorage
         let sessionId = localStorage.getItem('guestSessionId');
         if (!sessionId) {
@@ -3390,48 +3352,103 @@ const init = async () => {
         }
         state.guestSessionId = sessionId;
         
-        onSnapshot(docRef, async (docSnap) => {
-            if (docSnap.exists()) {
-                state.data = docSnap.data();
-                if (!state.data.companies || state.data.companies.length === 0) {
-                    state.data.companies = initialCompanies;
-                }
-                if (!state.data.bookings) state.data.bookings = {};
-                if (!state.data.holidays) state.data.holidays = [];
-                if (!state.data.users) state.data.users = [];
-                if (!state.data.notifications) state.data.notifications = [];
+        // 2. Setup config collection listener
+        const configRef = doc(db, "config", "main");
+        onSnapshot(configRef, async (configSnap) => {
+            if (configSnap.exists()) {
+                const configData = configSnap.data();
+                state.data.companies = configData.companies || [];
             } else {
-                // แสดงข้อผิดพลาดแทนการสร้างเอกสารใหม่
-                console.error('ไม่พบเอกสารข้อมูลหลัก (schedules/main)');
-                showAlert('เกิดข้อผิดพลาด: ไม่พบข้อมูลระบบ กรุณาติดต่อผู้ดูแลระบบ');
-                return;
+                // First run setup - create config document with initial companies
+                const initialConfigData = {
+                    companies: initialCompanies
+                };
+                await setDoc(configRef, initialConfigData);
+                state.data.companies = initialCompanies;
             }
-            
-            // 2. Fetch guest's booking history from Firebase using the session ID
-            if (state.guestSessionId && state.userRole === 'guest') {
-                const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
-                const guestDocSnap = await getDoc(guestDocRef);
-                if (guestDocSnap.exists()) {
-                    const guestData = guestDocSnap.data();
-                    state.guestBookingIds = guestData.bookingIds || [];
-                    // Sync Firebase data back to localStorage to ensure it's up to date
-                    localStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
-                } else {
-                    // If no session in Firebase, try to load from localStorage as a fallback
-                    state.guestBookingIds = JSON.parse(localStorage.getItem('guestBookingIds')) || [];
-                }
-            }
-            
+        });
+        
+        // 3. Setup holidays collection listener
+        onSnapshot(collection(db, "holidays"), (holidaysSnapshot) => {
+            state.data.holidays = [];
+            holidaysSnapshot.forEach((doc) => {
+                state.data.holidays.push({ id: doc.id, ...doc.data() });
+            });
+            state.data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
+            render();
+        });
+        
+        // 4. Setup users collection listener
+        onSnapshot(collection(db, "users"), (usersSnapshot) => {
+            state.data.users = [];
+            usersSnapshot.forEach((doc) => {
+                state.data.users.push({ id: doc.id, ...doc.data() });
+            });
+            render();
+        });
+        
+        // 5. Setup notifications collection listener
+        onSnapshot(collection(db, "notifications"), (notificationsSnapshot) => {
+            state.data.notifications = [];
+            notificationsSnapshot.forEach((doc) => {
+                state.data.notifications.push({ id: doc.id, ...doc.data() });
+            });
             updateUnreadNotifications();
-            setupAutomaticNotifications();
-            requestNotificationPermission();
+            render();
+        });
+        
+        // 6. Setup bookings collection listener (most complex)
+        onSnapshot(collection(db, "bookings"), (bookingsSnapshot) => {
+            // Clear existing data
+            state.data.bookings = {};
+            allBookingsById = {};
+            
+            // Process each booking document
+            bookingsSnapshot.forEach((doc) => {
+                const booking = { id: doc.id, ...doc.data() };
+                const date = booking.date;
+                
+                // Add to allBookingsById for quick lookup
+                allBookingsById[doc.id] = booking;
+                
+                // Group by date for calendar display
+                if (!state.data.bookings[date]) {
+                    state.data.bookings[date] = [];
+                }
+                state.data.bookings[date].push(booking);
+            });
+            
+            // Sort bookings by time within each date
+            Object.keys(state.data.bookings).forEach(date => {
+                state.data.bookings[date].sort((a, b) => a.eta.localeCompare(b.eta));
+            });
             
             render();
         });
         
+        // 7. Fetch guest's booking history from Firebase using the session ID
+        if (state.guestSessionId && state.userRole === 'guest') {
+            const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
+            const guestDocSnap = await getDoc(guestDocRef);
+            
+            if (guestDocSnap.exists()) {
+                const guestData = guestDocSnap.data();
+                state.guestBookingIds = guestData.bookingIds || [];
+                // Sync Firebase data back to localStorage to ensure it's up to date
+                localStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
+            } else {
+                // If no session in Firebase, try to load from localStorage as a fallback
+                state.guestBookingIds = JSON.parse(localStorage.getItem('guestBookingIds')) || [];
+            }
+        }
+        
+        setupAutomaticNotifications();
+        requestNotificationPermission();
+        
         state.userRole = 'guest';
         state.isLoggedIn = false;
         state.currentView = 'calendar';
+        render();
     } catch (error) {
         console.error('Error initializing app:', error);
         showAlert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ กรุณารีเฟรชหน้าเว็บ');
