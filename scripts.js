@@ -18,7 +18,6 @@ const auth = getAuth(app);
 const docRef = doc(db, "schedules", "main");
 const GEMINI_API_KEY = "AIzaSyD_d2g0XgVxkClULTmh6dfl_eKIkRuVo7E";
 
-// --- MODIFIED START ---
 let state = {
     isLoggedIn: false, 
     userRole: 'guest', 
@@ -36,30 +35,44 @@ let state = {
     notificationPage: 1,
     notificationsPerPage: 10
 };
-// --- MODIFIED END ---
 
 const icons = {
-    dashboard: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`,
-    calendar: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`,
-    kpi: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
-    queue: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`,
-    company: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`,
-    booking: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
-    scanner: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>`,
-    manual: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`,
-    check: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-    clock: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-    users: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`,
-    notifications: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`,
-    trash: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
+    dashboard: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z"></path></svg>`,
+    calendar: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`,
+    kpi: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
+    queue: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+    company: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`,
+    booking: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`,
+    scanner: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>`,
+    manual: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`,
+    check: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`,
+    clock: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+    users: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`,
+    notifications: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.868 19.504l5.612-5.612c.357-.357.566-.848.566-1.357V9c0-2.334 1.79-4.24 4-4.24s4 1.906 4 4.24v3.535c0 .509.209 1 .566 1.357l5.612 5.612"></path></svg>`,
+    trash: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
 };
 
-const kpiDefinitions = [{ id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }];
+const kpiDefinitions = [
+    { id: 'productQuality', label: 'คุณภาพสินค้า/บริการ' }, 
+    { id: 'onTimeDelivery', label: 'การจัดส่งตรงเวลา' }, 
+    { id: 'documentAccuracy', label: 'ความถูกต้องของเอกสาร' }, 
+    { id: 'compliance', label: 'การปฏิบัติตามข้อตกลง' }
+];
 
 const appContainer = document.getElementById('app-container');
 const modalContainer = document.getElementById('modal-container');
 
-const initialCompanies = ["Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบอร์ซีฟ จำกัด", "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอ๊บเบรชีฟ โปรดักส์ จำกัด", "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"];
+const initialCompanies = [
+    "Yokohama Thai sale ประเทศไทยจำกัด", "บริษัทโตชิโนซัพพลายจำกัด", "กิม แม็กซ์", "คิมเบอร์ลี่ย์", "เคเอสโกลเด้น", 
+    "บริษัทแคบริคไทยแลนด์จำกัด", "หจก.จันทร์ประไพภัทรอินดัสตรี", "จีระวัฒนา", "ชินเตอโปรดัดจำกัด", "โชลุชั่น", 
+    "เซ้าซิตีโพลีเคมจำกัด", "ณภัทร​โปรดักส์", "เด็นโซ่​เซลล์​", "ต.สยามคอมเมอร์เชียล", "โตโยไทร์", "ทีเอสที อินเตอร์ โปรดักส์", 
+    "ทีโอเอ", "บริษัท ไทยเคเคอุตสาหกรรม จำกัด", "ไทยนาโต้แพคกิ้งเทป", "ไทยหัวเว่ย", "นณภางค์อินเตอร์เทรด", 
+    "บจก.ณภัทร​โปรดักส์", "บจก.เอดีบี ซีแลนท์", "บจ.สยามคีนิคเชลส์", "บริษัท จีกูู๊ด จำกัด", "บริษัท บางกอกแอ๊บเบอร์ซีฟ จำกัด", 
+    "บริษัท สยามคีนิค เซลส์ จำกัด", "บริษัท อัลติเมท พลัส ซัพพลาย", "บริษัท อัสซ่า อัลลอย", "บริษัท โออีเอ็ม แอ๊บเบรชีฟ โปรดักส์ จำกัด", 
+    "บจก ประมาณและบุตรจำกัด", "บจก ผลธัญญะจำกัด", "พี.ดี.เอส", "พี.เอ.พี", "มโนยนต์ชัย", "รวงข้าว 168 กรุ๊ป (ประเทศไทย)", 
+    "วรากุล", "ศรีอุดมสรรพ์", "สมาร์ท ปริ้นท์ แฟบริค จำกัด", "สยามวาลา", "เอฟเอ็มพีดิสทริบิวชั่น", "เอ็น.ดี รับเบอร์ จำกัด มหาชน", 
+    "FUCHS", "IPA", "MNI", "NCR", "SMTV", "บริษัท ยัวซ่าแบตเตอรี่ ประเทศไทย จำกัด (มหาชน)", "บริษัท มายสกาย จำกัด"
+];
 
 const formatDate = (date) => {
     if (!(date instanceof Date)) {
@@ -196,7 +209,7 @@ const downloadQRCodeForSafari = () => {
         
         if (navigator.userAgent.includes('Safari')) {
             const newWindow = window.open();
-            newWindow.document.write(`<img src="${img.src}" />`);
+            newWindow.document.write(`<img src="${img.src}" alt="QR Code" style="max-width:100%;height:auto;"/>`);
         } else {
             document.body.appendChild(link);
             link.click();
@@ -210,18 +223,22 @@ const downloadQRCodeForSafari = () => {
 const showQRCodeError = (container, data) => {
     const parsedData = JSON.parse(data);
     container.innerHTML = `
-        <div class="text-center p-4">
-            <svg class="w-16 h-16 mx-auto text-red-500 mb-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-            </svg>
-            <p class="text-red-500 font-bold">ไม่สามารถสร้าง QR Code ได้</p>
-            <p class="text-sm text-gray-600 mt-2">กรุณาบันทึกข้อมูลการจองคิว</p>
-            <div class="mt-4 p-3 bg-gray-100 rounded text-left">
-                <p class="text-sm"><strong>รหัสจอง:</strong> ${parsedData.id}</p>
-                <p class="text-sm"><strong>เลขกำกับ:</strong> ${parsedData.referenceNumber}</p>
-                <p class="text-sm"><strong>บริษัท:</strong> ${parsedData.company}</p>
-                <p class="text-sm"><strong>วันที่:</strong> ${parsedData.date}</p>
-                <p class="text-sm"><strong>เวลา:</strong> ${parsedData.time}</p>
+        <div class="text-center p-6 bg-red-50 border border-red-200 rounded-lg">
+            <div class="mb-4">
+                <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-red-800 mb-2">ไม่สามารถสร้าง QR Code ได้</h3>
+            <p class="text-red-600 mb-4">กรุณาบันทึกข้อมูลการจองคิว</p>
+            <div class="bg-white p-4 rounded border text-left">
+                <div class="space-y-2 text-sm">
+                    <div><strong>รหัสจอง:</strong> ${parsedData.id}</div>
+                    <div><strong>เลขกำกับ:</strong> ${parsedData.referenceNumber}</div>
+                    <div><strong>บริษัท:</strong> ${parsedData.company}</div>
+                    <div><strong>วันที่:</strong> ${parsedData.date}</div>
+                    <div><strong>เวลา:</strong> ${parsedData.time}</div>
+                </div>
             </div>
         </div>
     `;
@@ -396,7 +413,7 @@ const requestNotificationPermission = () => {
 };
 
 const renderModalBase = (content, attachListenersCallback) => {
-    const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 fade-in"><div class="card bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl text-left max-h-[90vh] overflow-y-auto">${content}</div></div>`;
+    const modalHtml = `<div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">${content}</div>`;
     modalContainer.insertAdjacentHTML('beforeend', modalHtml);
     const modal = modalContainer.lastElementChild;
     if (modal) {
@@ -420,18 +437,22 @@ const closeModal = (modalElement) => {
 
 const showAlert = (message) => {
     const modalContent = `
-        <p class="text-lg mb-4">${message}</p>
-        <button class="close-modal-btn btn btn-primary w-full">ตกลง</button>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <p class="text-gray-800 mb-4">${message}</p>
+            <button class="close-modal-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">ตกลง</button>
+        </div>
     `;
     renderModalBase(modalContent);
 };
 
 const showConfirm = (message, onConfirm) => {
     const modalContent = `
-        <p class="text-lg mb-6">${message}</p>
-        <div class="flex justify-center gap-4">
-            <button class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-            <button id="confirm-ok" class="btn btn-danger">ยืนยัน</button>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <p class="text-gray-800 mb-4">${message}</p>
+            <div class="flex space-x-3">
+                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                <button id="confirm-ok" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 flex-1">ยืนยัน</button>
+            </div>
         </div>
     `;
     renderModalBase(modalContent, modal => {
@@ -444,11 +465,15 @@ const showConfirm = (message, onConfirm) => {
 
 const showSuccessAnimation = (message, onComplete) => {
     const modalContent = `
-        <svg class="success-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-            <circle class="success-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-            <path class="success-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-        </svg>
-        <h3 class="text-xl font-bold mt-4" style="color: var(--success-color);">${message}</h3>`;
+        <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
+            <div class="mb-4">
+                <svg class="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <p class="text-gray-800 text-lg font-semibold">${message}</p>
+        </div>
+    `;
     renderModalBase(modalContent);
     setTimeout(() => {
         closeModal();
@@ -458,103 +483,105 @@ const showSuccessAnimation = (message, onComplete) => {
 
 const render = () => {
     const header = `
-        <header class="hero-section">
-            <div class="container mx-auto px-4">
-                <div class="flex flex-col md:flex-row justify-between items-center">
-                    <div>
-                        <h1 class="hero-title">ระบบจัดการคิว</h1>
-                        <p class="hero-subtitle">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p>
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <h1 class="text-xl font-bold text-gray-900">ระบบจัดการคิว</h1>
+                            <p class="text-sm text-gray-500">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3 mt-4 md:mt-0">
-                        ${state.isLoggedIn ? `<button id="logout-btn" class="btn btn-secondary flex items-center gap-2">ออกจากระบบ</button>` : '<button id="staff-login-btn" class="btn btn-primary flex items-center gap-2">พนักงาน</button>'}
-                        <button id="quick-scan-btn" class="btn btn-success flex items-center gap-2">
-                            ${icons.scanner} สแกน QR
+                    <div class="flex items-center space-x-4">
+                        ${state.isLoggedIn ? `<button id="logout-btn" class="text-gray-600 hover:text-gray-900">ออกจากระบบ</button>` : '<button id="staff-login-btn" class="text-blue-600 hover:text-blue-800">พนักงาน</button>'}
+                        <button id="quick-scan-btn" class="flex items-center space-x-1 bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600">
+                            ${icons.scanner} <span>สแกน QR</span>
                         </button>
                         ${state.isLoggedIn ? `
-                        <button id="notifications-btn" class="btn btn-secondary flex items-center gap-2 relative">
-                            ${icons.notifications} การแจ้งเตือน
-                            ${state.unreadNotifications > 0 ? `<span class="notification-badge">${state.unreadNotifications}</span>` : ''}
+                        <button id="notifications-btn" class="relative flex items-center space-x-1 text-gray-600 hover:text-gray-900">
+                            ${icons.notifications} <span>การแจ้งเตือน</span>
+                            ${state.unreadNotifications > 0 ? `<span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">${state.unreadNotifications}</span>` : ''}
                         </button>
                         ` : ''}
                     </div>
                 </div>
             </div>
-        </header>`;
+        </header>
+    `;
     
     const manualSection = `
-        <div class="manual-section">
-            <div class="flex justify-between items-center">
-                <h3 class="manual-title flex items-center gap-2">
-                    ${icons.manual} คู่มือการใช้งานระบบจองคิว
-                </h3>
-                <button id="toggle-manual-btn" class="btn btn-primary btn-sm">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="text-blue-600">${icons.manual}</div>
+                    <h3 class="text-lg font-semibold text-blue-800">คู่มือการใช้งานระบบจองคิว</h3>
+                </div>
+                <button id="toggle-manual-btn" class="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded">
                     <span id="manual-toggle-text">แสดง</span>
                 </button>
             </div>
-            <div id="manual-content" class="manual-content">
-                <div class="manual-steps mt-4">
-                    <div class="manual-step">
-                        <h4 class="font-semibold">การเข้าสู่ระบบจัดการคิว</h4>
-                        <p>เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
+            <div id="manual-content" class="mt-4 space-y-4 hidden">
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">การเข้าสู่ระบบจัดการคิว</h4>
+                    <p class="text-gray-600 text-sm">เข้าใช้งานเว็บไซต์ได้ที่ borneoship.netlify.app หรือสแกน QR Code เพื่อเข้าสู่หน้าเว็บไซต์ได้ทันที</p>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">การเลือกวันจัดส่งสินค้า</h4>
+                    <p class="text-gray-600 text-sm">เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
+                    <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        <p class="text-yellow-800 text-xs">หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
                     </div>
-                    <div class="manual-step">
-                        <h4 class="font-semibold">การเลือกวันจัดส่งสินค้า</h4>
-                        <p>เมื่อเข้าสู่ระบบแล้ว จะพบหน้าปฏิทินของ "ระบบจัดการคิว" กรุณาเลือกวันที่ต้องการเข้าส่งสินค้า โดยวันที่สามารถจองได้จะแสดงเป็นปุ่มที่กดได้</p>
-                        <div class="manual-important">
-                            <p>หมายเหตุ: หากวันใดขึ้นเป็นสีแดง แสดงว่าเป็นวันหยุดของบริษัท จะไม่สามารถจองคิวส่งสินค้าในวันดังกล่าวได้</p>
-                        </div>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">การกรอกข้อมูลการจอง</h4>
+                    <p class="text-gray-600 text-sm">หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
+                    <p class="text-gray-600 text-sm">ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
+                    <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        <p class="text-yellow-800 text-xs">หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
                     </div>
-                    <div class="manual-step">
-                        <h4 class="font-semibold">การกรอกข้อมูลการจอง</h4>
-                        <p>หลังจากเลือกวันที่แล้ว ระบบจะนำไปสู่หน้าจอที่แสดงปุ่ม "จองคิวลงสินค้า" กดปุ่มเพื่อเข้าสู่แบบฟอร์มการจอง</p>
-                        <p>ในส่วนของ "บริษัท" ให้เลือกชื่อบริษัท หากไม่มีในรายการ กรุณาเลือก "-- เพิ่มบริษัทใหม่ --" เพื่อกรอกข้อมูล</p>
-                        <div class="manual-important">
-                            <p>หมายเหตุ: หากเป็นการเพิ่มบริษัทใหม่กรุณาใช้ชื่อบริษัทแบบเต็มตามที่ระบุใน Invoice</p>
-                        </div>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">การกรอกรายละเอียด</h4>
+                    <p class="text-gray-600 text-sm">กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
+                    <ul class="mt-2 text-xs text-gray-600 space-y-1">
+                        <li>• ชื่อ-นามสกุล คนขับ: กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
+                        <li>• ทะเบียนรถ: ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
+                        <li>• จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น: กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
+                        <li>• เวลาที่คาดว่าจะมาถึง: กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
+                    <p class="text-gray-600 text-sm">สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
+                    <p class="text-gray-600 text-sm">คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
+                    <p class="text-gray-600 text-sm">ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">การยืนยันการจองและรับรหัสคิว</h4>
+                    <p class="text-gray-600 text-sm">เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
+                    <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        <p class="text-yellow-800 text-xs">หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
                     </div>
-                    <div class="manual-step">
-                        <h4 class="font-semibold">การกรอกรายละเอียด</h4>
-                        <p>กรอกข้อมูลในแบบฟอร์มให้ครบถ้วน:</p>
-                        <ul class="list-disc list-inside ml-4 mt-2">
-                            <li>ชื่อ-นามสกุล คนขับ: กรอกชื่อผู้ขับรถที่จะนำสินค้ามาส่ง</li>
-                            <li>ทะเบียนรถ: ระบุหมายเลขทะเบียนรถให้ถูกต้อง</li>
-                            <li>จำนวนบิล, จำนวนกล่อง, จำนวนชิ้น: กรอกข้อมูลตามความเป็นจริง โดยจำนวนชิ้นควรตรงกับข้อมูลในเอกสาร</li>
-                            <li>เวลาที่คาดว่าจะมาถึง: กดเพื่อเลือกช่วงเวลาที่คาดว่าจะเดินทางมาถึงคลังสินค้า</li>
-                        </ul>
+                    <p class="text-gray-600 text-sm">เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
+                    <div class="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                        <p class="text-green-800 text-xs">คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
                     </div>
-                    <div class="manual-step">
-                        <h4 class="font-semibold">การแนบเอกสารเพิ่มเติม (ถ้ามี)</h4>
-                        <p>สามารถแนบไฟล์ Invoice และ P.O. เพื่อเพิ่มความรวดเร็วในการตรวจสอบสินค้าของพนักงาน</p>
-                        <p>คลิกที่ช่องสำหรับแนบไฟล์ และเลือกไฟล์จากอุปกรณ์</p>
-                        <p>ไฟล์ที่รองรับ ได้แก่ PDF, JPG, PNG, DOC, และ DOCX โดยมีขนาดสูงสุดไม่เกิน 5 MB ต่อไฟล์</p>
-                    </div>
-                    <div class="manual-step">
-                        <h4 class="font-semibold">การยืนยันการจองและรับรหัสคิว</h4>
-                        <p>เมื่อกรอกข้อมูลครบถ้วนแล้ว ให้กดปุ่ม "ยืนยันการจอง"</p>
-                        <div class="manual-important">
-                            <p>หมายเหตุ: หากเวลาที่เลือกมีผู้จองเต็มแล้ว ระบบจะทำการเลื่อนเวลาให้ 10 นาที โดยอัตโนมัติ</p>
-                        </div>
-                        <p>เมื่อการจองสำเร็จ ระบบจะแสดง QR Code และรายละเอียดการจอง</p>
-                        <div class="manual-important">
-                            <p>คำแนะนำสำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้เพื่อใช้แสดงแก่พนักงานคลังสินค้าเมื่อเดินทางมาถึง</p>
-                        </div>
-                    </div>
-                    <div class="manual-step">
-                        <h4 class="font-semibold">ข้อควรทราบ</h4>
-                        <ul class="list-disc list-inside ml-4 mt-2">
-                            <li>สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
-                            <li class="important-note">หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
-                            <li class="important-note">กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
-                            <li>หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
-                        </ul>
-                    </div>
-                    <div class="manual-step">
-                        <h4 class="font-semibold">การเช็คอินเมื่อถึงคลังสินค้า</h4>
-                        <p>เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
-                        <p>พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
-                        <div class="manual-important">
-                            <p>คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
-                        </div>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">ข้อควรทราบ</h4>
+                    <ul class="text-gray-600 text-sm space-y-1">
+                        <li>• สามารถเดินทางมาถึงคลังสินค้า ก่อนเวลาที่จองไว้ได้</li>
+                        <li>• หากมาสายกว่าเวลาที่จองไว้ การจองดังกล่าวจะถือเป็นโมฆะ และจะต้องเข้าคิวแบบ Walk-in ตามปกติ</li>
+                        <li>• กรุณาหลีกเลี่ยงการจองคิวโดยที่ยังไม่มีความแน่นอนในการนำส่งสินค้าโดยเด็ดขาด เนื่องจากอาจส่งผลต่อการพิจารณาให้ความช่วยเหลือในกรณีสินค้ามีปัญหาในครั้งต่อไป</li>
+                        <li>• หากมีปัญหาเพิ่มเติม กรุณาติดต่อฝ่ายการตลาดเพื่อประสานงานกับทางคลังสินค้าทันที</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <h4 class="font-semibold text-gray-800 mb-2">การเช็คอินเมื่อถึงคลังสินค้า</h4>
+                    <p class="text-gray-600 text-sm">เมื่อเดินทางมาถึงคลังสินค้า ให้แสดง QR Code ที่ได้รับจากการจองคิวให้กับพนักงานเพื่อทำการสแกน</p>
+                    <p class="text-gray-600 text-sm">พนักงานจะทำการสแกน QR Code และกดปุ่ม "เช็คอิน" เพื่อบันทึกเวลาที่คุณมาถึง</p>
+                    <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <p class="text-blue-800 text-xs">คำแนะนำ: หากพนักงานกดเช็คอินแล้วไม่มีอะไรเกิดขึ้น กรุณาแจ้งพนักงานให้ลองรีเฟรชหน้าจอแล้วทำการสแกนใหม่อีกครั้ง</p>
                     </div>
                 </div>
             </div>
@@ -574,23 +601,24 @@ const render = () => {
         case 'notifications': viewContent = renderStaffNav() + renderNotificationsView(); break;
     }
     
-    appContainer.innerHTML = header + `<div class="fade-in">${viewContent}</div>`;
+    appContainer.innerHTML = header + `<main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">${viewContent}</main>`;
     attachAllListeners();
 };
 
 const renderStaffNav = () => `
-    <div class="mb-6 bg-white p-2 rounded-lg shadow-sm">
-        <div class="flex flex-wrap gap-2 justify-center md:justify-start">
-            <button data-view="dashboard" class="staff-nav-btn ${state.currentView === 'dashboard' ? 'active' : ''}">${icons.dashboard} Dashboard</button>
-            <button data-view="calendar" class="staff-nav-btn ${state.currentView === 'calendar' ? 'active' : ''}">${icons.calendar} ปฏิทิน</button>
-            <button data-view="holidays" class="staff-nav-btn ${state.currentView === 'holidays' ? 'active' : ''}">${icons.booking} วันหยุด</button>
-            <button data-view="kpi" class="staff-nav-btn ${state.currentView === 'kpi' ? 'active' : ''}">${icons.kpi} KPI</button>
-            <button data-view="bookingDetails" class="staff-nav-btn ${state.currentView === 'bookingDetails' ? 'active' : ''}">${icons.booking} รายละเอียด</button>
-            <button data-view="users" class="staff-nav-btn ${state.currentView === 'users' ? 'active' : ''}">${icons.users} ผู้ใช้</button>
-            <button data-view="notifications" class="staff-nav-btn ${state.currentView === 'notifications' ? 'active' : ''}">${icons.notifications} การแจ้งเตือน</button>
-            <button data-view="scanner" class="staff-nav-btn ${state.currentView === 'scanner' ? 'active' : ''}">${icons.scanner} สแกน QR</button>
+    <nav class="bg-gray-50 border-b mb-6">
+        <div class="flex space-x-1 overflow-x-auto">
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="dashboard">${icons.dashboard} Dashboard</button>
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="calendar">${icons.calendar} ปฏิทิน</button>
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="holidays">${icons.booking} วันหยุด</button>
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="kpi">${icons.kpi} KPI</button>
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="bookingDetails">${icons.booking} รายละเอียด</button>
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="users">${icons.users} ผู้ใช้</button>
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="notifications">${icons.notifications} การแจ้งเตือน</button>
+            <button class="staff-nav-btn px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 whitespace-nowrap" data-view="scanner">${icons.scanner} สแกน QR</button>
         </div>
-    </div>`;
+    </nav>
+`;
 
 const renderDashboard = () => {
     const todayStr = formatDate(new Date());
@@ -604,74 +632,81 @@ const renderDashboard = () => {
     
     const queueItemsHtml = todayBookings.length > 0
         ? todayBookings.map(b => `
-            <li class="flex justify-between items-center p-2 rounded hover:bg-violet-50 cursor-pointer dashboard-item" data-booking-id="${b.id}">
-                <div class="flex items-center gap-2">
-                    <span>${formatTime24h(b.eta)} - ${b.companyName}</span>
-                    <span class="font-mono text-sm">${b.licensePlate}</span>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                <div class="flex-1">
+                    <div class="font-medium text-gray-900">${formatTime24h(b.eta)} - ${b.companyName}</div>
+                    <div class="text-sm text-gray-500">${b.licensePlate}</div>
                 </div>
-                <span class="text-xs text-violet-600">ดูรายละเอียด</span>
-            </li>
+                <button class="text-blue-600 hover:text-blue-800 text-sm">ดูรายละเอียด</button>
+            </div>
         `).join('')
-        : `<p class="text-center text-slate-500 py-4">ไม่มีคิวสำหรับวันนี้</p>`;
-
+        : `<div class="text-center py-8 text-gray-500">ไม่มีคิวสำหรับวันนี้</div>`;
+    
     const stats = getAttendanceStats();
-
+    
     return `
-    <div class="mb-4">
-        ${state.userRole === 'guest' ? '<button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> กลับไปยังปฏิทิน</button>' : ''}
+    <div class="mb-6">
+        ${state.userRole === 'guest' ? '<button id="back-to-calendar-btn" class="mb-4 text-blue-600 hover:text-blue-800">← กลับไปยังปฏิทิน</button>' : ''}
     </div>
     
-    <div class="attendance-stats mb-6">
-        <div class="stat-card">
-            <div class="stat-value stat-on-time">${stats.onTime}</div>
-            <div class="stat-label">มาตรงเวลา</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+            <div class="text-3xl font-bold text-green-600">${stats.onTime}</div>
+            <div class="text-green-800">มาตรงเวลา</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value stat-late">${stats.late}</div>
-            <div class="stat-label">มาสาย</div>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <div class="text-3xl font-bold text-red-600">${stats.late}</div>
+            <div class="text-red-800">มาสาย</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value stat-total">${stats.total}</div>
-            <div class="stat-label">รับสินค้าแล้ว</div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+            <div class="text-3xl font-bold text-blue-600">${stats.total}</div>
+            <div class="text-blue-800">รับสินค้าแล้ว</div>
         </div>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-violet-50 border-violet-200 dashboard-item" data-type="today">
-            <div class="p-3 rounded-full bg-violet-100">${icons.queue}</div>
-            <div class="dashboard-item-title">
-                <h3 class="font-semibold text-violet-800">คิวสำหรับวันนี้</h3>
-                <p class="text-3xl font-bold text-violet-600">${todayBookings.length}<span class="text-base font-medium ml-1">คิว</span></p>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="dashboard-item bg-white border rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow" data-type="today">
+            <div class="flex items-center mb-4">
+                <div class="text-blue-600 mr-3">${icons.queue}</div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">คิวสำหรับวันนี้</h3>
+                    <p class="text-gray-600">${todayBookings.length}คิว</p>
+                </div>
             </div>
-            <span class="text-xs text-violet-600">ดูทั้งหมด</span>
+            <button class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
         </div>
-        <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-green-50 border-green-200 dashboard-item" data-type="next7days">
-            <div class="p-3 rounded-full bg-green-100">${icons.calendar}</div>
-            <div class="dashboard-item-title">
-                <h3 class="font-semibold text-green-800">คิวใน 7 วันข้างหน้า</h3>
-                <p class="text-3xl font-bold text-green-600">${next7daysBookings}<span class="text-base font-medium ml-1">คิว</span></p>
+        <div class="dashboard-item bg-white border rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow" data-type="next7days">
+            <div class="flex items-center mb-4">
+                <div class="text-green-600 mr-3">${icons.calendar}</div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">คิวใน 7 วันข้างหน้า</h3>
+                    <p class="text-gray-600">${next7daysBookings}คิว</p>
+                </div>
             </div>
-            <span class="text-xs text-green-600">ดูทั้งหมด</span>
+            <button class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
         </div>
-        <div class="card p-5 rounded-xl shadow-lg flex items-center gap-4 bg-sky-50 border-sky-200 dashboard-item" data-type="companies">
-            <div class="p-3 rounded-full bg-sky-100">${icons.company}</div>
-            <div class="dashboard-item-title">
-                <h3 class="font-semibold text-sky-800">บริษัทซัพพลายเออร์</h3>
-                <p class="text-3xl font-bold text-sky-600">${state.data.companies.length}<span class="text-base font-medium ml-1">บริษัท</span></p>
+        <div class="dashboard-item bg-white border rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow" data-type="companies">
+            <div class="flex items-center mb-4">
+                <div class="text-purple-600 mr-3">${icons.company}</div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">บริษัทซัพพลายเออร์</h3>
+                    <p class="text-gray-600">${state.data.companies.length}บริษัท</p>
+                </div>
             </div>
-            <span class="text-xs text-sky-600">ดูทั้งหมด</span>
+            <button class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
         </div>
     </div>
-    <div class="card p-5 rounded-xl shadow-lg mt-6">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-semibold">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3>
-            <button id="view-all-today-btn" class="btn btn-primary btn-sm">ดูทั้งหมด</button>
+    
+    <div class="bg-white border rounded-lg">
+        <div class="flex items-center justify-between p-6 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">รายการคิววันนี้ (${formatThaiDate(todayStr)})</h3>
+            <button id="view-all-today-btn" class="text-blue-600 hover:text-blue-800 text-sm">ดูทั้งหมด</button>
         </div>
-        <ul class="space-y-2">${queueItemsHtml}</ul>
-    </div>`;
+        <div class="p-6 space-y-3">${queueItemsHtml}</div>
+    </div>
+    `;
 };
 
-// --- MODIFIED START ---
 const renderCalendar = () => {
     const date = new Date(state.currentDate);
     const month = date.getMonth();
@@ -682,16 +717,16 @@ const renderCalendar = () => {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set time to midnight for accurate date comparison
-
+    
     let guestNoticeHtml = '';
     if (state.userRole === 'guest') {
         guestNoticeHtml = `
-            <div class="guest-data-notice">
-                ข้อมูลการจองของคุณจะถูกบันทึกไว้ในเบราว์เซอร์นี้สำหรับการใช้งานครั้งถัดไป
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p class="text-blue-800 text-sm">ข้อมูลการจองของคุณจะถูกบันทึกไว้ในเบราว์เซอร์นี้สำหรับการใช้งานครั้งถัดไป</p>
             </div>
         `;
     }
-
+    
     let myBookingsHtml = '';
     if (state.userRole === 'guest' && state.guestBookingIds.length > 0) {
          const allMyBookings = [];
@@ -703,14 +738,17 @@ const renderCalendar = () => {
              });
          });
          allMyBookings.sort((a,b) => a.date.localeCompare(b.date) || b.eta.localeCompare(b.eta));
-
          if(allMyBookings.length > 0) {
-              myBookingsHtml = `<div class="card p-4 rounded-xl shadow-lg mb-6 bg-violet-50 border-violet-200"><h3 class="font-semibold text-violet-800 mb-2">สรุปคิวของฉัน</h3><ul class="space-y-1 text-sm">` +
-              allMyBookings.map(b => `<li class="text-violet-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</li>`).join('') + `</ul></div>`;
+              myBookingsHtml = `<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-green-800 mb-3">สรุปคิวของฉัน</h3>
+                <div class="space-y-2">` +
+              allMyBookings.map(b => `<div class="text-sm text-green-700">${new Date(b.date).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})} ${formatTime24h(b.eta)} - ${b.companyName}</div>`).join('') + `
+                </div>
+              </div>`;
          }
     }
     
-    let daysHtml = Array(firstDay).fill('<div class="border border-violet-100"></div>').join('');
+    let daysHtml = Array(firstDay).fill('<div class="calendar-day-empty"></div>').join('');
     for (let day = 1; day <= daysInMonth; day++) {
         const currentDateObj = new Date(year, month, day);
         const dateStr = formatDate(currentDateObj);
@@ -722,23 +760,23 @@ const renderCalendar = () => {
         const dayOfWeek = currentDateObj.getDay();
         
         let dayClass = 'calendar-day p-2 border border-violet-100 flex flex-col rounded-md';
-        let dayContent = `<span class="font-bold">${day}</span>`;
-
+        let dayContent = `<div class="font-semibold">${day}</div>`;
+        
         if (isPast) {
-            dayClass += ' disabled';
+            dayClass += ' disabled bg-gray-100 text-gray-400';
         } else {
-            dayClass += ' cursor-pointer';
+            dayClass += ' cursor-pointer hover:bg-blue-50';
         }
         
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-            dayClass += ' weekend-day';
-            dayContent += `<span class="weekend-label">วันหยุด</span>`;
+            dayClass += ' weekend-day bg-red-50 border-red-200';
+            dayContent += `<div class="text-xs text-red-600">วันหยุด</div>`;
         } else if (holiday) {
             dayClass += ' bg-red-50 border-red-200';
             const holidayName = holiday.name.length > 12 ? holiday.name.substring(0, 12) + '...' : holiday.name;
-            dayContent += `<span class="text-xs text-red-600 mt-auto font-medium holiday-name" title="${holiday.name}">${holidayName}</span>`;
+            dayContent += `<div class="text-xs text-red-600">${holidayName}</div>`;
         } else if (isToday) {
-            dayClass += ' today';
+            dayClass += ' today bg-blue-100 border-blue-300';
         } else if (isFull) {
             dayClass += ' bg-red-50';
         }
@@ -751,46 +789,53 @@ const renderCalendar = () => {
                 const myBookings = bookings.filter(b => state.guestBookingIds.includes(b.id));
                 
                 if (myBookings.length > 0) {
-                    dayContent += `<span class="text-xs mt-auto font-semibold" style="color: var(--accent-color);">คิวของคุณ: ${myBookings.map(b => formatTime24h(b.eta)).join(', ')}</span>`;
+                    dayContent += `<div class="text-xs text-green-600">คิวของคุณ: ${myBookings.map(b => formatTime24h(b.eta)).join(', ')}</div>`;
                 } else {
-                    dayContent += `<span class="text-xs mt-auto font-semibold" style="color: var(--accent-color);">${bookings.length} คิว</span>`;
+                    dayContent += `<div class="text-xs text-gray-600">${bookings.length} คิว</div>`;
                 }
             } else {
-                dayContent += `<span class="text-xs mt-auto font-semibold" style="color: var(--accent-color);">${state.data.bookings[dateStr].length} คิว</span>`;
+                dayContent += `<div class="text-xs text-gray-600">${state.data.bookings[dateStr].length} คิว</div>`;
             }
         }
         
         if (isFull && !holiday && dayOfWeek !== 0 && dayOfWeek !== 6) {
-            dayContent += '<span class="text-xs text-red-500 mt-auto">เต็ม</span>';
+            dayContent += '<div class="text-xs text-red-600">เต็ม</div>';
         }
         
-        daysHtml += `<div data-date="${dateStr}" class="${dayClass}">${dayContent}</div>`;
+        daysHtml += `<div class="${dayClass}" data-date="${dateStr}">${dayContent}</div>`;
     }
-
+    
     return guestNoticeHtml + myBookingsHtml + `
-        <main class="card p-4 md:p-5 rounded-xl shadow-lg">
-            <div class="flex justify-between items-center mb-4">
-                <button id="prev-month-btn" class="p-2 rounded-full hover:bg-violet-100">&lt;</button>
-                <h2 class="text-lg md:text-xl font-semibold">${monthName}</h2>
-                <button id="next-month-btn" class="p-2 rounded-full hover:bg-violet-100">&gt;</button>
+        <div class="bg-white border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-6">
+                <button id="prev-month-btn" class="p-2 hover:bg-gray-100 rounded">&lt;</button>
+                <h2 class="text-xl font-semibold text-gray-900">${monthName}</h2>
+                <button id="next-month-btn" class="p-2 hover:bg-gray-100 rounded">&gt;</button>
             </div>
-            <div class="grid grid-cols-7 text-center font-semibold text-sm text-slate-500 mb-2">
-                <div class="text-red-600">อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div class="text-red-600">ส</div>
+            <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="text-center font-medium text-gray-500 p-2">อา</div>
+                <div class="text-center font-medium text-gray-500 p-2">จ</div>
+                <div class="text-center font-medium text-gray-500 p-2">อ</div>
+                <div class="text-center font-medium text-gray-500 p-2">พ</div>
+                <div class="text-center font-medium text-gray-500 p-2">พฤ</div>
+                <div class="text-center font-medium text-gray-500 p-2">ศ</div>
+                <div class="text-center font-medium text-gray-500 p-2">ส</div>
             </div>
             <div class="grid grid-cols-7 gap-1">${daysHtml}</div>
             ${state.userRole === 'staff' ? `
-            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                    </svg>
-                    <p class="text-sm text-blue-800">วันหยุด: <span class="font-medium">${(state.data.holidays || []).length}</span> วัน</p>
+            <div class="mt-6 pt-6 border-t">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-4 h-4 bg-red-100 border border-red-200 rounded"></div>
+                        <span class="text-sm text-gray-600">วันหยุด: ${(state.data.holidays || []).length} วัน</span>
+                    </div>
                 </div>
             </div>
             ` : ''}
-        </main>`;
+        </div>
+    `;
 };
-// --- MODIFIED END ---
+
 const renderDailyQueue = () => {
     const dateStr = state.selectedDate;
     const bookings = state.data.bookings[dateStr] || [];
@@ -799,62 +844,65 @@ const renderDailyQueue = () => {
     const queueItemsHtml = bookings.length > 0
         ? bookings.map((booking, index) => {
             const isGuestBooking = state.guestBookingIds.includes(booking.id);
-            if(state.userRole === 'guest' && !isGuestBooking) return `<div class="card bg-slate-100 p-4 rounded-lg">คิวที่ ${index + 1}: จองแล้ว</div>`;
+            if(state.userRole === 'guest' && !isGuestBooking) return `<div class="p-4 bg-gray-50 rounded border text-center text-gray-500">คิวที่ ${index + 1}: จองแล้ว</div>`;
             
             let statusBadge = '';
             if (booking.checkInTime) {
                 if (booking.status === 'completed') {
-                    statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                    statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
                 } else if (checkIfLate(booking)) {
-                    statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                    statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
                 } else {
-                    statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                    statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
                 }
             } else {
-                statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+                statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
             }
             
-            return `<div class="card ${isGuestBooking ? 'bg-violet-50 border-l-4 border-violet-500' : ''} p-4 rounded-lg shadow-sm">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                    <div>
-                        <p class="font-bold text-lg">${booking.companyName} ${isGuestBooking ? '<span class="text-xs text-violet-600">(คิวของคุณ)</span>' : ''}</p>
-                        <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
-                        ${booking.referenceNumber ? `<p class="text-xs text-violet-600 font-medium">เลขกำกับ: <span class="reference-number">${booking.referenceNumber}</span></p>` : ''}
+            return `
+            <div class="bg-white border rounded-lg p-4">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-900">${booking.companyName} ${isGuestBooking ? '(คิวของคุณ)' : ''}</h3>
+                        <p class="text-gray-600">${booking.driverName} - ${booking.licensePlate}</p>
+                        ${booking.referenceNumber ? `<p class="text-sm text-gray-500">เลขกำกับ: ${booking.referenceNumber}</p>` : ''}
                         ${statusBadge}
                     </div>
                     <div class="text-right">
-                        <p class="font-bold text-xl text-violet-600">${formatTime24h(booking.eta)}</p>
-                        <p class="text-xs text-slate-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</p>
-                        ${booking.checkInTime ? `<p class="text-xs text-green-600">เช็คอิน: ${formatDateTime(booking.checkInTime)}</p>` : ''}
+                        <div class="text-lg font-semibold text-blue-600">${formatTime24h(booking.eta)}</div>
+                        <div class="text-sm text-gray-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
+                        ${booking.checkInTime ? `<div class="text-xs text-gray-400">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
                     </div>
                 </div>
-                <div class="mt-2">
-                    <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
+                <div class="flex items-center justify-between">
+                    <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
                 </div>
                 ${state.userRole === 'staff' ? `
-                    <div class="mt-4 border-t pt-2 flex gap-2">
-                        ${!booking.checkInTime ? `<button data-booking-id="${booking.id}" class="check-in-btn btn btn-success btn-sm">เช็คอิน</button>` : ''}
-                        ${booking.checkInTime && booking.status !== 'completed' ? `<button data-booking-id="${booking.id}" class="complete-btn btn btn-primary btn-sm">ยืนยันรับคิว</button>` : ''}
-                        <button data-booking-id="${booking.id}" class="evaluate-btn btn btn-primary btn-sm">ประเมิน KPI</button>
-                        <button data-booking-id="${booking.id}" class="delete-booking-btn btn btn-danger btn-sm">ลบ</button>
+                    <div class="mt-3 pt-3 border-t flex space-x-2">
+                        ${!booking.checkInTime ? `<button class="check-in-btn bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600" data-booking-id="${booking.id}">เช็คอิน</button>` : ''}
+                        ${booking.checkInTime && booking.status !== 'completed' ? `<button class="complete-btn bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600" data-booking-id="${booking.id}">ยืนยันรับคิว</button>` : ''}
+                        <button class="evaluate-btn bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>
+                        <button class="delete-booking-btn bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600" data-booking-id="${booking.id}">ลบ</button>
                     </div>
                 ` : ''}
-            </div>`;
-        }).join('<div class="my-3"></div>')
-        : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิวในวันนี้</p>`;
+            </div>
+            `;
+        }).join('')
+        : `<div class="text-center py-8 text-gray-500">ยังไม่มีการจองคิวในวันนี้</div>`;
     
     return `
-        <main>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                <button id="back-to-calendar-btn" class="text-violet-600 hover:text-violet-800">&lt; กลับไป</button>
-                <h2 class="text-xl font-semibold">${formatThaiDate(dateStr)}</h2>
-                <div class="flex gap-2">
-                    ${state.userRole === 'guest' && !isFull ? '<button id="book-slot-btn" class="btn btn-primary">จองคิวลงสินค้า</button>' : ''}
-                    ${isFull ? '<span class="text-red-500 font-semibold">คิวเต็ม (20 คิว/วัน)</span>' : ''}
+        <div class="mb-6">
+            <div class="flex items-center justify-between">
+                <button id="back-to-calendar-btn" class="text-blue-600 hover:text-blue-800">< กลับไป</button>
+                <h1 class="text-2xl font-bold text-gray-900">${formatThaiDate(dateStr)}</h1>
+                <div>
+                    ${state.userRole === 'guest' && !isFull ? '<button id="book-slot-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">จองคิวลงสินค้า</button>' : ''}
+                    ${isFull ? '<span class="text-red-600 font-medium">คิวเต็ม (20 คิว/วัน)</span>' : ''}
                 </div>
             </div>
-            <div class="space-y-4">${queueItemsHtml}</div>
-        </main>`;
+        </div>
+        <div class="space-y-4">${queueItemsHtml}</div>
+    `;
 };
 
 const renderBookingDetails = () => {
@@ -872,88 +920,89 @@ const renderBookingDetails = () => {
             let statusBadge = '';
             if (booking.checkInTime) {
                 if (booking.status === 'completed') {
-                    statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                    statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
                 } else if (checkIfLate(booking)) {
-                    statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                    statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
                 } else {
-                    statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                    statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
                 }
             } else {
-                statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+                statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
             }
             
             return `
-            <div class="card p-4 rounded-lg shadow-sm mb-4">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                    <div>
-                        <p class="font-bold text-lg">${booking.companyName}</p>
-                        <p class="text-sm text-slate-500">${booking.driverName} - ${booking.licensePlate}</p>
-                        <p class="text-sm text-slate-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</p>
-                        ${booking.referenceNumber ? `<p class="text-xs text-violet-600 font-medium">เลขกำกับ: <span class="reference-number">${booking.referenceNumber}</span></p>` : ''}
+            <div class="bg-white border rounded-lg p-4">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-900">${booking.companyName}</h3>
+                        <p class="text-gray-600">${booking.driverName} - ${booking.licensePlate}</p>
+                        <p class="text-sm text-gray-500">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</p>
+                        ${booking.referenceNumber ? `<p class="text-sm text-gray-500">เลขกำกับ: ${booking.referenceNumber}</p>` : ''}
                         ${statusBadge}
                     </div>
                     <div class="text-right">
-                        <p class="text-sm text-slate-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</p>
-                        ${booking.checkInTime ? `<p class="text-xs text-green-600">เช็คอิน: ${formatDateTime(booking.checkInTime)}</p>` : ''}
+                        <div class="text-sm text-gray-500">${booking.boxCount} กล่อง / ${booking.itemCount} ชิ้น</div>
+                        ${booking.checkInTime ? `<div class="text-xs text-gray-400">เช็คอิน: ${formatDateTime(booking.checkInTime)}</div>` : ''}
                     </div>
                 </div>
-                <div class="mt-2">
-                    <button data-booking-id="${booking.id}" class="view-details-btn text-blue-500 text-sm hover:text-blue-700">ดูรายละเอียด</button>
+                <div class="flex items-center justify-between">
+                    <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
                 </div>
             </div>
         `}).join('')
-        : `<p class="text-center text-slate-500 py-8">ยังไม่มีการจองคิว</p>`;
+        : `<div class="text-center py-8 text-gray-500">ยังไม่มีการจองคิว</div>`;
     
     return `
     <div class="mb-6">
-        <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยัง Dashboard
-        </button>
+        <div class="flex items-center space-x-4">
+            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>กลับไปยัง Dashboard</span>
+            </button>
+        </div>
     </div>
-    <main>
-        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 class="text-2xl font-bold">รายละเอียดการจองคิวทั้งหมด</h2>
-            <div class="flex gap-2 w-full md:w-auto">
-                <input type="text" id="reference-search" placeholder="ค้นหาตามเลขกำกับ..." class="input flex-1 md:w-64">
-                <button id="search-reference-btn" class="btn btn-primary">ค้นหา</button>
+    <div class="bg-white border rounded-lg">
+        <div class="flex items-center justify-between p-6 border-b">
+            <h1 class="text-xl font-bold text-gray-900">รายละเอียดการจองคิวทั้งหมด</h1>
+            <div class="flex items-center space-x-2">
+                <input type="text" id="reference-search" placeholder="ค้นหาเลขกำกับ" class="border rounded px-3 py-2 text-sm">
+                <button id="search-reference-btn" class="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600">ค้นหา</button>
             </div>
         </div>
-        <div class="space-y-4">${bookingsHtml}</div>
-    </main>`;
+        <div class="p-6 space-y-4">${bookingsHtml}</div>
+    </div>
+    `;
 };
 
 const renderScannerView = () => {
     return `
-    <div class="mb-4">
-        <button id="back-from-scanner-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยังหน้าก่อนหน้า
-        </button>
+    <div class="mb-6">
+        <div class="flex items-center space-x-4">
+            <button id="back-from-scanner-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>กลับไปยังหน้าก่อนหน้า</span>
+            </button>
+        </div>
     </div>
-    <main class="max-w-2xl mx-auto">
-        <h2 class="text-2xl font-bold mb-6 text-center">สแกน QR Code</h2>
-        <div class="card p-6 rounded-xl shadow-lg">
-            <div id="video-container">
-                <video id="video" autoplay playsinline></video>
-                <div id="scan-region">
-                    <div class="scan-animation"></div>
+    <div class="bg-white border rounded-lg p-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">สแกน QR Code</h1>
+        <div class="max-w-md mx-auto">
+            <div class="relative mb-6">
+                <video id="video" class="w-full h-64 bg-gray-100 rounded border object-cover" autoplay muted playsinline></video>
+                <div class="absolute inset-0 border-2 border-blue-500 rounded pointer-events-none">
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white rounded"></div>
                 </div>
             </div>
-            <div class="mt-6 text-center">
-                <p class="text-slate-600 mb-4">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
-                <div class="flex justify-center gap-2 flex-wrap">
-                    <button id="start-camera-btn" class="btn btn-primary">เปิดกล้อง</button>
-                    <button id="stop-camera-btn" class="btn btn-danger hidden">ปิดกล้อง</button>
-                    <button id="manual-input-btn" class="btn btn-secondary">ป้อนเลขกำกับ</button>
+            <div class="text-center mb-6">
+                <p class="text-gray-600 mb-4">วาง QR Code ให้อยู่ในกรอเพื่อทำการสแกน</p>
+                <div class="space-x-3">
+                    <button id="start-camera-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">เปิดกล้อง</button>
+                    <button id="stop-camera-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 hidden">ปิดกล้อง</button>
+                    <button id="manual-input-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ป้อนเลขกำกับ</button>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
     `;
 };
 
@@ -965,50 +1014,50 @@ const renderUsersView = () => {
                          user.role === 'staff' ? 'role-staff' : 'role-viewer';
         
         return `
-        <tr>
-            <td>${user.name}</td>
-            <td>${user.email}</td>
-            <td><span class="role-badge ${roleClass}">${user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'staff' ? 'พนักงาน' : 'ผู้ดู'}</span></td>
-            <td>${user.lastLogin ? formatDateTime(user.lastLogin) : 'ไม่เคยเข้าสู่ระบบ'}</td>
-            <td>
-                <button data-user-id="${user.id}" class="edit-user-btn btn btn-sm btn-secondary">แก้ไข</button>
-                <button data-user-id="${user.id}" class="delete-user-btn btn btn-sm btn-danger">ลบ</button>
+        <tr class="border-b">
+            <td class="px-4 py-3">${user.name}</td>
+            <td class="px-4 py-3">${user.email}</td>
+            <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs ${roleClass}">${user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'staff' ? 'พนักงาน' : 'ผู้ดู'}</span></td>
+            <td class="px-4 py-3 text-sm text-gray-500">${user.lastLogin ? formatDateTime(user.lastLogin) : 'ไม่เคยเข้าสู่ระบบ'}</td>
+            <td class="px-4 py-3">
+                <button class="edit-user-btn text-blue-600 hover:text-blue-800 text-sm mr-2" data-user-id="${user.id}">แก้ไข</button>
+                <button class="delete-user-btn text-red-600 hover:text-red-800 text-sm" data-user-id="${user.id}">ลบ</button>
             </td>
         </tr>
         `;
     }).join('');
     
     return `
-    <div class="mb-4">
-        <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยัง Dashboard
-        </button>
-    </div>
-    <main>
-        <div class="mb-6 flex justify-between items-center">
-            <h2 class="text-2xl font-bold">จัดการผู้ใช้</h2>
-            <button id="add-user-btn" class="btn btn-primary">เพิ่มผู้ใช้</button>
+    <div class="mb-6">
+        <div class="flex items-center space-x-4">
+            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>กลับไปยัง Dashboard</span>
+            </button>
         </div>
-        <div class="card overflow-hidden">
-            <table class="user-table">
-                <thead>
+    </div>
+    <div class="bg-white border rounded-lg">
+        <div class="flex items-center justify-between p-6 border-b">
+            <h1 class="text-xl font-bold text-gray-900">จัดการผู้ใช้</h1>
+            <button id="add-user-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">เพิ่มผู้ใช้</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th>ชื่อ</th>
-                        <th>อีเมล</th>
-                        <th>บทบาท</th>
-                        <th>เข้าสู่ระบบครั้งล่าสุด</th>
-                        <th>การจัดการ</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">ชื่อ</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">อีเมล</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">บทบาท</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">เข้าสู่ระบบครั้งล่าสุด</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">การจัดการ</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${usersHtml || '<tr><td colspan="5" class="text-center py-4">ไม่มีผู้ใช้</td></tr>'}
+                    ${usersHtml || '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่มีผู้ใช้</td></tr>'}
                 </tbody>
             </table>
         </div>
-    </main>
+    </div>
     `;
 };
 
@@ -1039,19 +1088,21 @@ const renderNotificationsView = () => {
                          'ข้อความ';
         
         return `
-        <div class="notification-item ${notification.read ? '' : 'unread'}" data-notification-id="${notification.id}">
-            <div class="notification-header">
-                <div>
-                    <span class="notification-type ${typeClass}">${typeLabel}</span>
-                    <span class="notification-title">${notification.title}</span>
+        <div class="bg-white border rounded-lg p-4 ${!notification.read ? 'border-blue-200 bg-blue-50' : ''}">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span class="px-2 py-1 rounded text-xs ${typeClass}">${typeLabel}</span>
+                        <h3 class="font-semibold text-gray-900">${notification.title}</h3>
+                    </div>
+                    <p class="text-sm text-gray-500">${formatDateTime(notification.timestamp)}</p>
                 </div>
-                <div class="notification-time">${formatDateTime(notification.timestamp)}</div>
             </div>
-            <div class="notification-content">${notification.content}</div>
-            <div class="notification-actions">
-                ${!notification.read ? '<button class="mark-read-btn btn btn-sm btn-secondary mt-2">ทำเครื่องหมายว่าอ่านแล้ว</button>' : ''}
-                <button class="delete-notification-btn btn btn-sm btn-danger mt-2" data-notification-id="${notification.id}">
-                    ${icons.trash} ลบ
+            <p class="text-gray-700 mb-3">${notification.content}</p>
+            <div class="flex items-center justify-between">
+                ${!notification.read ? '<button class="mark-read-btn text-blue-600 hover:text-blue-800 text-sm">ทำเครื่องหมายว่าอ่านแล้ว</button>' : '<div></div>'}
+                <button class="delete-notification-btn text-red-600 hover:text-red-800 text-sm flex items-center space-x-1" data-notification-id="${notification.id}">
+                    ${icons.trash} <span>ลบ</span>
                 </button>
             </div>
         </div>
@@ -1060,44 +1111,44 @@ const renderNotificationsView = () => {
     
     // สร้างปุ่มสำหรับการแบ่งหน้า
     const paginationHtml = totalPages > 1 ? `
-        <div class="flex justify-center items-center gap-2 mt-4">
-            <button id="prev-page-btn" class="btn btn-sm btn-secondary ${state.notificationPage === 1 ? 'disabled' : ''}" 
-                    ${state.notificationPage === 1 ? 'disabled' : ''}>
+        <div class="flex items-center justify-center space-x-4 mt-6">
+            <button id="prev-page-btn" class="px-4 py-2 border rounded hover:bg-gray-50 ${state.notificationPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${state.notificationPage === 1 ? 'disabled' : ''}>
                 ก่อนหน้า
             </button>
-            <span class="text-sm text-gray-600">
+            <span class="text-gray-600">
                 หน้า ${state.notificationPage} จาก ${totalPages}
             </span>
-            <button id="next-page-btn" class="btn btn-sm btn-secondary ${state.notificationPage === totalPages ? 'disabled' : ''}" 
-                    ${state.notificationPage === totalPages ? 'disabled' : ''}>
+            <button id="next-page-btn" class="px-4 py-2 border rounded hover:bg-gray-50 ${state.notificationPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${state.notificationPage === totalPages ? 'disabled' : ''}>
                 ถัดไป
             </button>
         </div>
     ` : '';
     
     return `
-    <div class="mb-4">
-        <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยัง Dashboard
-        </button>
+    <div class="mb-6">
+        <div class="flex items-center space-x-4">
+            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>กลับไปยัง Dashboard</span>
+            </button>
+        </div>
     </div>
-    <main>
-        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 class="text-2xl font-bold">การแจ้งเตือน</h2>
-            <div class="flex gap-2 flex-wrap">
-                <button id="mark-all-read-btn" class="btn btn-secondary">ทำเครื่องหมายว่าอ่านทั้งหมด</button>
-                <button id="delete-read-btn" class="btn btn-danger">ลบที่อ่านแล้ว</button>
-                <button id="delete-all-btn" class="btn btn-danger">ลบทั้งหมด</button>
+    <div class="bg-white border rounded-lg">
+        <div class="flex items-center justify-between p-6 border-b">
+            <h1 class="text-xl font-bold text-gray-900">การแจ้งเตือน</h1>
+            <div class="flex space-x-2">
+                <button id="mark-all-read-btn" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">ทำเครื่องหมายว่าอ่านทั้งหมด</button>
+                <button id="delete-read-btn" class="bg-yellow-500 text-white px-3 py-2 rounded text-sm hover:bg-yellow-600">ลบที่อ่านแล้ว</button>
+                <button id="delete-all-btn" class="bg-red-500 text-white px-3 py-2 rounded text-sm hover:bg-red-600">ลบทั้งหมด</button>
             </div>
         </div>
-        <div class="card">
-            ${notificationsHtml || '<div class="p-4 text-center text-gray-500">ไม่มีการแจ้งเตือน</div>'}
+        <div class="p-6">
+            <div class="space-y-4">
+                ${notificationsHtml || '<div class="text-center py-8 text-gray-500">ไม่มีการแจ้งเตือน</div>'}
+            </div>
         </div>
         ${paginationHtml}
-    </main>
+    </div>
     `;
 };
 
@@ -1143,38 +1194,52 @@ const getKpiData = () => {
 const renderKpiView = () => {
     const kpiData = getKpiData();
     const filteredData = kpiData.filter(c => c.name.toLowerCase().includes(state.kpiSearchTerm.toLowerCase()));
+    
     const supplierListHtml = filteredData.length > 0 ? filteredData.map((company, index) => `
-        <div class="grid grid-cols-4 items-center p-3 rounded-lg hover:bg-violet-50">
-            <span class="font-bold">#${index + 1}</span>
-            <span class="col-span-2">${company.name}</span>
-            <span class="font-bold text-lg ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span>
+        <div class="bg-white border rounded-lg p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="text-2xl font-bold text-gray-400">#${index + 1}</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900">${company.name}</h3>
+                        <div class="text-lg font-bold text-blue-600">${company.averageScore.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button class="view-company-details-btn text-blue-600 hover:text-blue-800 text-sm" data-company="${company.name}">ดูประวัติการจัดส่ง</button>
+            </div>
         </div>
-        <div class="col-span-4">
-            <button data-company="${company.name}" class="view-company-details-btn text-blue-500 text-sm hover:text-blue-700">ดูประวัติการจัดส่ง</button>
-        </div>
-    `).join('') : `<p class="text-center text-slate-500 py-8">ไม่พบข้อมูลซัพพลายเอร์</p>`;
-
+    `).join('') : `<div class="text-center py-8 text-gray-500">ไม่พบข้อมูลซัพพลายเอร์</div>`;
+    
     return `
-    <div class="mb-4">
-        <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยัง Dashboard
-        </button>
+    <div class="mb-6">
+        <div class="flex items-center space-x-4">
+            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>กลับไปยัง Dashboard</span>
+            </button>
+        </div>
     </div>
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        <div class="lg:col-span-2 card p-5 rounded-xl shadow-lg">
-             <h2 class="text-2xl font-bold mb-4">ผลการประเมิน KPI ซัพพลายเอร์</h2>
-             <input type="text" id="kpi-search" placeholder="ค้นหาชื่อซัพพลายเอร์..." value="${state.kpiSearchTerm}" class="input w-full mb-4">
-             <div class="grid grid-cols-4 font-semibold text-slate-500 p-3 border-b-2"><span>อันดับ</span><span class="col-span-2">ชื่อบริษัท</span><span>คะแนนเฉลี่ย</span></div>
-             <div class="space-y-2 mt-2 custom-scroll" style="max-height: 400px; overflow-y: auto;">${supplierListHtml}</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white border rounded-lg p-6">
+             <h2 class="text-xl font-bold text-gray-900 mb-4">ผลการประเมิน KPI ซัพพลายเอร์</h2>
+             <input type="text" id="kpi-search" placeholder="ค้นหาบริษัท..." class="w-full border rounded px-3 py-2 mb-4" value="${state.kpiSearchTerm}">
+             <div class="space-y-3">
+                <div class="grid grid-cols-3 gap-4 text-sm font-medium text-gray-500 border-b pb-2">
+                    <div>อันดับ</div>
+                    <div>ชื่อบริษัท</div>
+                    <div>คะแนนเฉลี่ย</div>
+                </div>
+                ${supplierListHtml}
+             </div>
         </div>
-        <div class="card p-5 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-4">5 อันดับคะแนนสูงสุด</h2>
-            <canvas id="kpi-chart"></canvas>
+        <div class="bg-white border rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">5 อันดับคะแนนสูงสุด</h3>
+            <canvas id="kpi-chart" width="400" height="300"></canvas>
         </div>
-    </div>`;
+    </div>
+    `;
 };
 
 const renderHolidayManagement = () => {
@@ -1182,103 +1247,108 @@ const renderHolidayManagement = () => {
     const holidays = state.data.holidays || [];
     
     const holidayListHtml = holidays.map((holiday, index) => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-            <div class="flex items-center gap-3">
-                <div class="w-3 h-3 rounded-full ${holiday.type === 'company' ? 'bg-blue-500' : holiday.type === 'public' ? 'bg-red-500' : 'bg-green-500'}"></div>
-                <div>
-                    <p class="font-medium">${holiday.name}</p>
-                    <p class="text-sm text-gray-500">${formatThaiDate(holiday.date)} ${holiday.recurring ? '(ทุกปี)' : ''}</p>
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded border">
+            <div class="flex-1">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-gray-900">${holiday.name}</h4>
+                        <p class="text-sm text-gray-500">${formatThaiDate(holiday.date)} ${holiday.recurring ? '(ทุกปี)' : ''}</p>
+                    </div>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="text-xs px-2 py-1 rounded-full ${
-                    holiday.type === 'company' ? 'bg-blue-100 text-blue-700' : 
-                    holiday.type === 'public' ? 'bg-red-100 text-red-700' : 
-                    'bg-green-100 text-green-700'
+            <div class="flex items-center space-x-2">
+                <span class="px-2 py-1 rounded text-xs ${
+                    holiday.type === 'company' ? 'bg-blue-100 text-blue-800' : 
+                    holiday.type === 'public' ? 'bg-green-100 text-green-800' : 
+                    'bg-purple-100 text-purple-800'
                 }">
                     ${holiday.type === 'company' ? 'วันหยุดบริษัท' : 
                       holiday.type === 'public' ? 'วันหยุดราชการ' : 
                       'วันหยุดพิเศษ'}
                 </span>
-                <button type="button" onclick="deleteHoliday(${index})" class="text-red-500 hover:text-red-700">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                <button onclick="deleteHoliday(${index})" class="text-red-600 hover:text-red-800 p-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                     </svg>
                 </button>
             </div>
         </div>
     `).join('');
-
+    
     return `
     <div class="mb-6">
-        <button id="back-to-dashboard-btn" class="text-violet-600 hover:text-violet-800 flex items-center gap-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            กลับไปยัง Dashboard
-        </button>
+        <div class="flex items-center space-x-4">
+            <button id="back-to-dashboard-btn" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>กลับไปยัง Dashboard</span>
+            </button>
+        </div>
     </div>
-    <main>
-        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 class="text-2xl font-bold">จัดการวันหยุดบริษัท</h2>
-            <div class="flex gap-2">
-                <button id="add-holiday-btn" class="btn btn-primary flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+    <div class="bg-white border rounded-lg">
+        <div class="flex items-center justify-between p-6 border-b">
+            <h1 class="text-xl font-bold text-gray-900">จัดการวันหยุดบริษัท</h1>
+            <div class="flex space-x-2">
+                <button id="add-holiday-btn" class="flex items-center space-x-1 bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    เพิ่มวันหยุด
+                    <span>เพิ่มวันหยุด</span>
                 </button>
-                <button id="import-public-holidays-btn" class="btn btn-secondary flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                <button id="import-public-holidays-btn" class="flex items-center space-x-1 bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
                     </svg>
-                    นำเข้าวันหยุดราชการ
+                    <span>นำเข้าวันหยุดราชการ</span>
                 </button>
             </div>
         </div>
-        
+        <div class="p-6">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2">
-                <div class="card p-5 rounded-xl shadow-lg">
-                    <h3 class="text-lg font-semibold mb-4">รายการวันหยุด (${holidays.length} วัน)</h3>
-                    <div class="space-y-2 max-h-96 overflow-y-auto custom-scroll">
-                        ${holidays.length > 0 ? holidayListHtml : '<p class="text-center text-gray-500 py-8">ยังไม่มีวันหยุดที่กำหนด</p>'}
+                <div class="bg-white border rounded-lg">
+                    <div class="p-4 border-b">
+                        <h3 class="font-semibold text-gray-900">รายการวันหยุด (${holidays.length} วัน)</h3>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        ${holidays.length > 0 ? holidayListHtml : '<div class="text-center py-8 text-gray-500">ยังไม่มีวันหยุดที่กำหนด</div>'}
                     </div>
                 </div>
             </div>
-            
-            <div>
-                <div class="card p-5 rounded-xl shadow-lg">
-                    <h3 class="text-lg font-semibold mb-4">สถิติวันหยุด</h3>
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                            <span class="text-sm font-medium text-blue-700">วันหยุดบริษัท</span>
-                            <span class="text-lg font-bold text-blue-600">${holidays.filter(h => h.type === 'company').length}</span>
+            <div class="space-y-6">
+                <div class="bg-white border rounded-lg">
+                    <div class="p-4 border-b">
+                        <h3 class="font-semibold text-gray-900">สถิติวันหยุด</h3>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">วันหยุดบริษัท</span>
+                            <span class="font-semibold">${holidays.filter(h => h.type === 'company').length}</span>
                         </div>
-                        <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                            <span class="text-sm font-medium text-red-700">วันหยุดราชการ</span>
-                            <span class="text-lg font-bold text-red-600">${holidays.filter(h => h.type === 'public').length}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">วันหยุดราชการ</span>
+                            <span class="font-semibold">${holidays.filter(h => h.type === 'public').length}</span>
                         </div>
-                        <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                            <span class="text-sm font-medium text-green-700">วันหยุดพิเศษ</span>
-                            <span class="text-lg font-bold text-green-600">${holidays.filter(h => h.type === 'special').length}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">วันหยุดพิเศษ</span>
+                            <span class="font-semibold">${holidays.filter(h => h.type === 'special').length}</span>
                         </div>
                     </div>
                 </div>
-                
-                <div class="card p-5 rounded-xl shadow-lg mt-4">
-                    <h3 class="text-lg font-semibold mb-4">ข้อมูลเพิ่มเติม</h3>
-                    <div class="space-y-2 text-sm text-gray-600">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="font-semibold text-blue-800 mb-2">ข้อมูลเพิ่มเติม</h4>
+                    <div class="text-sm text-blue-700 space-y-1">
                         <p>• วันหยุดบริษัท: วันหยุดที่บริษัทกำหนดเอง</p>
                         <p>• วันหยุดราชการ: วันหยุดตามประกาศราชการ</p>
                         <p>• วันหยุดพิเศษ: วันหยุดกรณีพิเศษ</p>
-                        <p class="mt-3 text-xs text-orange-600">⚠️ ไม่สามารถจองคิวในวันหยุดได้</p>
-                        <p class="mt-3 text-xs text-red-600">⚠️ วันเสาร์และวันอาทิตย์เป็นวันหยุดสุดสัปดาห์ ไม่สามารถจองคิวได้</p>
+                        <p class="text-yellow-700">⚠️ ไม่สามารถจองคิวในวันหยุดได้</p>
+                        <p class="text-yellow-700">⚠️ วันเสาร์และวันอาทิตย์เป็นวันหยุดสุดสัปดาห์ ไม่สามารถจองคิวได้</p>
                     </div>
                 </div>
             </div>
         </div>
-    </main>`;
+        </div>
+    </div>
+    `;
 };
 
 const attachAllListeners = () => {
@@ -1513,12 +1583,9 @@ const attachCalendarListeners = () => {
     
     document.querySelectorAll('.calendar-day').forEach(day => {
         day.addEventListener('click', (e) => { 
-            // --- MODIFIED START ---
             if (e.currentTarget.classList.contains('disabled')) {
                 return; // Do nothing if the day is disabled (in the past)
             }
-            // --- MODIFIED END ---
-
             const clickedDate = e.currentTarget.dataset.date;
             const dateObj = new Date(clickedDate);
             const dayOfWeek = dateObj.getDay();
@@ -1546,9 +1613,10 @@ const attachKpiListeners = () => {
         state.kpiSearchTerm = e.target.value; 
         render(); 
     });
+    
     const kpiData = getKpiData().slice(0, 5);
     const ctx = document.getElementById('kpi-chart')?.getContext('2d');
-    if (ctx) {
+    if (ctx && typeof Chart !== 'undefined') {
         new Chart(ctx, { 
             type: 'bar', 
             data: { 
@@ -1602,15 +1670,12 @@ const startCamera = async () => {
         const video = document.getElementById('video');
         const startBtn = document.getElementById('start-camera-btn');
         const stopBtn = document.getElementById('stop-camera-btn');
-
         videoStream = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: 'environment' } 
         });
         video.srcObject = videoStream;
-
         startBtn.classList.add('hidden');
         stopBtn.classList.remove('hidden');
-
         scanInterval = setInterval(scanQRCode, 300);
     } catch (error) {
         console.error('Error accessing camera:', error);
@@ -1623,16 +1688,13 @@ const stopCamera = () => {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
-
     if (scanInterval) {
         clearInterval(scanInterval);
         scanInterval = null;
     }
-
     const video = document.getElementById('video');
     const startBtn = document.getElementById('start-camera-btn');
     const stopBtn = document.getElementById('stop-camera-btn');
-
     video.srcObject = null;
     startBtn.classList.remove('hidden');
     stopBtn.classList.add('hidden');
@@ -1642,21 +1704,20 @@ const scanQRCode = () => {
     const video = document.getElementById('video');
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-        if (code) {
-            clearInterval(scanInterval);
-            handleQRCodeScanned(code.data);
-            setTimeout(() => {
-                stopCamera();
-            }, 1000);
+        if (typeof jsQR !== 'undefined') {
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code) {
+                clearInterval(scanInterval);
+                handleQRCodeScanned(code.data);
+                setTimeout(() => {
+                    stopCamera();
+                }, 1000);
+            }
         }
     }
 };
@@ -1712,7 +1773,6 @@ const handleCheckIn = async (bookingId) => {
     try {
         let bookingToUpdate = null;
         let bookingDate = null;
-
         for (const date in state.data.bookings) {
             const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
             if (bookingIndex !== -1) {
@@ -1721,12 +1781,10 @@ const handleCheckIn = async (bookingId) => {
                 break;
             }
         }
-
         if (!bookingToUpdate) {
             showAlert('ไม่พบข้อมูลการจองคิว');
             return;
         }
-
         bookingToUpdate.checkInTime = new Date().toISOString();
         
         createNotification(
@@ -1752,7 +1810,6 @@ const handleCompleteBooking = async (bookingId) => {
     try {
         let bookingToUpdate = null;
         let bookingDate = null;
-
         for (const date in state.data.bookings) {
             const bookingIndex = state.data.bookings[date].findIndex(b => b.id == bookingId);
             if (bookingIndex !== -1) {
@@ -1761,12 +1818,10 @@ const handleCompleteBooking = async (bookingId) => {
                 break;
             }
         }
-
         if (!bookingToUpdate) {
             showAlert('ไม่พบข้อมูลการจองคิว');
             return;
         }
-
         bookingToUpdate.status = 'completed';
         bookingToUpdate.completedTime = new Date().toISOString();
         
@@ -1780,29 +1835,35 @@ const handleCompleteBooking = async (bookingId) => {
         showAlert('เกิดข้อผิดพลาดในการยืนยันการรับคิว กรุณาลองใหม่');
     }
 };
+
 const renderTimePickerModal = (bookingModal) => {
     const modalContent = `
-        <div class="flex justify-center items-center gap-2 mb-4">
-            <span id="hour-preview" class="text-4xl font-bold text-violet-500 cursor-pointer">--</span>
-            <span class="text-4xl font-bold">:</span>
-            <span id="minute-preview" class="text-4xl font-bold cursor-pointer">--</span>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-lg font-semibold mb-4">เลือกเวลา</h3>
+            <div class="text-center mb-4">
+                <div class="text-2xl font-mono">
+                    <span id="hour-preview" class="text-violet-500 cursor-pointer">--</span>
+                    <span>:</span>
+                    <span id="minute-preview" class="cursor-pointer">--</span>
+                </div>
+            </div>
+            <div id="clock-container" class="mb-6"></div>
+            <div class="flex space-x-3">
+                <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                <button id="confirm-time-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1" disabled>ยืนยัน</button>
+            </div>
         </div>
-        <div id="clock-container" class="clock-picker"></div>
-        <div class="flex justify-end gap-2 pt-4">
-            <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-            <button type="button" id="confirm-time-btn" class="btn btn-success" disabled>ยืนยัน</button>
-        </div>`;
+    `;
     
     renderModalBase(modalContent, modal => {
         let selectedHour = null;
         let selectedMinute = null;
         let currentPickerView = 'hours';
-
         const hourPreview = modal.querySelector('#hour-preview');
         const minutePreview = modal.querySelector('#minute-preview');
         const confirmBtn = modal.querySelector('#confirm-time-btn');
         const clockContainer = modal.querySelector('#clock-container');
-
+        
         const updatePreview = () => {
             hourPreview.textContent = selectedHour !== null ? selectedHour.toString().padStart(2, '0') : '--';
             minutePreview.textContent = selectedMinute !== null ? selectedMinute.toString().padStart(2, '0') : '--';
@@ -1823,7 +1884,7 @@ const renderTimePickerModal = (bookingModal) => {
                 }
             }
         };
-
+        
         const attachClockListeners = () => {
             if (currentPickerView === 'hours') {
                 clockContainer.querySelectorAll('.clock-number:not(.disabled)').forEach(btn => {
@@ -1850,18 +1911,18 @@ const renderTimePickerModal = (bookingModal) => {
         const renderClock = () => {
             clockContainer.innerHTML = ''; 
             const clockFace = document.createElement('div');
-            clockFace.className = 'clock-face';
+            clockFace.className = 'clock-face relative w-56 h-56 mx-auto border-2 border-gray-300 rounded-full';
             const clockCenter = document.createElement('div');
-            clockCenter.className = 'clock-center';
+            clockCenter.className = 'clock-center absolute top-1/2 left-1/2 w-2 h-2 bg-gray-400 rounded-full transform -translate-x-1/2 -translate-y-1/2';
             clockFace.appendChild(clockCenter);
-
+            
             if (currentPickerView === 'hours') {
                 for (let i = 1; i <= 12; i++) {
                     const angle = (i / 12) * 360 - 90;
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
                     const numberEl = document.createElement('div');
-                    numberEl.className = 'clock-number';
+                    numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 hover:bg-blue-200 rounded-full cursor-pointer text-sm font-medium transform -translate-x-1/2 -translate-y-1/2';
                     numberEl.textContent = i;
                     numberEl.style.left = `${x}px`;
                     numberEl.style.top = `${y}px`;
@@ -1875,7 +1936,7 @@ const renderTimePickerModal = (bookingModal) => {
                     const x = 112 + 60 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 60 * Math.sin(angle * Math.PI / 180);
                     const numberEl = document.createElement('div');
-                    numberEl.className = `clock-number ${dataHour > 14 ? 'disabled' : ''}`;
+                    numberEl.className = `clock-number absolute w-8 h-8 flex items-center justify-center rounded-full text-xs font-medium transform -translate-x-1/2 -translate-y-1/2 ${dataHour > 14 ? 'bg-gray-200 text-gray-400 cursor-not-allowed disabled' : 'bg-blue-100 hover:bg-blue-200 cursor-pointer'}`;
                     numberEl.textContent = displayHour;
                     numberEl.style.left = `${x}px`;
                     numberEl.style.top = `${y}px`;
@@ -1888,13 +1949,15 @@ const renderTimePickerModal = (bookingModal) => {
                     const x = 112 + 95 * Math.cos(angle * Math.PI / 180);
                     const y = 112 + 95 * Math.sin(angle * Math.PI / 180);
                     const numberEl = document.createElement('div');
-                    numberEl.className = 'clock-number';
+                    numberEl.className = 'clock-number absolute w-8 h-8 flex items-center justify-center bg-blue-100 hover:bg-blue-200 rounded-full cursor-pointer text-sm font-medium transform -translate-x-1/2 -translate-y-1/2';
                     
                     if (selectedHour === 11 && minute === '30') {
-                        numberEl.classList.add('disabled');
+                        numberEl.classList.add('disabled', 'bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
+                        numberEl.classList.remove('bg-blue-100', 'hover:bg-blue-200', 'cursor-pointer');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
                     } else if (selectedHour === 12 && (minute === '00' || minute === '10' || minute === '20' || minute === '30')) {
-                        numberEl.classList.add('disabled');
+                        numberEl.classList.add('disabled', 'bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
+                        numberEl.classList.remove('bg-blue-100', 'hover:bg-blue-200', 'cursor-pointer');
                         numberEl.title = 'เวลาพักพนักงาน (11:30-12:30)';
                     }
                     
@@ -1909,15 +1972,16 @@ const renderTimePickerModal = (bookingModal) => {
             updatePreview();
             attachClockListeners();
         };
-
+        
         renderClock();
-
+        
         hourPreview.addEventListener('click', () => {
             currentPickerView = 'hours';
             hourPreview.classList.add('text-violet-500');
             minutePreview.classList.remove('text-violet-500');
             renderClock();
         });
+        
          minutePreview.addEventListener('click', () => {
             if (selectedHour === null) return;
             currentPickerView = 'minutes';
@@ -1925,7 +1989,7 @@ const renderTimePickerModal = (bookingModal) => {
             minutePreview.classList.add('text-violet-500');
             renderClock();
         });
-
+        
         confirmBtn.addEventListener('click', () => {
             if (selectedHour !== null && selectedMinute !== null) {
                 const timeInMinutes = selectedHour * 60 + selectedMinute;
@@ -1949,37 +2013,41 @@ const renderTimePickerModal = (bookingModal) => {
 
 const renderAddHolidayModal = () => {
     const modalContent = `
-        <h3 class="text-xl font-bold mb-4">เพิ่มวันหยุด</h3>
-        <form id="holiday-form" class="space-y-4">
-            <div>
-                <label class="text-sm font-medium">ชื่อวันหยุด</label>
-                <input type="text" id="holiday-name" placeholder="เช่น วันหยุดปีใหม่" class="input w-full mt-1" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">วันที่</label>
-                <input type="date" id="holiday-date" class="input w-full mt-1" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">ประเภทวันหยุด</label>
-                <select id="holiday-type" class="input w-full mt-1" required>
-                    <option value="company">วันหยุดบริษัท</option>
-                    <option value="public">วันหยุดราชการ</option>
-                    <option value="special">วันหยุดพิเศษ</option>
-                </select>
-            </div>
-            <div class="flex items-center gap-2">
-                <input type="checkbox" id="holiday-recurring" class="w-4 h-4">
-                <label for="holiday-recurring" class="text-sm">วันหยุดทุกปี (ประจำปี)</label>
-            </div>
-            <div>
-                <label class="text-sm font-medium">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label>
-                <textarea id="holiday-description" placeholder="รายละเอียดเพิ่มเติม..." rows="3" class="input"></textarea>
-            </div>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary">บันทึก</button>
-            </div>
-        </form>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-lg font-semibold mb-4">เพิ่มวันหยุด</h3>
+            <form id="holiday-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อวันหยุด</label>
+                    <input type="text" id="holiday-name" required class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">วันที่</label>
+                    <input type="date" id="holiday-date" required class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ประเภทวันหยุด</label>
+                    <select id="holiday-type" required class="w-full border rounded px-3 py-2">
+                        <option value="company">วันหยุดบริษัท</option>
+                        <option value="public">วันหยุดราชการ</option>
+                        <option value="special">วันหยุดพิเศษ</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="holiday-recurring" class="mr-2">
+                        <span class="text-sm text-gray-700">วันหยุดทุกปี (ประจำปี)</span>
+                    </label>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label>
+                    <textarea id="holiday-description" class="w-full border rounded px-3 py-2 h-20"></textarea>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึก</button>
+                </div>
+            </form>
+        </div>
     `;
     
     renderModalBase(modalContent, modal => {
@@ -1992,36 +2060,40 @@ const renderImportPublicHolidaysModal = () => {
     const years = [currentYear, currentYear + 1, currentYear + 2];
     
     const modalContent = `
-        <h3 class="text-xl font-bold mb-4">นำเข้าวันหยุดราชการ</h3>
-        <form id="import-holidays-form" class="space-y-4">
-            <div>
-                <label class="text-sm font-medium">เลือกปี</label>
-                <select id="holiday-year" class="input w-full mt-1" required>
-                    ${years.map(year => `<option value="${year}">ปี ${year + 543}</option>`).join('')}
-                </select>
-            </div>
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div class="flex items-start gap-2">
-                    <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                    </svg>
-                    <div class="text-sm text-yellow-800">
-                        <p class="font-medium">ข้อมูลวันหยุดราชการ</p>
-                        <p class="mt-1">ระบบจะนำเข้าวันหยุดราชการตามประกาศสำนักนายกรัฐมนตรี ประกอบด้วย:</p>
-                        <ul class="mt-2 list-disc list-inside space-y-1">
-                            <li>วันหยุดประจำปี</li>
-                            <li>วันหยุดพระราชพิธี</li>
-                            <li>วันหยุดตามศาสนา</li>
-                            <li>วันหยุดชดเชย</li>
-                        </ul>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-lg font-semibold mb-4">นำเข้าวันหยุดราชการ</h3>
+            <form id="import-holidays-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">เลือกปี</label>
+                    <select id="holiday-year" required class="w-full border rounded px-3 py-2">
+                        ${years.map(year => `<option value="${year}">ปี ${year + 543}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded p-4">
+                        <div class="flex items-start space-x-2">
+                            <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div>
+                                <h4 class="font-medium text-blue-800">ข้อมูลวันหยุดราชการ</h4>
+                                <p class="text-sm text-blue-700 mt-1">ระบบจะนำเข้าวันหยุดราชการตามประกาศสำนักนายกรัฐมนตรี ประกอบด้วย:</p>
+                                <ul class="text-sm text-blue-700 mt-2 space-y-1">
+                                    <li>• วันหยุดประจำปี</li>
+                                    <li>• วันหยุดพระราชพิธี</li>
+                                    <li>• วันหยุดตามศาสนา</li>
+                                    <li>• วันหยุดชดเชย</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary">นำเข้าข้อมูล</button>
-            </div>
-        </form>
+                <div class="flex space-x-3">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">นำเข้าข้อมูล</button>
+                </div>
+            </form>
+        </div>
     `;
     
     renderModalBase(modalContent, modal => {
@@ -2031,33 +2103,35 @@ const renderImportPublicHolidaysModal = () => {
 
 const renderAddUserModal = () => {
     const modalContent = `
-        <h3 class="text-xl font-bold mb-4">เพิ่มผู้ใช้</h3>
-        <form id="user-form" class="space-y-4">
-            <div>
-                <label class="text-sm font-medium">ชื่อ</label>
-                <input type="text" id="user-name" placeholder="ชื่อผู้ใช้" class="input w-full mt-1" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">อีเมล</label>
-                <input type="email" id="user-email" placeholder="อีเมล" class="input w-full mt-1" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">รหัสผ่าน</label>
-                <input type="password" id="user-password" placeholder="รหัสผ่าน" class="input w-full mt-1" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">บทบาท</label>
-                <select id="user-role" class="input w-full mt-1" required>
-                    <option value="viewer">ผู้ดู</option>
-                    <option value="staff">พนักงาน</option>
-                    <option value="admin">ผู้ดูแลระบบ</option>
-                </select>
-            </div>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary">บันทึก</button>
-            </div>
-        </form>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-lg font-semibold mb-4">เพิ่มผู้ใช้</h3>
+            <form id="user-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ</label>
+                    <input type="text" id="user-name" required class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
+                    <input type="email" id="user-email" required class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน</label>
+                    <input type="password" id="user-password" required class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">บทบาท</label>
+                    <select id="user-role" required class="w-full border rounded px-3 py-2">
+                        <option value="viewer">ผู้ดู</option>
+                        <option value="staff">พนักงาน</option>
+                        <option value="admin">ผู้ดูแลระบบ</option>
+                    </select>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึก</button>
+                </div>
+            </form>
+        </div>
     `;
     
     renderModalBase(modalContent, modal => {
@@ -2074,34 +2148,36 @@ const renderEditUserModal = (userId) => {
     }
     
     const modalContent = `
-        <h3 class="text-xl font-bold mb-4">แก้ไขผู้ใช้</h3>
-        <form id="user-form" class="space-y-4">
-            <input type="hidden" id="user-id" value="${user.id}">
-            <div>
-                <label class="text-sm font-medium">ชื่อ</label>
-                <input type="text" id="user-name" value="${user.name}" placeholder="ชื่อผู้ใช้" class="input w-full mt-1" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">อีเมล</label>
-                <input type="email" id="user-email" value="${user.email}" placeholder="อีเมล" class="input w-full mt-1" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">รหัสผ่าน (ปล่อยว่างหากไม่ต้องการเปลี่ยน)</label>
-                <input type="password" id="user-password" placeholder="รหัสผ่านใหม่" class="input w-full mt-1">
-            </div>
-            <div>
-                <label class="text-sm font-medium">บทบาท</label>
-                <select id="user-role" class="input w-full mt-1" required>
-                    <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>ผู้ดู</option>
-                    <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>พนักงาน</option>
-                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>ผู้ดูแลระบบ</option>
-                </select>
-            </div>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary">บันทึก</button>
-            </div>
-        </form>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-lg font-semibold mb-4">แก้ไขผู้ใช้</h3>
+            <form id="user-form">
+                <input type="hidden" id="user-id" value="${user.id}">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ</label>
+                    <input type="text" id="user-name" value="${user.name}" required class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
+                    <input type="email" id="user-email" value="${user.email}" required class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน (ปล่อยว่างหากไม่ต้องการเปลี่ยน)</label>
+                    <input type="password" id="user-password" class="w-full border rounded px-3 py-2">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">บทบาท</label>
+                    <select id="user-role" required class="w-full border rounded px-3 py-2">
+                        <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>ผู้ดู</option>
+                        <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>พนักงาน</option>
+                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>ผู้ดูแลระบบ</option>
+                    </select>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึก</button>
+                </div>
+            </form>
+        </div>
     `;
     
     renderModalBase(modalContent, modal => {
@@ -2310,11 +2386,20 @@ const handleImportPublicHolidays = async (e) => {
     }
 };
 
-// --- MODIFIED START ---
 const renderModal = (type, data = {}) => {
     let modalContent = '';
     if(type === 'login') {
-        modalContent = `<h3 class="text-xl font-bold mb-4">เข้าสู่ระบบพนักงาน</h3><form id="login-form"><input type="text" id="username" placeholder="ชื่อผู้ใช้" class="input w-full mb-4" required><button type="submit" class="btn btn-primary w-full">เข้าสู่ระบบ</button></form>`;
+        modalContent = `
+            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 class="text-lg font-semibold mb-4">เข้าสู่ระบบพนักงาน</h3>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <input type="text" id="username" placeholder="ชื่อผู้ใช้" required class="w-full border rounded px-3 py-2">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">เข้าสู่ระบบ</button>
+                </form>
+            </div>
+        `;
         renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
     } 
     else if(type === 'booking') {
@@ -2322,92 +2407,116 @@ const renderModal = (type, data = {}) => {
             const holiday = isHoliday(new Date(state.selectedDate));
             
             modalContent = `
-                <div class="text-center">
-                    <svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                    </svg>
-                    <h3 class="text-xl font-bold text-red-500 mb-2">ไม่สามารถจองคิวได้</h3>
-                    <p class="mb-4">วันที่ ${formatThaiDate(state.selectedDate)} เป็นวันหยุด: ${holiday.name}</p>
-                    <p class="text-sm text-gray-600">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
-                    <div class="flex justify-end gap-2 pt-4">
-                        <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
+                <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
+                    <div class="mb-4">
+                        <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-red-800 mb-2">ไม่สามารถจองคิวได้</h3>
+                    <p class="text-red-600 mb-4">วันที่ ${formatThaiDate(state.selectedDate)} เป็นวันหยุด: ${holiday.name}</p>
+                    <p class="text-gray-600 mb-6">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
+                    <div class="flex justify-center">
+                        <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
                     </div>
                 </div>
             `;
             renderModalBase(modalContent);
             return;
         }
-
+        
         if (checkDailyQueueLimit(state.selectedDate)) {
             modalContent = `
-                <div class="text-center">
-                    <svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                    </svg>
-                    <h3 class="text-xl font-bold text-red-500 mb-2">คิวเต็ม</h3>
-                    <p class="mb-4">วันที่ ${formatThaiDate(state.selectedDate)} มีการจองคิวครบ 20 คิวแล้ว</p>
-                    <p class="text-sm text-gray-600">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
-                    <div class="flex justify-end gap-2 pt-4">
-                        <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
+                <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
+                    <div class="mb-4">
+                        <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-red-800 mb-2">คิวเต็ม</h3>
+                    <p class="text-red-600 mb-4">วันที่ ${formatThaiDate(state.selectedDate)} มีการจองคิวครบ 20 คิวแล้ว</p>
+                    <p class="text-gray-600 mb-6">กรุณาเลือกวันอื่นเพื่อจองคิว</p>
+                    <div class="flex justify-center">
+                        <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
                     </div>
                 </div>
             `;
             renderModalBase(modalContent);
             return;
         }
-
+        
         const companyOptions = state.data.companies.map(c => `<option value="${c}">${c}</option>`).join('');
-        modalContent = `<h3 class="text-xl font-bold mb-4">จองคิววันที่ ${formatThaiDate(state.selectedDate)}</h3>
-        <form id="booking-form" class="space-y-3">
-            <select id="company-name" class="input w-full" required><option value="">-- เลือกบริษัท --</option>${companyOptions}<option value="add_new">-- เพิ่มบริษัทใหม่ --</option></select>
-            <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="input w-full hidden">
-            <input type="text" id="driver-name" placeholder="ชื่อ-นามสกุล คนขับ" class="input w-full" required>
-            <div>
-                <label class="text-sm font-medium">ทะเบียนรถ</label>
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                    <input type="text" id="license-plate-prefix" placeholder="หมวด (เช่น 1กก)" maxlength="4" class="input text-center" required>
-                    <input type="text" id="license-plate-suffix" placeholder="เลข (เช่น 1234)" pattern="[0-9]*" maxlength="4" class="input text-center" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                </div>
+        modalContent = `
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-semibold mb-4">จองคิววันที่ ${formatThaiDate(state.selectedDate)}</h3>
+                <form id="booking-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">บริษัท</label>
+                            <select id="company-name" required class="w-full border rounded px-3 py-2">
+                                <option value="">-- เลือกบริษัท --</option>
+                                ${companyOptions}
+                                <option value="add_new">-- เพิ่มบริษัทใหม่ --</option>
+                            </select>
+                            <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full border rounded px-3 py-2 mt-2 hidden">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ-นามสกุล คนขับ</label>
+                            <input type="text" id="driver-name" required class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ทะเบียนรถ</label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="license-plate-prefix" placeholder="กก" maxlength="3" class="w-20 border rounded px-3 py-2 text-center">
+                                <input type="text" id="license-plate-suffix" placeholder="1234" maxlength="4" class="flex-1 border rounded px-3 py-2">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนบิล</label>
+                            <input type="number" id="invoice-count" min="1" required class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนกล่อง</label>
+                            <input type="number" id="box-count" min="1" required class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนชิ้น</label>
+                            <input type="number" id="item-count" min="1" required class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                     <div class="mt-4">
+                         <label class="block text-sm font-medium text-gray-700 mb-2">เวลาที่คาดว่าจะมาถึง</label>
+                         <input type="hidden" id="eta" required>
+                         <button type="button" id="eta-display" class="w-full border rounded px-3 py-2 text-left text-slate-500 hover:bg-gray-50">-- เลือกเวลา --</button>
+                         <p class="text-xs text-gray-500 mt-1">เวลาทำการ: 08:00-14:15 (พักเที่ยง 11:30-12:30)</p>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ/เอกสารเพิ่มเติม</label>
+                        <textarea id="notes" class="w-full border rounded px-3 py-2 h-20" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">เอกสารเพิ่มเติม</label>
+                        <input type="file" id="document-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer" onclick="document.getElementById('document-files').click()">
+                            <div class="flex flex-col items-center">
+                                <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="text-sm text-gray-600">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
+                                <p class="text-xs text-gray-500 mt-1">รองรับไฟล์ PDF, JPG, PNG, DOC, DOCX (สูงสุด 5MB ต่อไฟล์)</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-blue-600 mt-2">*หากแนบเอกสารมาด้วยจะเพิ่มความรวดเร็วในการรับสินค้าของพนักงาน</p>
+                        <div id="file-list" class="mt-3 space-y-2"></div>
+                    </div>
+                    <div class="flex space-x-3 mt-6">
+                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">ยืนยันการจอง</button>
+                    </div>
+                </form>
             </div>
-            <div class="grid grid-cols-3 gap-2">
-                <input type="text" id="invoice-count" placeholder="จำนวนบิล" class="input" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                <input type="text" id="box-count" placeholder="จำนวนกล่อง" class="input" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                <input type="text" id="item-count" placeholder="จำนวนชิ้น" class="input" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-            </div>
-             <div>
-                 <label class="text-sm font-medium">เวลาที่คาดว่าจะมาถึง</label>
-                 <div id="eta-display" class="input cursor-pointer mt-1 text-slate-500">-- เลือกเวลา --</div>
-                 <input type="hidden" id="eta" required>
-            </div>
-            <div>
-                <label class="text-sm font-medium">เอกสารเพิ่มเติม</label>
-                <textarea id="notes" placeholder="รายละเอียดเพิ่มเติม" rows="2" class="input"></textarea>
-            </div>
-            <div class="border-t pt-3">
-                <label class="text-sm font-medium flex items-center gap-2">
-                    <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                    </svg>
-                    แนบเอกสาร (INVOICE และ PO)
-                </label>
-                <p class="text-xs text-gray-500 mt-1 mb-2">*หากแนบเอกสารมาด้วยจะเพิ่มความรวดเร็วในการรับสินค้าของพนักงาน</p>
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                    <input type="file" id="document-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
-                    <label for="document-files" class="cursor-pointer">
-                        <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                        </svg>
-                        <p class="text-sm text-gray-600">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
-                        <p class="text-xs text-gray-500 mt-1">รองรับไฟล์ PDF, JPG, PNG, DOC, DOCX (สูงสุด 5MB ต่อไฟล์)</p>
-                    </label>
-                </div>
-                <div id="file-list" class="mt-3 space-y-2"></div>
-            </div>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-                <button type="submit" class="btn btn-success">ยืนยันการจอง</button>
-            </div>
-        </form>`;
+        `;
+        
         renderModalBase(modalContent, modal => {
             modal.querySelector('#eta-display').addEventListener('click', () => renderTimePickerModal(modal));
             const companySelect = modal.querySelector('#company-name'), newCompanyInput = modal.querySelector('#new-company-name');
@@ -2419,19 +2528,19 @@ const renderModal = (type, data = {}) => {
             
             const displayFiles = () => {
                 fileList.innerHTML = uploadedFiles.map((file, index) => `
-                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <div>
-                                <p class="text-sm font-medium">${file.name}</p>
+                                <p class="text-sm font-medium text-gray-900">${file.name}</p>
                                 <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
                             </div>
                         </div>
-                        <button type="button" onclick="removeFile(${index})" class="text-red-500 hover:text-red-700">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        <button type="button" onclick="removeFile(${index})" class="text-red-600 hover:text-red-800 p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
                         </button>
                     </div>
@@ -2494,13 +2603,13 @@ const renderModal = (type, data = {}) => {
                     showAlert('กรุณากรอกทะเบียนรถ'); 
                     return; 
                 }
-
+                
                 let eta = form.querySelector('#eta').value;
                 if (!eta) { 
                     showAlert('กรุณาเลือกเวลา'); 
                     return; 
                 }
-
+                
                 let originalTime = eta;
                 let attempts = 0;
                 const maxAttempts = 10;
@@ -2525,11 +2634,11 @@ const renderModal = (type, data = {}) => {
                     showAlert(`ไม่สามารถจองคิวได้ เนื่องจากมีคิวในช่วงเวลานั้นแล้ว`);
                     return;
                 }
-
+                
                 if (eta !== originalTime) {
                     showAlert(`เวลา ${originalTime} มีการจองแล้ว ระบบได้เลื่อนเวลาของคุณเป็น ${eta} โดยอัตโนมัติ`);
                 }
-
+                
                 const referenceNumber = generateReferenceNumber();
                 const newBooking = { 
                     id: Date.now(), 
@@ -2563,12 +2672,10 @@ const renderModal = (type, data = {}) => {
                 
                 try {
                     await setDoc(docRef, state.data);
-
                     state.guestBookingIds.push(newBooking.id);
                     
                     // Save to localStorage (Layer 1)
                     localStorage.setItem('guestBookingIds', JSON.stringify(state.guestBookingIds));
-
                     // Save to Firebase (Layer 2)
                     const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
                     await setDoc(guestDocRef, { 
@@ -2585,117 +2692,124 @@ const renderModal = (type, data = {}) => {
             });
         });
     }
-// --- MODIFIED END ---
     else if(type === 'bookingDetails') {
         const booking = findBookingById(data.bookingId);
         if (!booking) {
-            modalContent = `<p class="text-center text-red-500">ไม่พบข้อมูลการจองคิว</p>`;
+            modalContent = `
+                <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
+                    <p class="text-gray-800 mb-4">ไม่พบข้อมูลการจองคิว</p>
+                    <button class="close-modal-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">ตกลง</button>
+                </div>
+            `;
             renderModalBase(modalContent);
             return;
         }
-
+        
         const isGuestBooking = state.guestBookingIds.includes(booking.id);
         const isEditable = state.userRole === 'staff' || (state.userRole === 'guest' && isGuestBooking);
         
         const documentsHtml = booking.documents && booking.documents.length > 0 
-            ? `<div class="mt-4">
-                <h4 class="font-semibold text-gray-700 mb-2">เอกสารที่แนบ:</h4>
+            ? `
+            <div class="mt-4 p-4 bg-gray-50 rounded border">
+                <h4 class="font-medium text-gray-900 mb-2">เอกสารที่แนบ:</h4>
                 <div class="space-y-2">
                     ${booking.documents.map((doc, index) => `
-                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div class="flex items-center gap-2">
-                                <svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                        <div class="flex items-center justify-between p-2 bg-white rounded border">
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                                 <div>
-                                    <p class="text-sm font-medium">${doc.name}</p>
+                                    <p class="text-sm font-medium text-gray-900">${doc.name}</p>
                                     <p class="text-xs text-gray-500">${formatFileSize(doc.size)}</p>
                                 </div>
                             </div>
-                            <button type="button" onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                            <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800 text-sm">
                                 ดาวน์โหลด
                             </button>
                         </div>
                     `).join('')}
                 </div>
-            </div>`
+            </div>
+            `
             : '';
         
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
-                statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
             } else if (checkIfLate(booking)) {
-                statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
             } else {
-                statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
             }
         } else {
-            statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+            statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
         }
         
         modalContent = `
-            <div class="booking-details p-4 rounded-lg">
-                <h3 class="text-xl font-bold mb-4">รายละเอียดการจองคิว</h3>
-                <div class="booking-details-grid">
-                    <div class="detail-item">
-                        <span class="detail-label">เลขกำกับ:</span>
-                        <span class="detail-value reference-number">${booking.referenceNumber || '-'}</span>
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-semibold mb-4">รายละเอียดการจองคิว</h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">เลขกำกับ:</span>
+                        <span class="font-medium">${booking.referenceNumber || '-'}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">บริษัท:</span>
-                        <span class="detail-value">${booking.companyName}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">บริษัท:</span>
+                        <span class="font-medium">${booking.companyName}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">วันที่:</span>
-                        <span class="detail-value">${formatThaiDate(booking.date)}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">วันที่:</span>
+                        <span class="font-medium">${formatThaiDate(booking.date)}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">เวลา:</span>
-                        <span class="detail-value">${formatTime24h(booking.eta)}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">เวลา:</span>
+                        <span class="font-medium">${formatTime24h(booking.eta)}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">ชื่อคนขับ:</span>
-                        <span class="detail-value">${booking.driverName}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">ชื่อคนขับ:</span>
+                        <span class="font-medium">${booking.driverName}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">ทะเบียนรถ:</span>
-                        <span class="detail-value">${booking.licensePlate}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">ทะเบียนรถ:</span>
+                        <span class="font-medium">${booking.licensePlate}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">จำนวนบิล:</span>
-                        <span class="detail-value">${booking.invoiceCount}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">จำนวนบิล:</span>
+                        <span class="font-medium">${booking.invoiceCount}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">จำนวนกล่อง:</span>
-                        <span class="detail-value">${booking.boxCount}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">จำนวนกล่อง:</span>
+                        <span class="font-medium">${booking.boxCount}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">จำนวนชิ้น:</span>
-                        <span class="detail-value">${booking.itemCount}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">จำนวนชิ้น:</span>
+                        <span class="font-medium">${booking.itemCount}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">สถานะ:</span>
-                        <span class="detail-value">${statusBadge}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">สถานะ:</span>
+                        <span>${statusBadge}</span>
                     </div>
                     ${booking.checkInTime ? `
-                    <div class="detail-item">
-                        <span class="detail-label">เวลาเช็คอิน:</span>
-                        <span class="detail-value">${formatDateTime(booking.checkInTime)}</span>
+                    <div class="flex justify-between col-span-2">
+                        <span class="text-gray-600">เวลาเช็คอิน:</span>
+                        <span class="font-medium">${formatDateTime(booking.checkInTime)}</span>
                     </div>
                     ` : ''}
                     ${booking.notes ? `
-                    <div class="detail-item col-span-2">
-                        <span class="detail-label">เอกสารเพิ่มเติม:</span>
-                        <span class="detail-value">${booking.notes}</span>
+                    <div class="col-span-2">
+                        <span class="text-gray-600">เอกสารเพิ่มเติม:</span>
+                        <p class="mt-1 text-gray-900">${booking.notes}</p>
                     </div>
                     ` : ''}
                 </div>
                 ${documentsHtml}
-                <div class="mt-4 flex justify-end gap-2">
-                    <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
+                <div class="flex justify-center mt-6">
+                    <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
                 </div>
-            </div>`;
+            </div>
+        `;
         
         window.downloadDocument = (filename, dataUrl) => {
             const link = document.createElement('a');
@@ -2710,110 +2824,112 @@ const renderModal = (type, data = {}) => {
         const booking = data.booking;
         
         const documentsInfo = booking.documents && booking.documents.length > 0 
-            ? `<div class="booking-card-item">
-                <span class="booking-card-label">เอกสารที่แนบ:</span>
-                <span class="booking-card-value">${booking.documents.length} ไฟล์</span>
-            </div>`
+            ? `
+            <div class="mt-3 text-sm text-gray-600">
+                <span class="font-medium">เอกสารที่แนบ:</span>
+                <span>${booking.documents.length} ไฟล์</span>
+            </div>
+            `
             : '';
         
         let statusBadge = '';
         if (booking.checkInTime) {
             if (booking.status === 'completed') {
-                statusBadge = '<span class="status-badge status-completed">เสร็จสิ้น</span>';
+                statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">เสร็จสิ้น</span>';
             } else if (checkIfLate(booking)) {
-                statusBadge = '<span class="status-badge status-late">มาสาย</span>';
+                statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">มาสาย</span>';
             } else {
-                statusBadge = '<span class="status-badge status-confirmed">เช็คอินแล้ว</span>';
+                statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">เช็คอินแล้ว</span>';
             }
         } else {
-            statusBadge = '<span class="status-badge status-pending">รอเช็คอิน</span>';
+            statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">รอเช็คอิน</span>';
         }
         
         let checkInSection = '';
         if (state.userRole === 'staff' && !booking.checkInTime) {
             checkInSection = `
-                <div class="check-in-section">
-                    <h4 class="font-semibold text-green-700 mb-2">การเช็คอิน</h4>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-sm">เวลาปัจจุบัน:</span>
-                        <span class="check-in-time">${formatDateTime(new Date())}</span>
+                <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
+                    <h4 class="font-medium text-blue-800 mb-2">การเช็คอิน</h4>
+                    <div class="text-sm text-blue-700 mb-3">
+                        <span class="font-medium">เวลาปัจจุบัน:</span>
+                        <span>${formatDateTime(new Date())}</span>
                     </div>
-                    <button data-booking-id="${booking.id}" class="check-in-from-qr-btn btn btn-success w-full">
-                        ${icons.check} เช็คอิน
+                    <button class="check-in-from-qr-btn bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full flex items-center justify-center space-x-2" data-booking-id="${booking.id}">
+                        ${icons.check} <span>เช็คอิน</span>
                     </button>
                 </div>
             `;
         } else if (state.userRole === 'staff' && booking.checkInTime && booking.status !== 'completed') {
             checkInSection = `
-                <div class="check-in-section">
-                    <h4 class="font-semibold text-blue-700 mb-2">การรับสินค้า</h4>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-sm">เวลาเช็คอิน:</span>
-                        <span class="check-in-time">${formatDateTime(booking.checkInTime)}</span>
+                <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded">
+                    <h4 class="font-medium text-green-800 mb-2">การรับสินค้า</h4>
+                    <div class="text-sm text-green-700 mb-3">
+                        <span class="font-medium">เวลาเช็คอิน:</span>
+                        <span>${formatDateTime(booking.checkInTime)}</span>
                     </div>
-                    <button data-booking-id="${booking.id}" class="complete-from-qr-btn btn btn-primary w-full">
-                        ${icons.check} ยืนยันรับคิว
+                    <button class="complete-from-qr-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full flex items-center justify-center space-x-2" data-booking-id="${booking.id}">
+                        ${icons.check} <span>ยืนยันรับคิว</span>
                     </button>
                 </div>
             `;
         }
         
         modalContent = `
-            <div class="booking-card">
-                <div class="booking-card-inner">
-                    <div class="booking-card-header">
-                        <h3 class="booking-card-title">${booking.companyName}</h3>
-                        <span class="booking-card-reference">${booking.referenceNumber}</span>
+            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                <div class="text-center mb-6">
+                    <div class="mb-4">
+                        <h3 class="text-xl font-bold text-gray-900">${booking.companyName}</h3>
+                        <p class="text-gray-600">${booking.referenceNumber}</p>
                     </div>
-                    <div class="booking-card-grid">
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">วันที่</span>
-                            <span class="booking-card-value">${formatThaiDate(booking.date)}</span>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="text-center">
+                            <div class="text-gray-500">วันที่</div>
+                            <div class="font-medium">${formatThaiDate(booking.date)}</div>
                         </div>
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">เวลา</span>
-                            <span class="booking-card-value">${formatTime24h(booking.eta)}</span>
+                        <div class="text-center">
+                            <div class="text-gray-500">เวลา</div>
+                            <div class="font-medium">${formatTime24h(booking.eta)}</div>
                         </div>
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">คนขับ</span>
-                            <span class="booking-card-value">${booking.driverName}</span>
+                        <div class="text-center">
+                            <div class="text-gray-500">คนขับ</div>
+                            <div class="font-medium">${booking.driverName}</div>
                         </div>
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">ทะเบียนรถ</span>
-                            <span class="booking-card-value">${booking.licensePlate}</span>
+                        <div class="text-center">
+                            <div class="text-gray-500">ทะเบียนรถ</div>
+                            <div class="font-medium">${booking.licensePlate}</div>
                         </div>
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">จำนวนบิล</span>
-                            <span class="booking-card-value">${booking.invoiceCount}</span>
+                        <div class="text-center">
+                            <div class="text-gray-500">จำนวนบิล</div>
+                            <div class="font-medium">${booking.invoiceCount}</div>
                         </div>
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">จำนวนกล่อง</span>
-                            <span class="booking-card-value">${booking.boxCount}</span>
+                        <div class="text-center">
+                            <div class="text-gray-500">จำนวนกล่อง</div>
+                            <div class="font-medium">${booking.boxCount}</div>
                         </div>
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">จำนวนชิ้น</span>
-                            <span class="booking-card-value">${booking.itemCount}</span>
+                        <div class="text-center">
+                            <div class="text-gray-500">จำนวนชิ้น</div>
+                            <div class="font-medium">${booking.itemCount}</div>
                         </div>
-                        <div class="booking-card-item">
-                            <span class="booking-card-label">สถานะ</span>
-                            <span class="booking-card-value">${statusBadge}</span>
+                        <div class="text-center">
+                            <div class="text-gray-500">สถานะ</div>
+                            <div>${statusBadge}</div>
                         </div>
                         ${documentsInfo}
                     </div>
                     ${booking.notes ? `
-                    <div class="mt-2 p-3 bg-gray-50 rounded-lg">
-                        <span class="booking-card-label">เอกสารเพิ่มเติม</span>
-                        <p class="booking-card-value mt-1">${booking.notes}</p>
+                    <div class="mt-4 p-3 bg-gray-50 rounded border text-left">
+                        <h4 class="font-medium text-gray-800 mb-1">เอกสารเพิ่มเติม</h4>
+                        <p class="text-sm text-gray-600">${booking.notes}</p>
                     </div>
                     ` : ''}
                     ${booking.documents && booking.documents.length > 0 ? `
-                    <div class="mt-2 p-3 bg-blue-50 rounded-lg">
-                        <span class="booking-card-label text-blue-700">เอกสารที่แนบ</span>
-                        <div class="mt-2 space-y-1">
+                    <div class="mt-4 p-3 bg-gray-50 rounded border text-left">
+                        <h4 class="font-medium text-gray-800 mb-2">เอกสารที่แนบ</h4>
+                        <div class="space-y-2">
                             ${booking.documents.map(doc => `
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-gray-700">${doc.name}</span>
-                                    <button type="button" onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-500 hover:text-blue-700 text-xs">
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-gray-600">${doc.name}</span>
+                                    <button onclick="downloadDocument('${doc.name}', '${doc.data}')" class="text-blue-600 hover:text-blue-800">
                                         ดาวน์โหลด
                                     </button>
                                 </div>
@@ -2822,21 +2938,22 @@ const renderModal = (type, data = {}) => {
                     </div>
                     ` : ''}
                     ${checkInSection}
-                    <div class="booking-card-footer">
-                        <div class="booking-card-status">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    <div class="mt-6 p-4 bg-gray-50 rounded border">
+                        <div class="flex items-center justify-center space-x-2 text-sm text-gray-600 mb-3">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            ${booking.status === 'completed' ? 'ดำเนินการเสร็จสิ้น' : booking.checkInTime ? 'กำลังดำเนินการ' : 'รอการดำเนินการ'}
+                            <span>${booking.status === 'completed' ? 'ดำเนินการเสร็จสิ้น' : booking.checkInTime ? 'กำลังดำเนินการ' : 'รอการดำเนินการ'}</span>
                         </div>
-                        <div class="booking-card-actions">
-                            ${state.userRole === 'staff' ? `<button data-booking-id="${booking.id}" class="booking-card-btn booking-card-btn-primary evaluate-from-qr-btn">ประเมิน KPI</button>` : ''}
-                            <button class="booking-card-btn booking-card-btn-secondary close-modal-btn">ปิด</button>
+                        <div class="flex space-x-3">
+                            ${state.userRole === 'staff' ? `<button class="evaluate-from-qr-btn bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 flex-1">ประเมิน KPI</button>` : ''}
+                            <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ปิด</button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
+        
         renderModalBase(modalContent, modal => {
             if (state.userRole === 'staff') {
                 modal.querySelector('.evaluate-from-qr-btn')?.addEventListener('click', () => {
@@ -2860,26 +2977,54 @@ const renderModal = (type, data = {}) => {
     }
     else if(type === 'evaluate') {
         const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
-        let kpiInputs = kpiDefinitions.map(kpi => `<div class="grid grid-cols-2 items-center gap-2"><label class="font-medium">${kpi.label}</label><select data-kpi-id="${kpi.id}" class="kpi-select input"><option value="0">-- เลือก --</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>`).join('');
-        
-        modalContent = `<h3 class="text-xl font-bold mb-2">ประเมิน KPI</h3><p class="mb-4 text-slate-500">${booking.companyName}</p>
-        <form id="evaluation-form" class="space-y-3">
-            ${kpiInputs}
-            <div class="border-t my-4"></div>
-            <textarea id="staff-comments" placeholder="ความคิดเห็นเพิ่มเติมจากพนักงาน" rows="3" class="input"></textarea>
-            <button type="button" id="generate-summary-btn" class="btn btn-primary w-full flex items-center justify-center gap-2">✨ สร้างสรุปผลด้วย AI</button>
-            <div id="gemini-loading" class="hidden text-center p-4">กำลังสร้างสรุป...</div>
-            <textarea id="gemini-summary" placeholder="สรุปผลจาก AI (แก้ไขได้)" rows="4" class="input mt-2"></textarea>
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-                <button type="submit" class="btn btn-success">บันทึกผล</button>
+        let kpiInputs = kpiDefinitions.map(kpi => `
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">${kpi.label}</label>
+                <select class="kpi-select w-full border rounded px-3 py-2" data-kpi-id="${kpi.id}">
+                    <option value="0">-- เลือก --</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
             </div>
-        </form>`;
+        `).join('');
+        
+        modalContent = `
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-semibold mb-4">ประเมิน KPI</h3>
+                <p class="text-gray-600 mb-6">${booking.companyName}</p>
+                <form id="evaluation-form">
+                    ${kpiInputs}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ความคิดเห็นเพิ่มเติม</label>
+                        <textarea id="staff-comments" class="w-full border rounded px-3 py-2 h-20"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <button type="button" id="generate-summary-btn" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 flex items-center space-x-2">
+                            <span>✨</span> <span>สร้างสรุปผลด้วย AI</span>
+                        </button>
+                        <div id="gemini-loading" class="mt-2 text-blue-600 text-sm hidden">กำลังสร้างสรุป...</div>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">สรุปผลการประเมิน</label>
+                        <textarea id="gemini-summary" class="w-full border rounded px-3 py-2 h-32" readonly></textarea>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">บันทึกผล</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
         renderModalBase(modalContent, modal => {
             modal.querySelector('#evaluation-form').addEventListener('submit', handleEvaluationSubmit);
             modal.querySelector('#generate-summary-btn').addEventListener('click', handleGenerateSummary);
         });
-    } else if(type === 'qrCode') {
+    } 
+    else if(type === 'qrCode') {
         const booking = data.booking;
         const referenceNumber = booking.referenceNumber || generateReferenceNumber();
         
@@ -2906,36 +3051,43 @@ const renderModal = (type, data = {}) => {
             itemCount: booking.itemCount,
             notes: booking.notes || ''
         });
-
+        
         modalContent = `
-            <div class="text-center">
-                <div class="inline-block p-4 rounded-lg bg-green-50 mb-4">
-                    <svg class="w-16 h-16 mx-auto text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                    </svg>
+            <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
+                <div class="mb-6">
+                    <div class="mb-4">
+                        <svg class="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
                 </div>
-                <h3 class="text-xl font-bold text-green-500 mb-2">การจองคิวสำเร็จ!</h3>
-                <p class="mb-4">กรุณาแสดง QR Code นี้แก่เจ้าหน้าที่เมื่อมาถึง</p>
-                <div class="text-left bg-slate-50 p-3 rounded-lg mb-4">
-                    <p><strong>เลขกำกับ:</strong> <span class="reference-number">${referenceNumber}</span></p>
-                    <p><strong>บริษัท:</strong> ${booking.companyName}</p>
-                    <p><strong>วันที่:</strong> ${formatThaiDate(state.selectedDate)}</p>
-                    <p><strong>เวลา:</strong> ${formatTime24h(booking.eta)}</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">การจองคิวสำเร็จ!</h3>
+                <p class="text-gray-600 mb-6">กรุณาแสดง QR Code นี้แก่เจ้าหน้าที่เมื่อมาถึง</p>
+                <div class="mb-6">
+                    <div id="qrcode-container" class="flex justify-center mb-4"></div>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p><strong>เลขกำกับ:</strong> ${referenceNumber}</p>
+                        <p><strong>บริษัท:</strong> ${booking.companyName}</p>
+                        <p><strong>วันที่:</strong> ${formatThaiDate(state.selectedDate)}</p>
+                        <p><strong>เวลา:</strong> ${formatTime24h(booking.eta)}</p>
+                    </div>
                 </div>
-                <div id="qrcode-container" class="flex justify-center my-4 bg-white p-4 rounded-lg"></div>
-                <p class="mt-4 font-bold text-red-500">สำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้ในอัลบั้ม</p>
-                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p class="text-sm text-yellow-800">
-                        <strong>หมายเหตุ:</strong> กรุณามาตามเวลาที่กำหนด 
-                        <span class="font-bold text-red-600">หากมาช้าต้องไปต่อคิวตามปกติ</span>
-                    </p>
+                <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                    <p class="text-yellow-800 text-sm font-medium">สำคัญ: กรุณาบันทึกภาพ QR Code นี้ไว้ในอัลบั้ม</p>
                 </div>
-                <div class="flex justify-end gap-2 pt-4">
-                    <button type="button" id="download-qr-btn" class="btn btn-primary">ดาวน์โหลด QR Code</button>
-                    <button type="button" id="qr-close-btn" class="btn btn-success">ยืนยัน</button>
+                <div class="mb-6 text-xs text-gray-500 space-y-1">
+                    <div class="p-3 bg-blue-50 border border-blue-200 rounded">
+                        <p class="font-medium text-blue-800">หมายเหตุ: กรุณามาตามเวลาที่กำหนด</p> 
+                        <p class="text-blue-700">หากมาช้าต้องไปต่อคิวตามปกติ</p>
+                    </div>
                 </div>
-            </div>`;
-
+                <div class="flex space-x-3">
+                    <button id="download-qr-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">ดาวน์โหลด QR Code</button>
+                    <button id="qr-close-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">ยืนยัน</button>
+                </div>
+            </div>
+        `;
+        
         renderModalBase(modalContent, modal => {
             generateQRCode(qrData, modal.querySelector('#qrcode-container'));
             
@@ -2945,17 +3097,23 @@ const renderModal = (type, data = {}) => {
                 render();
             });
         });
-    } else if(type === 'manualReferenceInput') {
+    } 
+    else if(type === 'manualReferenceInput') {
         modalContent = `
-            <h3 class="text-xl font-bold mb-4">ป้อนเลขกำกับ</h3>
-            <form id="manual-reference-form" class="space-y-4">
-                <input type="text" id="manual-reference-input" placeholder="กรุณาป้อนเลขกำกับ (เช่น QR2401231234)" class="input text-center text-lg font-mono" required>
-                <div class="flex justify-end gap-2">
-                    <button type="button" class="close-modal-btn btn btn-secondary">ยกเลิก</button>
-                    <button type="submit" class="btn btn-primary">ค้นหา</button>
-                </div>
-            </form>
+            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 class="text-lg font-semibold mb-4">ป้อนเลขกำกับ</h3>
+                <form id="manual-reference-form">
+                    <div class="mb-4">
+                        <input type="text" id="manual-reference-input" placeholder="กรอกเลขกำกับ" required class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex-1">ยกเลิก</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1">ค้นหา</button>
+                    </div>
+                </form>
+            </div>
         `;
+        
         renderModalBase(modalContent, modal => {
             modal.querySelector('#manual-reference-form').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -2996,7 +3154,6 @@ const handleSearchByReferenceNumber = (referenceNumber) => {
 async function callGemini(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
     const payload = { contents: [{ parts: [{ text: prompt }] }] };
-
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -3019,10 +3176,10 @@ const handleGenerateSummary = async (e) => {
     const loadingIndicator = modal.querySelector('#gemini-loading');
     const summaryTextarea = modal.querySelector('#gemini-summary');
     const booking = state.data.bookings[state.selectedDate]?.find(b => b.id == state.selectedBookingId);
-
+    
     loadingIndicator.style.display = 'block';
     summaryTextarea.value = '';
-
+    
     let kpiScoresText = "";
     kpiDefinitions.forEach(kpi => {
         const score = modal.querySelector(`.kpi-select[data-kpi-id="${kpi.id}"]`).value;
@@ -3030,9 +3187,8 @@ const handleGenerateSummary = async (e) => {
              kpiScoresText += `- ${kpi.label}: ${score}/5\n`;
         }
     });
-
+    
     const staffComments = modal.querySelector('#staff-comments').value;
-
     const prompt = `
          กรุณาสร้างบทสรุปผลการประเมินการจัดส่งสินค้าสำหรับซัพพลายเออร์ในรูปแบบที่เป็นทางการและกระชับเป็นภาษาไทย โดยใช้ข้อมูลต่อไปนี้:
          - ชื่อซัพพลายเออร์: ${booking.companyName}
@@ -3040,10 +3196,9 @@ const handleGenerateSummary = async (e) => {
          - ผลการประเมิน KPI:
          ${kpiScoresText}
          - ความคิดเห็นเพิ่มเติมจากพนักงาน: ${staffComments || 'ไม่มี'}
-
          ให้สรุปภาพรวมของประสิทธิภาพ และอาจจะมีการกล่าวถึงข้อดีหรือสิ่งที่ควรปรับปรุงตามความเหมาะสมจากคะแนนและความคิดเห็น
     `;
-
+    
     const summary = await callGemini(prompt);
     summaryTextarea.value = summary;
     loadingIndicator.style.display = 'none';
@@ -3094,12 +3249,14 @@ const handleEvaluationSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
     const booking = state.data.bookings[state.selectedDate].find(b => b.id == state.selectedBookingId);
+    
     if(booking) {
         booking.evaluation = {
             scores: {},
             staffComments: form.querySelector('#staff-comments').value,
             geminiSummary: form.querySelector('#gemini-summary').value
         };
+        
         form.querySelectorAll('.kpi-select').forEach(sel => {
             booking.evaluation.scores[sel.dataset.kpiId] = parseInt(sel.value, 10);
         });
@@ -3155,21 +3312,23 @@ const handleDeleteBooking = async (bookingId) => {
 
 const renderHolidayDetailsModal = (holiday, date) => {
     const modalContent = `
-        <div class="text-center">
-            <svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
-            </svg>
-            <h3 class="text-xl font-bold text-red-500 mb-2">วันหยุด</h3>
-            <p class="mb-2"><strong>${holiday.name}</strong></p>
-            <p class="mb-4">${formatThaiDate(date)}</p>
-            <p class="text-sm text-gray-600">ประเภท: ${
+        <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
+            <div class="mb-4">
+                <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-red-800 mb-2">วันหยุด</h3>
+            <h4 class="text-xl font-bold text-gray-900 mb-2">${holiday.name}</h4>
+            <p class="text-gray-600 mb-4">${formatThaiDate(date)}</p>
+            <p class="text-sm text-gray-500 mb-6">ประเภท: ${
                 holiday.type === 'company' ? 'วันหยุดบริษัท' : 
                 holiday.type === 'public' ? 'วันหยุดราชการ' : 
                 'วันหยุดพิเศษ'
             }</p>
-            ${holiday.description ? `<p class="mt-3 text-sm text-gray-600">${holiday.description}</p>` : ''}
-            <div class="flex justify-end gap-2 pt-4">
-                <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
+            ${holiday.description ? `<p class="text-sm text-gray-600 mb-6">${holiday.description}</p>` : ''}
+            <div class="flex justify-center">
+                <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
             </div>
         </div>
     `;
@@ -3187,41 +3346,42 @@ const renderCompanyKpiDetails = (companyName) => {
     }
     
     const bookingHistoryHtml = company.bookings.map(booking => `
-        <div class="kpi-booking-item">
-            <div class="kpi-booking-details">
-                <span class="kpi-booking-date">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</span>
-                <span class="kpi-booking-score ${booking.score >= 4 ? 'kpi-score-high' : booking.score >= 2.5 ? 'kpi-score-medium' : 'kpi-score-low'}">
+        <div class="bg-white border rounded p-3">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-medium">${formatThaiDate(booking.date)} ${formatTime24h(booking.eta)}</span>
+                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                     คะแนน: ${booking.score.toFixed(2)}
                 </span>
             </div>
-            <div class="text-sm text-gray-600 mt-1">
+            <div class="text-sm text-gray-600">
                 คนขับ: ${booking.driverName} | ทะเบียน: ${booking.licensePlate}
             </div>
         </div>
     `).join('');
     
     const modalContent = `
-        <h3 class="text-xl font-bold mb-4">ประวัติการจัดส่ง - ${companyName}</h3>
-        <div class="mb-4 p-4 bg-gray-50 rounded-lg">
-            <p class="text-lg">คะแนนเฉลี่ย: <span class="font-bold ${company.averageScore >= 4 ? 'text-green-500' : company.averageScore >= 2.5 ? 'text-yellow-500' : 'text-red-500'}">${company.averageScore.toFixed(2)}</span></p>
-            <p class="text-sm text-gray-600">จากการจัดส่งทั้งหมด ${company.bookings.length} ครั้ง</p>
-        </div>
-        <div class="kpi-company-details">
-            ${bookingHistoryHtml}
-        </div>
-        <div class="flex justify-end gap-2 pt-4">
-            <button type="button" class="close-modal-btn btn btn-secondary">ปิด</button>
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-semibold mb-4">ประวัติการจัดส่ง - ${companyName}</h3>
+            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
+                <h4 class="font-semibold text-blue-800">คะแนนเฉลี่ย: ${company.averageScore.toFixed(2)}</h4>
+                <p class="text-blue-700">จากการจัดส่งทั้งหมด ${company.bookings.length} ครั้ง</p>
+            </div>
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+                ${bookingHistoryHtml}
+            </div>
+            <div class="flex justify-center mt-6">
+                <button class="close-modal-btn bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ปิด</button>
+            </div>
         </div>
     `;
     
     renderModalBase(modalContent);
 };
 
-// --- MODIFIED START ---
+// ฟังก์ชัน init ที่แก้ไขแล้ว - ส่วนที่สำคัญที่สุด
 const init = async () => {
     try {
         await signInAnonymously(auth);
-
         // 1. Get or create a persistent Guest Session ID from localStorage
         let sessionId = localStorage.getItem('guestSessionId');
         if (!sessionId) {
@@ -3229,33 +3389,28 @@ const init = async () => {
             localStorage.setItem('guestSessionId', sessionId);
         }
         state.guestSessionId = sessionId;
-
+        
         onSnapshot(docRef, async (docSnap) => {
             if (docSnap.exists()) {
                 state.data = docSnap.data();
                 if (!state.data.companies || state.data.companies.length === 0) {
                     state.data.companies = initialCompanies;
                 }
-                 if (!state.data.bookings) state.data.bookings = {};
+                if (!state.data.bookings) state.data.bookings = {};
                 if (!state.data.holidays) state.data.holidays = [];
                 if (!state.data.users) state.data.users = [];
                 if (!state.data.notifications) state.data.notifications = [];
             } else {
-                const initialData = { 
-                    companies: initialCompanies, 
-                    bookings: {}, 
-                    holidays: [],
-                    users: [],
-                    notifications: []
-                };
-                setDoc(docRef, initialData); 
+                // แสดงข้อผิดพลาดแทนการสร้างเอกสารใหม่
+                console.error('ไม่พบเอกสารข้อมูลหลัก (schedules/main)');
+                showAlert('เกิดข้อผิดพลาด: ไม่พบข้อมูลระบบ กรุณาติดต่อผู้ดูแลระบบ');
+                return;
             }
             
             // 2. Fetch guest's booking history from Firebase using the session ID
             if (state.guestSessionId && state.userRole === 'guest') {
                 const guestDocRef = doc(db, "guestSessions", state.guestSessionId);
                 const guestDocSnap = await getDoc(guestDocRef);
-
                 if (guestDocSnap.exists()) {
                     const guestData = guestDocSnap.data();
                     state.guestBookingIds = guestData.bookingIds || [];
@@ -3273,7 +3428,7 @@ const init = async () => {
             
             render();
         });
-
+        
         state.userRole = 'guest';
         state.isLoggedIn = false;
         state.currentView = 'calendar';
@@ -3282,6 +3437,5 @@ const init = async () => {
         showAlert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ กรุณารีเฟรชหน้าเว็บ');
     }
 };
-// --- MODIFIED END ---
 
 init();
