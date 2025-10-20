@@ -870,7 +870,7 @@ const render = () => {
 
                             <h1 class="text-xl font-bold text-gray-900">ระบบจัดการคิว</h1>
 
-                            <p class="text-sm text-gray-500">${state.userRole === 'staff' ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p>
+                            <p class="text-sm text-gray-500">${(state.userRole === 'staff' || state.userRole === 'admin') ? 'มุมมองพนักงาน' : 'สำหรับซัพพลายเออร์'}</p>
 
                         </div>
 
@@ -1654,7 +1654,7 @@ const renderCalendar = () => {
 
                 </div>
 
-                ${state.userRole === 'staff' ? `
+                ${(state.userRole === 'staff' || state.userRole === 'admin') ? `
 
                     <div class="mt-6 pt-6 border-t">
 
@@ -1762,7 +1762,7 @@ const renderDailyQueue = () => {
 
                             <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
 
-                            ${state.userRole === 'staff' ? `
+                            ${(state.userRole === 'staff' || state.userRole === 'admin') ? `
 
                                 <div class="flex flex-col space-y-1">
 
@@ -1902,7 +1902,7 @@ const renderBookingDetails = () => {
 
                             <button class="view-details-btn text-blue-600 hover:text-blue-800 text-sm" data-booking-id="${booking.id}">ดูรายละเอียด</button>
 
-                            ${state.userRole === 'staff' ? `
+                            ${(state.userRole === 'staff' || state.userRole === 'admin') ? `
 
                                 <div class="flex flex-col space-y-1">
 
@@ -5394,7 +5394,7 @@ const renderModal = (type, data = {}) => {
 
                             <div class="flex justify-center space-x-2">
 
-                                ${state.userRole === 'staff' ? `<button class="evaluate-from-qr-btn bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>` : ''}
+                                ${(state.userRole === 'staff' || state.userRole === 'admin') ? `<button class="evaluate-from-qr-btn bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600" data-booking-id="${booking.id}">ประเมิน KPI</button>` : ''}
 
                                 <button class="close-modal-btn bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">ปิด</button>
 
@@ -6389,3 +6389,4 @@ const init = async () => {
 };
 
 init();
+
