@@ -21,7 +21,7 @@ const GEMINI_API_KEY = "AIzaSyD_d2g0XgVxkClULTmh6dfl_eKIkRuVo7E";
 // Global mapping for quick booking lookup by ID
 let allBookingsById = {};
 
-// Global listeners variables
+// Global listeners variables (ข้อกำหนดที่ 3)
 let usersListener = null;
 let notificationsListener = null;
 
@@ -845,6 +845,7 @@ const renderCalendar = () => {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const monthName = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set time to midnight for accurate date comparison
 
@@ -983,7 +984,9 @@ const renderDailyQueue = () => {
     const queueItemsHtml = bookings.length > 0
         ? bookings.map((booking, index) => {
             const isGuestBooking = state.guestBookingIds.includes(booking.id);
-            if(state.userRole === 'guest' && !isGuestBooking) return `<div class="bg-gray-50 p-4 rounded-lg border">คิวที่ ${index + 1}: จองแล้ว</div>`;
+            
+            // แก้ไขข้อกำหนดที่ 1: แสดงเวลาที่จองแล้วให้ Guest
+            if(state.userRole === 'guest' && !isGuestBooking) return `<div class="bg-gray-50 p-4 rounded-lg border">คิวที่ ${index + 1}: จองแล้ว (เวลา ${formatTime24h(booking.eta)})</div>`;
 
             let statusBadge = '';
             if (booking.checkInTime) {
@@ -1289,6 +1292,7 @@ const renderNotificationsView = () => {
     `;
 };
 
+// แก้ไขฟังก์ชัน getKpiData เพื่อเพิ่ม evaluation field (ข้อกำหนดที่ 2)
 const getKpiData = () => {
     const companyData = {};
 
@@ -1313,7 +1317,7 @@ const getKpiData = () => {
             licensePlate: b.licensePlate,
             checkInTime: b.checkInTime,
             status: b.status,
-            evaluation: b.evaluation // เพิ่มข้อมูล evaluation เต็ม
+            evaluation: b.evaluation // เพิ่ม field evaluation (ข้อกำหนดที่ 2)
         });
     });
 
@@ -1905,7 +1909,6 @@ const handleQRCodeScanned = (qrData) => {
     try {
         const data = JSON.parse(qrData);
         const booking = findBookingByReferenceNumber(data.referenceNumber);
-
         if (booking) {
             renderModal('bookingCard', { booking });
         } else {
@@ -2520,9 +2523,9 @@ const renderModal = (type, data = {}) => {
                 </form>
             </div>
         `;
+
         renderModalBase(modalContent, modal => modal.querySelector('#login-form').addEventListener('submit', handleLogin));
     }
-
     else if(type === 'booking') {
         if (isHoliday(new Date(state.selectedDate))) {
             const holiday = isHoliday(new Date(state.selectedDate));
@@ -2537,6 +2540,7 @@ const renderModal = (type, data = {}) => {
                     </div>
                 </div>
             `;
+
             renderModalBase(modalContent);
             return;
         }
@@ -2553,6 +2557,7 @@ const renderModal = (type, data = {}) => {
                     </div>
                 </div>
             `;
+
             renderModalBase(modalContent);
             return;
         }
@@ -2572,7 +2577,6 @@ const renderModal = (type, data = {}) => {
                         </select>
                         <input type="text" id="new-company-name" placeholder="ชื่อบริษัทใหม่" class="w-full px-3 py-2 border rounded-md mt-2 hidden">
                     </div>
-
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium mb-1">ชื่อ-นามสกุล คนขับ</label>
@@ -2586,12 +2590,10 @@ const renderModal = (type, data = {}) => {
                             </div>
                         </div>
                     </div>
-
                     <div>
                         <label class="block text-sm font-medium mb-1">เบอร์โทร</label>
                         <input type="tel" id="phone-number" placeholder="หมายเลขโทรศัพท์" class="w-full px-3 py-2 border rounded-md">
                     </div>
-
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-medium mb-1">จำนวนบิล</label>
@@ -2606,18 +2608,15 @@ const renderModal = (type, data = {}) => {
                             <input type="number" id="item-count" min="1" required class="w-full px-3 py-2 border rounded-md">
                         </div>
                     </div>
-
                     <div>
                         <label class="block text-sm font-medium mb-1">เวลาที่คาดว่าจะมาถึง</label>
                         <input type="hidden" id="eta" required>
                         <div id="eta-display" class="w-full px-3 py-2 border rounded-md cursor-pointer bg-gray-50 text-slate-500">-- เลือกเวลา --</div>
                     </div>
-
                     <div>
                         <label class="block text-sm font-medium mb-1">เอกสารเพิ่มเติม</label>
                         <textarea id="notes" placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)" class="w-full px-3 py-2 border rounded-md" rows="3"></textarea>
                     </div>
-
                     <div>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                             <input type="file" id="document-files" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
@@ -2633,7 +2632,6 @@ const renderModal = (type, data = {}) => {
                         </div>
                         <div id="file-list" class="mt-4 space-y-2"></div>
                     </div>
-
                     <div class="flex justify-end space-x-2">
                         <button type="button" class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ยกเลิก</button>
                         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ยืนยันการจอง</button>
@@ -2696,6 +2694,7 @@ const renderModal = (type, data = {}) => {
             dropZone.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+
                 try {
                     const newFiles = await handleFileUpload({ files: e.dataTransfer.files });
                     uploadedFiles = [...uploadedFiles, ...newFiles];
@@ -2811,7 +2810,6 @@ const renderModal = (type, data = {}) => {
             });
         });
     }
-
     else if(type === 'bookingDetails') {
         const booking = findBookingById(data.bookingId);
         if (!booking) {
@@ -2921,9 +2919,7 @@ const renderModal = (type, data = {}) => {
                         ` : ''}
                     </div>
                 </div>
-
                 ${documentsHtml}
-
                 <div class="flex justify-center mt-6">
                     <button class="close-modal-btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ปิด</button>
                 </div>
@@ -2939,7 +2935,6 @@ const renderModal = (type, data = {}) => {
 
         renderModalBase(modalContent);
     }
-
     else if(type === 'bookingCard') {
         const booking = data.booking;
 
@@ -3040,14 +3035,12 @@ const renderModal = (type, data = {}) => {
                             </div>
                             ${documentsInfo}
                         </div>
-
                         ${booking.notes ? `
                             <div class="mt-4 p-3 bg-gray-50 rounded">
                                 <span class="text-gray-600 text-sm">เอกสารเพิ่มเติม</span>
                                 <div class="text-sm mt-1">${booking.notes}</div>
                             </div>
                         ` : ''}
-
                         ${booking.documents && booking.documents.length > 0 ? `
                             <div class="mt-4">
                                 <span class="text-gray-600 text-sm">เอกสารที่แนบ</span>
@@ -3061,9 +3054,7 @@ const renderModal = (type, data = {}) => {
                                 </div>
                             </div>
                         ` : ''}
-
                         ${checkInSection}
-
                         <div class="mt-4 p-3 bg-gray-50 rounded text-center">
                             <div class="text-sm text-gray-600 mb-2">
                                 ${booking.status === 'completed' ? 'ดำเนินการเสร็จสิ้น' : booking.checkInTime ? 'กำลังดำเนินการ' : 'รอการดำเนินการ'}
@@ -3099,7 +3090,6 @@ const renderModal = (type, data = {}) => {
             }
         });
     }
-
     else if(type === 'evaluate') {
         const booking = allBookingsById[state.selectedBookingId];
 
@@ -3145,7 +3135,6 @@ const renderModal = (type, data = {}) => {
             modal.querySelector('#generate-summary-btn').addEventListener('click', handleGenerateSummary);
         });
     }
-
     else if(type === 'qrCode') {
         const booking = data.booking;
         const referenceNumber = booking.referenceNumber || generateReferenceNumber();
@@ -3205,6 +3194,7 @@ const renderModal = (type, data = {}) => {
 
         renderModalBase(modalContent, modal => {
             generateQRCode(qrData, modal.querySelector('#qrcode-container'));
+
             modal.querySelector('#qr-close-btn').addEventListener('click', () => {
                 closeModal(modal);
                 state.currentView = 'dailyQueue';
@@ -3212,7 +3202,6 @@ const renderModal = (type, data = {}) => {
             });
         });
     }
-
     else if(type === 'manualReferenceInput') {
         modalContent = `
             <div class="p-6">
@@ -3260,6 +3249,7 @@ const handleSearchByReferenceNumber = (referenceNumber) => {
 
 async function callGemini(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+
     const payload = {
         contents: [{
             parts: [{ text: prompt }]
@@ -3323,7 +3313,7 @@ const handleGenerateSummary = async (e) => {
     loadingIndicator.style.display = 'none';
 };
 
-// แก้ไขฟังก์ชัน handleLogin ให้ใช้ Firebase Authentication และย้าย Listeners (ข้อกำหนดที่ 1)
+// แก้ไขฟังก์ชัน handleLogin ให้ใช้ Firebase Authentication และย้าย Listeners (ข้อกำหนดที่ 3)
 const handleLogin = async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim();
@@ -3354,7 +3344,7 @@ const handleLogin = async (e) => {
                 state.currentUser = { id: user.uid, ...userData };
                 state.currentView = 'dashboard';
 
-                // ย้าย Listeners มาที่นี่ (ข้อกำหนดที่ 1)
+                // ย้าย Listeners มาที่นี่ (ข้อกำหนดที่ 3)
                 usersListener = onSnapshot(collection(db, "users"), (usersSnapshot) => {
                     state.data.users = [];
                     usersSnapshot.forEach((doc) => {
@@ -3413,10 +3403,10 @@ const handleLogin = async (e) => {
     }
 };
 
-// แก้ไขฟังก์ชัน handleLogout ให้ลบ Listeners (ข้อกำหนดที่ 1)
+// แก้ไขฟังก์ชัน handleLogout ให้ลบ Listeners (ข้อกำหนดที่ 3)
 const handleLogout = async () => {
     try {
-        // ลบ Listeners ตอน Logout (ข้อกำหนดที่ 1)
+        // ลบ Listeners ตอน Logout (ข้อกำหนดที่ 3)
         if (usersListener) {
             usersListener(); // Detach the listener
             usersListener = null;
@@ -3504,7 +3494,7 @@ const renderHolidayDetailsModal = (holiday, date) => {
     renderModalBase(modalContent);
 };
 
-// แก้ไขฟังก์ชัน renderCompanyKpiDetails เพื่อเพิ่มรายละเอียด KPI (ข้อกำหนดที่ 1)
+// แก้ไขฟังก์ชัน renderCompanyKpiDetails เพื่อเพิ่มรายละเอียด KPI (ข้อกำหนดที่ 2)
 const renderCompanyKpiDetails = (companyName) => {
     const kpiData = getKpiData();
     const company = kpiData.find(c => c.name === companyName);
@@ -3517,7 +3507,7 @@ const renderCompanyKpiDetails = (companyName) => {
     const bookingHistoryHtml = company.bookings.map(booking => {
         let kpiDetailsHtml = '';
         
-        // เพิ่มรายละเอียด KPI (ข้อกำหนดที่ 1)
+        // เพิ่มรายละเอียด KPI (ข้อกำหนดที่ 2)
         if (booking.evaluation && booking.evaluation.scores) {
             kpiDetailsHtml = `
                 <div class="mt-2 p-2 bg-gray-50 rounded text-xs">
@@ -3566,7 +3556,7 @@ const renderCompanyKpiDetails = (companyName) => {
     renderModalBase(modalContent);
 };
 
-// REFACTORED INITIALIZATION FUNCTION (ลบ Listeners ออกจาก init - ข้อกำหนดที่ 1)
+// REFACTORED INITIALIZATION FUNCTION (ลบ Listeners ออกจาก init - ข้อกำหนดที่ 3)
 const init = async () => {
     try {
         await signInAnonymously(auth);
@@ -3605,7 +3595,7 @@ const init = async () => {
             render();
         });
 
-        // หมายเหตุ: ลบ users และ notifications listeners ออกจาก init() แล้ว (ข้อกำหนดที่ 1)
+        // หมายเหตุ: ลบ users และ notifications listeners ออกจาก init() แล้ว (ข้อกำหนดที่ 3)
         // จะถูกเรียกใน handleLogin แทน
 
         // 4. Setup bookings collection listener (most complex)
@@ -3659,7 +3649,6 @@ const init = async () => {
         state.userRole = 'guest';
         state.isLoggedIn = false;
         state.currentView = 'calendar';
-
         render();
     } catch (error) {
         console.error('Error initializing app:', error);
